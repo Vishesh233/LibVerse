@@ -1,0 +1,491 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { useDebounce } from '../hooks/useDebounce';
+import { useNotification } from '../hooks/useNotification';
+import { adminAPI, notificationAPI } from '../services/api';
+import Avatar from './Avatar';
+
+export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const avatarSrc = !imageError && user?.profileImage ? user.profileImage : undefined;
+  const debouncedSearch = useDebounce(searchTerm, 300);
+  const { notifications, unreadCount, markAllRead, addNotification } = useNotification();
+  const notificationRef = useRef(null);
+  const profileRef = useRef(null);
+  const searchRef = useRef(null);
+
+  const handleLogoClick = () => {
+    if (user?.role === 'student') {
+      navigate('/student/dashboard');
+    } else if (user?.role === 'librarian') {
+      navigate('/librarian');
+    } else if (user?.role === 'admin' || user?.role === 'superadmin') {
+      navigate('/admin');
+    }
+  };
+
+  const booksBasePath = React.useMemo(() => {
+    if (user?.role === 'librarian') return '/librarian/books';
+    if (user?.role === 'admin' || user?.role === 'superadmin') return '/admin/books';
+    return '/student/books';
+  }, [user?.role]);
+
+  // Global search effect
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!debouncedSearch.trim()) {
+        setSearchResults([]);
+        setShowSearchDropdown(false);
+        return;
+      }
+
+      setSearchLoading(true);
+      try {
+        const res = await adminAPI.globalSearch(debouncedSearch.trim());
+        if (res.data?.success) {
+          setSearchResults(res.data.results || []);
+          setShowSearchDropdown(true);
+        }
+      } catch (err) {
+        console.error('Search error:', err);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+
+    performSearch();
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSearchDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Load notifications for all user types
+  useEffect(() => {
+    const loadNotifications = async () => {
+      if (!user) return;
+
+      try {
+        // Use appropriate API based on user role
+        const response = await (user.role === 'admin' || user.role === 'librarian' || user.role === 'superadmin'
+          ? adminAPI.getNotifications()
+          : notificationAPI.getNotifications());
+        
+        const backendNotifications = response?.data?.notifications || [];
+        backendNotifications.forEach((notification) => {
+          addNotification({
+            id: notification._id,
+            _id: notification._id,
+            title: notification.title,
+            message: notification.message,
+            type: notification.type,
+            createdAt: notification.createdAt,
+            read: notification.isRead ?? false,
+            isRead: notification.isRead ?? false,
+          });
+        });
+      } catch (error) {
+        console.error('Error loading notifications:', error);
+      }
+    };
+
+    loadNotifications();
+  }, [user, addNotification]);
+
+  const profilePath = React.useMemo(() => {
+    if (user?.role === 'admin' || user?.role === 'superadmin') return '/admin/profile';
+    if (user?.role === 'librarian') return '/librarian/profile';
+    return '/student/profile';
+  }, [user?.role]);
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter' && searchResults.length > 0) {
+      // Navigate to the first (best) result
+      const bestMatch = searchResults[0];
+      navigate(bestMatch.url);
+      setShowSearchDropdown(false);
+      setSearchTerm('');
+    }
+  };
+
+  const handleResultClick = (url) => {
+    navigate(url);
+    setShowSearchDropdown(false);
+    setSearchTerm('');
+  };
+
+  // Get notification icon based on type
+  const getNotificationIcon = (type) => {
+    const iconMap = {
+      BOOK_ISSUED: '📚',
+      BOOK_RETURNED: '✅',
+      DUE_DATE_REMINDER: '⏰',
+      BOOK_OVERDUE: '⚠️',
+      WISHLIST_AVAILABLE: '💝',
+      FINE_GENERATED: '💰',
+      PROFILE_UPDATED: '👤',
+      PASSWORD_CHANGED: '🔒',
+      NEW_RECOMMENDATIONS: '🎯',
+      ISSUE_REQUEST: '📋',
+      RETURN_REQUEST: '📦',
+      PENDING_APPROVAL: '⏳',
+      NEW_MEMBER: '👋',
+      LOW_STOCK: '📉',
+      FINE_PAID: '💵',
+      INVENTORY_UPDATE: '🔄',
+      NEW_LIBRARIAN: '👨‍💼',
+      SYSTEM_ACTIVITY: '⚙️',
+      USER_MANAGEMENT: '👥',
+      REPORT_GENERATED: '📊',
+      CRITICAL_ALERT: '🚨',
+      DATABASE_NOTIFICATION: '🗄️',
+      NAME_CHANGE: '✏️',
+    };
+    return iconMap[type] || '🔔';
+  };
+
+  // Format relative time
+  const getRelativeTime = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const notificationList = useMemo(
+    () => notifications.slice(0, 6),
+    [notifications]
+  );
+
+  return (
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-4 text-slate-100 px-6 py-3 bg-navbar backdrop-blur-md border-b" style={{ borderColor: 'var(--border)' }}>
+      {/* Search Input Left */}
+      <div ref={searchRef} className="relative flex-1 max-w-2xl mx-auto">
+        <svg
+          className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="search"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={handleSearchKeyDown}
+          onFocus={() => {
+            if (searchResults.length > 0) setShowSearchDropdown(true);
+          }}
+          placeholder="Search books, users, or records..."
+          className="w-full search-glass input-amo input-search pr-4 text-sm"
+        />
+
+        {/* Search Results Dropdown */}
+        {showSearchDropdown && (
+          <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl card text-slate-100 shadow-xl border z-50 overflow-hidden max-h-96 overflow-y-auto" style={{ borderColor: 'var(--border)' }}>
+            {searchLoading ? (
+              <div className="p-4 text-xs text-slate-400 text-center">Searching...</div>
+            ) : searchResults.length === 0 ? (
+              <div className="p-4 text-xs text-slate-400 text-center">No results found</div>
+            ) : (
+              <div className="p-2">
+                {searchResults.map((result, idx) => {
+                  // Book Result
+                  if (result.type === 'book') {
+                    return (
+                      <button
+                        key={`${result.type}-${result.id}-${idx}`}
+                        onClick={() => handleResultClick(result.url)}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-800/50 transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5 cursor-pointer flex items-center gap-3 group"
+                      >
+                        {/* Book Cover Thumbnail */}
+                        <div className="flex-shrink-0 w-[52px] h-[60px] rounded-md overflow-hidden bg-slate-800 shadow-md">
+                          {result.coverImage ? (
+                            <img
+                              src={result.coverImage}
+                              alt={result.title}
+                              loading="lazy"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
+                              <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A9 9 0 006 18c1.052 0 2.062-.18 3-.512m0-13.042A8.967 8.967 0 0118 3.75c1.052 0 2.062.18 3 .512v14.25A9 9 0 0118 18c-1.052 0-2.062-.18-3-.512" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Book Info */}
+                        <div className="min-w-0 flex-1 py-0.5">
+                          <p className="text-sm font-semibold text-slate-100 truncate group-hover:text-white transition-colors">{result.title}</p>
+                          <p className="text-xs text-slate-400 truncate mt-0.5">{result.subtitle}</p>
+                        </div>
+
+                        {/* Book Badge */}
+                        <span className="text-[10px] font-semibold text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-md uppercase tracking-wider flex-shrink-0 border border-indigo-500/20">
+                          Book
+                        </span>
+                      </button>
+                    );
+                  }
+
+                  // User Result
+                  if (result.type === 'user') {
+                    return (
+                      <button
+                        key={`${result.type}-${result.id}-${idx}`}
+                        onClick={() => handleResultClick(result.url)}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-800/50 transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5 cursor-pointer flex items-center gap-3 group"
+                      >
+                        {/* User Avatar */}
+                        <div className="flex-shrink-0 w-[52px] h-[52px] rounded-full overflow-hidden bg-slate-800 shadow-md ring-2 ring-slate-700">
+                          {result.profileImage ? (
+                            <img
+                              src={result.profileImage}
+                              alt={result.title}
+                              loading="lazy"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-600 text-white font-bold text-lg">
+                              {(result.title || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* User Info */}
+                        <div className="min-w-0 flex-1 py-0.5">
+                          <p className="text-sm font-semibold text-slate-100 truncate group-hover:text-white transition-colors">{result.title}</p>
+                          <p className="text-xs text-slate-400 truncate mt-0.5">{result.subtitle}</p>
+                        </div>
+
+                        {/* User Badge */}
+                        <span className="text-[10px] font-semibold text-purple-400 bg-purple-500/10 px-2 py-1 rounded-md uppercase tracking-wider flex-shrink-0 border border-purple-500/20">
+                          User
+                        </span>
+                      </button>
+                    );
+                  }
+
+                  // Transaction Result (keep existing style)
+                  return (
+                    <button
+                      key={`${result.type}-${result.id}-${idx}`}
+                      onClick={() => handleResultClick(result.url)}
+                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-800/50 transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5 cursor-pointer flex items-start gap-3 group"
+                    >
+                      <span className="text-lg flex-shrink-0">{result.icon}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-100 truncate group-hover:text-white transition-colors">{result.title}</p>
+                        <p className="text-xs text-slate-400 truncate">{result.subtitle}</p>
+                      </div>
+                      <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider flex-shrink-0">{result.type}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Right Controls */}
+      <div className="flex items-center gap-4 flex-shrink-0">
+        {/* Fullscreen Toggle Button */}
+        <button
+          onClick={onToggleFullscreen}
+          className="p-2 rounded-xl text-slate-300 hover:text-white hover:scale-105 transition-all"
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+        >
+          {isFullscreen ? (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15L3.75 20.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5M15 15l5.25 5.25" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+            </svg>
+          )}
+        </button>
+
+        {/* Notifications */}
+        <div ref={notificationRef} className="relative">
+          <button
+            onClick={() => {
+              setShowNotifications((prev) => !prev);
+              if (!showNotifications) markAllRead();
+            }}
+            className="relative p-2 rounded-xl text-slate-300 hover:text-white hover:scale-105 transition-all"
+            aria-label="Notifications"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white" />
+            )}
+          </button>
+
+          {showNotifications && (
+            <div className="absolute right-0 mt-3 w-96 rounded-2xl card text-slate-100 shadow-xl border z-50 overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+              <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+                <div>
+                  <h3 className="font-semibold text-sm">Notifications</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">{unreadCount} unread</p>
+                </div>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllRead}
+                    className="text-xs text-indigo-300 hover:text-white transition-colors"
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                {notificationList.length === 0 ? (
+                  <div className="p-8 text-xs text-slate-400 text-center">No notifications yet.</div>
+                ) : (
+                  notificationList.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-3.5 hover:bg-slate-800/40 transition-colors cursor-pointer border-b ${
+                        notification.isRead ? 'opacity-50' : 'bg-slate-800/20'
+                      }`}
+                      style={{ borderColor: 'var(--border)' }}
+                      onClick={() => {
+                        if (!notification.isRead) {
+                          // Mark as read logic would go here
+                        }
+                      }}
+                    >
+                      <div className="flex gap-3">
+                        <div className="text-2xl flex-shrink-0">
+                          {getNotificationIcon(notification.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-slate-100">{notification.title}</p>
+                          <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{notification.message}</p>
+                          <p className="text-[10px] text-slate-500 mt-1">{getRelativeTime(notification.createdAt)}</p>
+                        </div>
+                        {!notification.isRead && (
+                          <div className="w-2 h-2 bg-indigo-500 rounded-full flex-shrink-0 mt-1" />
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              {notifications.length > 6 && (
+                <div className="p-3 border-t text-center" style={{ borderColor: 'var(--border)' }}>
+                  <button className="text-xs text-indigo-300 hover:text-white transition-colors">
+                    View all notifications
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* User Profile Badge */}
+        {isAuthenticated && (
+          <div className="relative" ref={profileRef}>
+            <button
+              onClick={() => setShowProfileMenu((prev) => !prev)}
+              className="flex items-center gap-3 rounded-xl hover:scale-105 p-1.5 transition-all text-left"
+            >
+              <Avatar
+                name={user?.name || 'G'}
+                src={avatarSrc}
+                size={9}
+                onError={() => setImageError(true)}
+              />
+
+              <div className="hidden sm:block">
+                <p className="font-bold text-slate-100 text-sm leading-tight">
+                  {user?.name || 'ghr'}
+                </p>
+                <p className="text-xs text-slate-400 capitalize font-medium">
+                  {user?.role === 'librarian' ? 'Librarian' : (user?.role === 'admin' || user?.role === 'superadmin') ? 'Admin' : 'Student'}
+                </p>
+              </div>
+
+              <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+              {showProfileMenu && (
+              <div className="absolute right-0 mt-3 w-56 rounded-2xl card text-slate-100 shadow-xl overflow-hidden z-50 py-1" style={{ borderColor: 'var(--border)' }}>
+                <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+                  <p className="font-semibold text-sm text-slate-100">{user?.name}</p>
+                  <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+                </div>
+
+                  <button
+                    onClick={() => {
+                      navigate(profilePath);
+                      setShowProfileMenu(false);
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm font-medium text-slate-100 hover:bg-slate-800/50 flex items-center gap-2"
+                  >
+                  <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Profile Settings
+                </button>
+
+                <button
+                  onClick={() => {
+                    logout();
+                    setShowProfileMenu(false);
+                    navigate('/login');
+                  }}
+                  className="w-full px-4 py-2.5 text-left text-sm font-medium text-rose-400 hover:bg-slate-800/50 flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4-4-4M21 12H9M13 8v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2h6a2 2 0 002-2v-2" />
+                  </svg>
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </header>
+  );
+};
