@@ -105,7 +105,6 @@ docs/*.pdf
 
 # QR Codes (generated)
 qr-codes/
-*.png
 !frontend/public/**/*.png
 
 # Uploads
