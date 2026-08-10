@@ -79,7 +79,7 @@ The Librarian Portal handles the day-to-day operations of the library.
 - 🔔 Receive payment and circulation notifications
 ---
 
-# 🛡️ Super Admin Portal
+# 🛡️ Admin Portal
 
 The Super Admin has system-level control over the entire application.
 
