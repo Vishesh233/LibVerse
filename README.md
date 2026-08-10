@@ -25,7 +25,7 @@ The system provides dedicated role-based portals for:
 
 - 🎓 Students
 - 📚 Librarians
-- 🛡️ Super Admins
+- 🛡️ Admins
 
 From discovering books and managing wishlists to issuing books, processing returns, calculating overdue fines, handling QR-based payments, sending notifications, and viewing analytics — LibVerse brings the complete library workflow into one platform.
 
