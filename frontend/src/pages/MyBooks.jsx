@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { transactionsAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
 import { BookCard } from '../components/BookCard';
 import { useNotification } from '../hooks/useNotification';
 import { useAuth } from '../hooks/useAuth';
 import { formatDate } from '../utils/dateUtils';
+import { CoverImage } from '../components/CoverImage';
 
 export const MyBooks = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { addNotification } = useNotification();
   const [borrowed, setBorrowed] = useState([]);
@@ -55,9 +58,14 @@ export const MyBooks = () => {
   const handleReturn = async (id) => {
     setActioningId(id);
     try {
-      await transactionsAPI.returnBook(id);
-      const res = await transactionsAPI.getUserTransactions();
-      setBorrowed(res.data.transactions || res.data || []);
+      const res = await transactionsAPI.returnBook(id);
+      // If there's a fine, navigate to pay fine page
+      if (res.data?.hasFine) {
+        navigate(`/student/pay-fine/${id}`);
+      } else {
+        const txRes = await transactionsAPI.getUserTransactions();
+        setBorrowed(txRes.data.transactions || txRes.data || []);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -104,17 +112,20 @@ export const MyBooks = () => {
                     author: t.bookId?.author || t.author,
                     genre: t.bookId?.genre || t.genre,
                     coverImage: t.bookId?.coverImage || t.coverImage,
+                    imageUrl: t.bookId?.imageUrl || t.imageUrl,
+                    isbn: t.bookId?.isbn || t.isbn,
+                    rating: t.bookId?.rating || t.rating,
                   }}
                   footer={
                     <div className="space-y-2 text-sm text-slate-500">
                       <div>Issued: {formattedIssueDate}</div>
                       <div>Due: {formattedDueDate}</div>
-                      <div>Fine: ${t.fine || 0}</div>
+                      <div>Fine: ₹{t.fine || 0}</div>
                       <div>Status: {t.status || 'Borrowed'}</div>
                     </div>
                   }
-                  actionLabel="Renew"
-                  onActionClick={() => handleRenew(t._id)}
+                  actionLabel={t.status === 'issued' ? 'Return Book' : 'Renew'}
+                  onActionClick={() => t.status === 'issued' ? handleReturn(t._id) : handleRenew(t._id)}
                   statusLabel={t.status || 'Active'}
                   isLoading={actioningId === t._id}
                   actionDisabled={actioningId === t._id}

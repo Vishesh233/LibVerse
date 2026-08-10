@@ -5,7 +5,7 @@
  * @param {Number} dailyFineRate - Fine per day (default: 10)
  * @returns {Number} - Total fine amount
  */
-const calculateFine = (dueDate, returnDate = new Date(), dailyFineRate = 10) => {
+const calculateFine = (dueDate, returnDate = new Date(), dailyFineRate = 5) => {
   const today = returnDate || new Date();
   
   if (today <= dueDate) {
@@ -32,7 +32,7 @@ const isOverdue = (dueDate) => {
  */
 const getDaysRemaining = (dueDate) => {
   const days = Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24));
-  return days < 0 ? 0 : days;
+  return days;
 };
 
 module.exports = { calculateFine, isOverdue, getDaysRemaining };

@@ -1,26 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MainLayout } from '../layouts/MainLayout';
 import { booksAPI, transactionsAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { DeleteBookModal } from '../components/DeleteBookModal';
-
-const PLACEHOLDER_COVER = 'https://via.placeholder.com/400x300?text=No+Cover';
+import { CoverImage } from '../components/CoverImage';
 
 export const BookDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAdmin, isLibrarian, isStudent } = useAuth();
   const canManage = isAdmin || isLibrarian;
   const backPath = isAdmin ? '/admin/books' : isLibrarian ? '/librarian/books' : '/student/books';
   const editPath = isAdmin ? `/admin/books/${id}/edit` : `/librarian/books/${id}/edit`;
+  const previousState = location.state;
 
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
   const [issuing, setIssuing] = useState(false);
   const [error, setError] = useState(null);
-  const [imageError, setImageError] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -84,14 +84,18 @@ export const BookDetails = () => {
     );
   }
 
-  const coverSrc = imageError ? PLACEHOLDER_COVER : book.coverImage || book.image || PLACEHOLDER_COVER;
-
   return (
     <MainLayout>
       <div className="space-y-8">
         {/* Back button */}
         <button
-          onClick={() => navigate(backPath)}
+          onClick={() => {
+            if (previousState) {
+              navigate(backPath, { state: previousState });
+            } else {
+              navigate(backPath);
+            }
+          }}
           className="inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-slate-200"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -108,10 +112,11 @@ export const BookDetails = () => {
               
               {/* Book cover container */}
               <div className="relative rounded-3xl p-6 bg-input">
-                <img
-                  src={coverSrc}
+                <CoverImage
+                  book={book}
+                  src={book.imageUrl || book.coverImage}
                   alt={book.title}
-                  onError={() => setImageError(true)}
+                  eager
                   className="h-[500px] w-full rounded-2xl object-cover shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:shadow-indigo-500/30"
                 />
               </div>
@@ -163,6 +168,14 @@ export const BookDetails = () => {
                     <span className="mt-2 inline-flex rounded-full bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 text-sm font-semibold text-indigo-300">
                       {book.genre || 'General'}
                     </span>
+                  </div>
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Language</p>
+                    <p className="mt-2 font-semibold text-slate-100">{book.language || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Pages</p>
+                    <p className="mt-2 font-semibold text-slate-100">{book.pages || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Available</p>

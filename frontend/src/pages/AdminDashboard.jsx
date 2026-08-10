@@ -2,8 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MainLayout } from '../layouts/MainLayout';
-import { transactionsAPI, adminAPI } from '../services/api';
+import { transactionsAPI, adminAPI, booksAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { SearchableDropdown } from '../components/SearchableDropdown';
+import { CoverImage } from '../components/CoverImage';
+import { Avatar } from '../components/Avatar';
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -18,12 +21,23 @@ export const AdminDashboard = () => {
   const [submittingIssue, setSubmittingIssue] = useState(false);
   const [submittingReturn, setSubmittingReturn] = useState(false);
   const [sendingReminders, setSendingReminders] = useState(false);
+  const [showIssueDropdown, setShowIssueDropdown] = useState(false);
+  const [showBookDropdown, setShowBookDropdown] = useState(false);
+  const [showReturnDropdown, setShowReturnDropdown] = useState(false);
 
   // Modals state
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [issueForm, setIssueForm] = useState({ userEmail: '', bookTitle: '' });
   const [returnForm, setReturnForm] = useState({ transactionId: '' });
+
+  // Issue dropdown data
+  const [students, setStudents] = useState([]);
+  const [books, setBooks] = useState([]);
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [selectedBookId, setSelectedBookId] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
+  const [bookSearch, setBookSearch] = useState('');
 
   // Handle ESC key and body scroll lock
   useEffect(() => {
@@ -45,6 +59,27 @@ export const AdminDashboard = () => {
     };
   }, [showIssueModal, showReturnModal]);
 
+  // Click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showIssueDropdown && !e.target.closest('.issue-dropdown-container')) {
+        setShowIssueDropdown(false);
+      }
+      if (showBookDropdown && !e.target.closest('.book-dropdown-container')) {
+        setShowBookDropdown(false);
+      }
+      if (showReturnDropdown && !e.target.closest('.return-dropdown-container')) {
+        setShowReturnDropdown(false);
+      }
+    };
+
+    if (showIssueDropdown || showBookDropdown || showReturnDropdown) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showIssueDropdown, showBookDropdown, showReturnDropdown]);
+
   // Initial Data Load
   const loadDashboardData = async () => {
     setLoading(true);
@@ -56,6 +91,27 @@ export const AdminDashboard = () => {
     } catch (err) {
       console.error('Error fetching admin analytics:', err);
       toast.error('Failed to load live dashboard data');
+    }
+
+    try {
+      const usersRes = await adminAPI.getAllUsers({ limit: 100 });
+      if (usersRes.data?.users) {
+        const studentUsers = usersRes.data.users.filter(
+          (u) => u.role === 'student' || u.role === 'librarian'
+        );
+        setStudents(studentUsers);
+      }
+    } catch (err) {
+      console.error('Error loading students:', err);
+    }
+
+    try {
+      const booksRes = await booksAPI.getBooks({ limit: 100 });
+      if (booksRes.data?.books) {
+        setBooks(booksRes.data.books);
+      }
+    } catch (err) {
+      console.error('Error loading books:', err);
     } finally {
       setLoading(false);
     }
@@ -110,10 +166,44 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Render a student dropdown item with avatar
+  const renderStudentItem = (student, isSelected) => (
+    <div className="flex items-start gap-3">
+      <Avatar
+        name={student.name || ''}
+        src={student.profileImage}
+        size={2}
+        className="flex-shrink-0"
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-slate-200">{student.name}</p>
+        <p className="text-xs text-slate-400 mt-0.5">
+          {student.email} • {student.libraryId}
+        </p>
+      </div>
+    </div>
+  );
+
+  // Render a book dropdown item with thumbnail
+  const renderBookItem = (book, isSelected) => (
+    <div className="flex items-start gap-3">
+      <div className="h-14 w-10 overflow-hidden rounded flex-shrink-0 bg-input border border-border">
+        <CoverImage book={book} alt={book.title} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-slate-200">{book.title}</p>
+        <p className="text-xs text-slate-400 mt-0.5">by {book.author}</p>
+        <p className="text-xs text-slate-500 mt-1">
+          ISBN: {book.isbn} • {book.availableCopies ?? 0} available
+        </p>
+      </div>
+    </div>
+  );
+
   // Handle Issue Book Form Submit
   const handleConfirmIssue = async () => {
     if (!issueForm.userEmail && !issueForm.bookTitle) {
-      toast.warning('Please enter student email/ID and book title/ID');
+      toast.warning('Please select a student and book');
       return;
     }
     setSubmittingIssue(true);
@@ -125,6 +215,12 @@ export const AdminDashboard = () => {
       toast.success(res.data?.message || 'Book issued successfully!');
       setShowIssueModal(false);
       setIssueForm({ userEmail: '', bookTitle: '' });
+      setSelectedStudentId('');
+      setSelectedBookId('');
+      setStudentSearch('');
+      setBookSearch('');
+      setShowIssueDropdown(false);
+      setShowBookDropdown(false);
       loadDashboardData();
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to issue book';
@@ -401,25 +497,61 @@ export const AdminDashboard = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">Student Email or Library ID</label>
-                <input
-                  type="text"
-                  value={issueForm.userEmail}
-                  onChange={(e) => setIssueForm({ ...issueForm, userEmail: e.target.value })}
-                  placeholder="e.g. alice@example.com or LIB-1001"
-                  className="w-full input-amo"
-                />
+                <label className="text-xs font-semibold text-slate-300 block mb-1">Select Student *</label>
+                <div className="relative issue-dropdown-container">
+                  <SearchableDropdown
+                    items={students}
+                    searchFields={['name', 'email', 'libraryId']}
+                    valueKey="_id"
+                    selectedId={selectedStudentId}
+                    inputValue={studentSearch}
+                    onInputChange={setStudentSearch}
+                    showDropdown={showIssueDropdown}
+                    onToggleDropdown={setShowIssueDropdown}
+                    onSelect={(s) => {
+                      setSelectedStudentId(s._id);
+                      setStudentSearch(s.name);
+                      setIssueForm({ ...issueForm, userEmail: s.email });
+                    }}
+                    onClear={() => {
+                      setSelectedStudentId('');
+                      setStudentSearch('');
+                      setIssueForm({ ...issueForm, userEmail: '' });
+                    }}
+                    placeholder="Search by name, email, or library ID..."
+                    containerClass="issue-dropdown-container"
+                    renderItem={renderStudentItem}
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">Book Title or ID</label>
-                <input
-                  type="text"
-                  value={issueForm.bookTitle}
-                  onChange={(e) => setIssueForm({ ...issueForm, bookTitle: e.target.value })}
-                  placeholder="e.g. Clean Code"
-                  className="w-full input-amo"
-                />
+                <label className="text-xs font-semibold text-slate-300 block mb-1">Select Book *</label>
+                <div className="relative book-dropdown-container">
+                  <SearchableDropdown
+                    items={books}
+                    searchFields={['title', 'isbn', 'author']}
+                    valueKey="_id"
+                    selectedId={selectedBookId}
+                    inputValue={bookSearch}
+                    onInputChange={setBookSearch}
+                    showDropdown={showBookDropdown}
+                    onToggleDropdown={setShowBookDropdown}
+                    onSelect={(b) => {
+                      setSelectedBookId(b._id);
+                      setBookSearch(b.title);
+                      setIssueForm({ ...issueForm, bookTitle: b.title });
+                    }}
+                    onClear={() => {
+                      setSelectedBookId('');
+                      setBookSearch('');
+                      setIssueForm({ ...issueForm, bookTitle: '' });
+                    }}
+                    placeholder="Search by title, ISBN, or author..."
+                    containerClass="book-dropdown-container"
+                    renderItem={renderBookItem}
+                  />
+                </div>
               </div>
             </div>
 
@@ -463,13 +595,24 @@ export const AdminDashboard = () => {
 
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-1">Book / Student / Transaction Query</label>
-              <input
-                type="text"
-                value={returnForm.transactionId}
-                onChange={(e) => setReturnForm({ transactionId: e.target.value })}
-                placeholder="e.g. sarah@example.com, LIB-1007, or The Hobbit"
-                className="w-full input-amo"
-              />
+              <div className="relative return-dropdown-container">
+                <input
+                  type="text"
+                  value={returnForm.transactionId}
+                  onChange={(e) => setReturnForm({ transactionId: e.target.value })}
+                  placeholder="e.g. sarah@example.com, LIB-1007, or The Hobbit"
+                  className="w-full input-amo pr-8"
+                />
+                {returnForm.transactionId && (
+                  <button
+                    type="button"
+                    onClick={() => setReturnForm({ transactionId: '' })}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-lg leading-none"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">

@@ -4,51 +4,13 @@ import { toast } from 'react-toastify';
 import { MainLayout } from '../layouts/MainLayout';
 import { useAuth } from '../hooks/useAuth';
 import { transactionsAPI, booksAPI } from '../services/api';
+import { CoverImage } from '../components/CoverImage';
 
 const toSafeNumber = (value, fallback = 0) => {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 };
 
-const CoverFallback = ({ className = '' }) => (
-  <div className={`h-full w-full flex items-center justify-center bg-input ${className}`}>
-    <svg className="w-10 h-10 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-      />
-    </svg>
-  </div>
-);
-
-const BookCover = ({ src, alt, iconClassName = 'text-slate-500' }) => {
-  const [failed, setFailed] = useState(false);
-  const coverSrc = src || '/default-book-cover.png';
-
-  if (failed || !coverSrc) {
-    return (
-      <div className="h-full w-full flex items-center justify-center bg-input">
-        <svg className={`w-10 h-10 ${iconClassName}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-          />
-        </svg>
-      </div>
-    );
-  }
-
-  return (
-    <img
-      src={coverSrc}
-      alt={alt || 'Book cover'}
-      onError={() => setFailed(true)}
-      className="h-full w-full object-cover"
-    />
-  );
-};
 
 export const Dashboard = () => {
   const navigate = useNavigate();
@@ -132,8 +94,10 @@ export const Dashboard = () => {
     return <Navigate to="/librarian" replace />;
   }
 
-  // If user has no favorite genres, redirect to onboarding
-  if (!loading && (!user?.favoriteGenres || user.favoriteGenres.length === 0)) {
+  // Onboarding should ONLY appear for brand-new users who have NOT completed onboarding.
+  // Existing users (isOnboardingCompleted === true) must NEVER be redirected to onboarding,
+  // even if favoriteGenres is empty. This preserves existing accounts.
+  if (!loading && user?.role === 'student' && user?.isOnboardingCompleted === false) {
     return <Navigate to="/student/onboarding" replace />;
   }
 
@@ -214,7 +178,7 @@ export const Dashboard = () => {
     },
     {
       label: 'Outstanding Fines',
-      value: `$${toSafeNumber(stats.outstandingFines, 0).toFixed(2)}`,
+      value: `₹${toSafeNumber(stats.outstandingFines, 0).toFixed(2)}`,
       icon: (
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 8v2m0-6c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -353,7 +317,7 @@ export const Dashboard = () => {
                     <div className="flex gap-4">
                       {/* Book Cover — safe fallback, no nextSibling access */}
                       <div className="h-28 w-20 overflow-hidden rounded-2xl bg-input border border-border flex-shrink-0">
-                        <BookCover src={book.coverImage} alt={bookTitle} iconClassName={theme.text} />
+                        <CoverImage book={book} src={book.imageUrl || book.coverImage} alt={bookTitle} iconClassName={theme.text} />
                       </div>
 
                       {/* Book Metadata */}
@@ -459,8 +423,7 @@ export const Dashboard = () => {
                   >
                     <div className="flex items-start gap-4">
                       <div className="h-28 w-20 overflow-hidden rounded-2xl bg-input flex-shrink-0">
-                        {/* Safe cover: no nextSibling access that can throw */}
-                        <BookCover src={book.coverImage} alt={book.title || 'Book'} />
+                        <CoverImage book={book} src={book.imageUrl || book.coverImage} alt={book.title || 'Book'} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="text-base font-semibold text-slate-100 line-clamp-2">

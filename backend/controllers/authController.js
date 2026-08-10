@@ -79,29 +79,43 @@ exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
+    // Diagnostic logging: print the exact reason for any login failure
+    // instead of a generic "Invalid credentials" message.
+    console.log('\n========== LOGIN ATTEMPT ==========');
+    console.log('[login] Received email (raw):', email);
+    console.log('[login] Received password length:', password ? password.length : 'undefined');
+
     // Validation
     if (!email || !password) {
+      console.log('[login] -> 400 Missing email or password');
       return res.status(400).json({
         success: false,
         message: 'Please provide email and password',
       });
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log('[login] Normalized email:', normalizedEmail);
+
     // Check user exists (normalize email to lowercase to match stored format)
-    const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
+    console.log('[login] User found:', user ? `YES (${user.email}, role=${user.role})` : 'NO');
     if (!user) {
+      console.log('[login] -> 401 User not found for email:', normalizedEmail);
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials',
+        message: 'Invalid credentials: no account found with that email',
       });
     }
 
     // Check password
     const isMatch = await user.matchPassword(password);
+    console.log('[login] bcrypt.compare result:', isMatch);
     if (!isMatch) {
+      console.log('[login] -> 401 Password mismatch for email:', normalizedEmail);
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials',
+        message: 'Invalid credentials: incorrect password',
       });
     }
 
@@ -314,6 +328,70 @@ exports.updateFavoriteGenres = async (req, res, next) => {
         isOnboardingCompleted: user.isOnboardingCompleted,
         favoriteGenres: user.favoriteGenres,
       },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @route PUT /api/auth/change-password
+ * @desc Change user password (verify current, hash new)
+ * @access Private
+ */
+exports.changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide current password and new password',
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters',
+      });
+    }
+
+    // Get user with password field
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Verify current password
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect',
+      });
+    }
+
+    // Update password — pre('save') hook will bcrypt hash it
+    user.password = newPassword;
+    await user.save();
+
+    // Send notification (non-fatal)
+    try {
+      await createNotification(
+        user._id,
+        user.role,
+        'PASSWORD_CHANGED',
+        'Password Changed',
+        'Your password has been changed successfully. If you did not make this change, please contact support.'
+      );
+    } catch (notifError) {
+      console.error('Notification creation failed (non-fatal):', notifError.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully',
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

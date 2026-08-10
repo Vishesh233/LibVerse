@@ -60,12 +60,15 @@ exports.getUserNotifications = async (req, res, next) => {
 // Mark notification as read
 exports.markAsRead = async (req, res, next) => {
   try {
-    const { id } = req.params; // MongoDB _id
+    const { id } = req.params; // MongoDB _id or NOTIF-<id>
     const userId = req.user.id;
     const userRole = req.user.role;
 
+    // Strip NOTIF- prefix if present
+    const actualId = id.startsWith('NOTIF-') ? id.slice(6) : id;
+
     const notification = await Notification.findOneAndUpdate(
-      { _id: id, userId, role: userRole },
+      { _id: actualId, userId, role: userRole },
       { isRead: true },
       { new: true }
     );

@@ -6,9 +6,8 @@ import { MainLayout } from '../layouts/MainLayout';
 import { useAuth } from '../hooks/useAuth';
 import { useDebounce } from '../hooks/useDebounce';
 import { DeleteBookModal } from '../components/DeleteBookModal';
+import { CoverImage } from '../components/CoverImage';
 import { GENRES } from '../constants/genres';
-
-const PLACEHOLDER_COVER = 'https://via.placeholder.com/400x300?text=No+Cover';
 
 export const ManageBooks = () => {
   const navigate = useNavigate();
@@ -215,12 +214,7 @@ export const ManageBooks = () => {
               >
                 <div className="flex items-start gap-4">
                   <div className="h-28 w-20 overflow-hidden rounded-2xl bg-input flex-shrink-0">
-                    <img
-                      src={book.coverImage || PLACEHOLDER_COVER}
-                      alt={book.title}
-                      onError={(e) => { e.currentTarget.src = PLACEHOLDER_COVER; }}
-                      className="h-full w-full object-cover"
-                    />
+                    <CoverImage book={book} alt={book.title} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="text-base font-semibold text-slate-100 line-clamp-2">{book.title}</h3>
@@ -288,12 +282,7 @@ export const ManageBooks = () => {
                 className="card cursor-pointer transition-all duration-250 hover:shadow-glow hover:border-indigo-500/30 flex items-center gap-4"
               >
                 <div className="h-20 w-14 overflow-hidden rounded-xl bg-input flex-shrink-0">
-                  <img
-                    src={book.coverImage || PLACEHOLDER_COVER}
-                    alt={book.title}
-                    onError={(e) => { e.currentTarget.src = PLACEHOLDER_COVER; }}
-                    className="h-full w-full object-cover"
-                  />
+                  <CoverImage book={book} alt={book.title} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-semibold text-slate-100 line-clamp-1">{book.title}</h3>

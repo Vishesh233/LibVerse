@@ -23,7 +23,15 @@ const transactionSchema = new mongoose.Schema(
     returnDate: Date,
     status: {
       type: String,
-      enum: ['pending', 'issued', 'returned', 'rejected', 'overdue'],
+      enum: [
+        'pending',
+        'issued',
+        'return_requested',
+        'payment_pending',
+        'returned',
+        'rejected',
+        'overdue',
+      ],
       default: 'pending',
     },
     fineAmount: {
@@ -47,6 +55,20 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Return flow fields
+    returnRequestedAt: Date,
+    returnApprovedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    // Payment flow fields
+    paymentScreenshot: String,
+    paymentSubmittedAt: Date,
+    paymentApprovedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    paymentApprovedAt: Date,
     createdAt: {
       type: Date,
       default: Date.now,
@@ -56,7 +78,7 @@ const transactionSchema = new mongoose.Schema(
 );
 
 // Calculate fine based on overdue days
-transactionSchema.methods.calculateFine = function (fineRate = 10) {
+transactionSchema.methods.calculateFine = function (fineRate = 5) {
   if (this.status === 'returned') return 0;
   const today = new Date();
   if (today > this.dueDate) {
@@ -67,3 +89,4 @@ transactionSchema.methods.calculateFine = function (fineRate = 10) {
 };
 
 module.exports = mongoose.model('Transaction', transactionSchema);
+

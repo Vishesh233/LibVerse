@@ -46,7 +46,11 @@ const bookSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    publishedYear: Number,
     publicationYear: Number,
+    imageUrl: String,
+    pages: Number,
+    language: String,
     rating: {
       type: Number,
       min: 0,

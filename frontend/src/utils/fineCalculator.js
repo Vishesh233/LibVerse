@@ -5,7 +5,7 @@
  * @param {number} finePerDay - Fine amount per day (default: 10)
  * @returns {number} Fine amount
  */
-export const calculateFine = (dueDate, returnDate = new Date().toISOString(), finePerDay = 10) => {
+export const calculateFine = (dueDate, returnDate = new Date().toISOString(), finePerDay = 5) => {
   if (!dueDate) return 0;
 
   const due = new Date(dueDate);

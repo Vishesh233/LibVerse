@@ -10,7 +10,7 @@ const { generateQRCode } = require('../utils/qrGenerator');
  */
 exports.getBooks = async (req, res, next) => {
   try {
-    const { title, author, genre, page = 1, limit = 10 } = req.query;
+    const { title, author, genre, rating, availability, page = 1, limit = 10 } = req.query;
 
     let filter = { isActive: true };
 
@@ -22,6 +22,17 @@ exports.getBooks = async (req, res, next) => {
     }
     if (genre) {
       filter.genre = genre;
+    }
+    if (rating) {
+      const minRating = parseFloat(rating);
+      if (!isNaN(minRating) && minRating > 0) {
+        filter.rating = { $gte: minRating };
+      }
+    }
+    if (availability === 'available') {
+      filter.availableCopies = { $gt: 0 };
+    } else if (availability === 'unavailable') {
+      filter.availableCopies = { $lte: 0 };
     }
 
     const skip = (page - 1) * limit;
@@ -147,8 +158,12 @@ exports.createBook = async (req, res, next) => {
       rating,
       description,
       publicationYear,
+      publishedYear,
       location,
       coverImage,
+      imageUrl,
+      pages,
+      language,
     } = req.body;
 
     // Check if book already exists
@@ -173,9 +188,13 @@ exports.createBook = async (req, res, next) => {
       issuedCopies: issuedCopies ?? 0,
       rating: rating ?? 0,
       description,
-      publicationYear,
+      publicationYear: publicationYear ?? publishedYear,
+      publishedYear: publishedYear ?? publicationYear,
       location,
       coverImage,
+      imageUrl,
+      pages,
+      language,
     });
 
     // Generate QR code
@@ -218,8 +237,12 @@ exports.updateBook = async (req, res, next) => {
       rating,
       description,
       publicationYear,
+      publishedYear,
       location,
       coverImage,
+      imageUrl,
+      pages,
+      language,
     } = req.body;
 
     // Build update object with only provided fields
@@ -235,8 +258,12 @@ exports.updateBook = async (req, res, next) => {
     if (rating !== undefined) updateData.rating = rating;
     if (description !== undefined) updateData.description = description;
     if (publicationYear !== undefined) updateData.publicationYear = publicationYear;
+    if (publishedYear !== undefined) updateData.publishedYear = publishedYear;
     if (location !== undefined) updateData.location = location;
     if (coverImage !== undefined) updateData.coverImage = coverImage;
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
+    if (pages !== undefined) updateData.pages = pages;
+    if (language !== undefined) updateData.language = language;
 
     book = await Book.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
@@ -315,7 +342,7 @@ exports.getRecommendations = async (req, res, next) => {
     // Build query for books matching favorite genres
     const favoriteGenres = user.favoriteGenres;
     const genreQuery = { genre: { $in: favoriteGenres } };
-    
+
     // Get books matching favorite genres, excluding user's interacted books
     const matchedBooks = await Book.find({
       isActive: true,
@@ -337,7 +364,7 @@ exports.getRecommendations = async (req, res, next) => {
 
     // If fewer than 6 matched books, fill remaining slots with highest-rated books from other genres
     const remainingSlots = 6 - matchedBooks.length;
-    
+
     // Get IDs of already recommended books to avoid duplicates
     const matchedBookIds = matchedBooks.map(b => b._id);
     const allExcludedIds = [...matchedBookIds, ...excludedBookIds];

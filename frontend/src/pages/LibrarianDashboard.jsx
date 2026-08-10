@@ -5,6 +5,9 @@ import * as echarts from 'echarts';
 import { MainLayout } from '../layouts/MainLayout';
 import { transactionsAPI, adminAPI, booksAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { SearchableDropdown } from '../components/SearchableDropdown';
+import { CoverImage } from '../components/CoverImage';
+import { Avatar } from '../components/Avatar';
 
 export const LibrarianDashboard = () => {
   const navigate = useNavigate();
@@ -13,6 +16,8 @@ export const LibrarianDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [approvingId, setApprovingId] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
+  const [approvingReturnId, setApprovingReturnId] = useState(null);
+  const [approvingPaymentId, setApprovingPaymentId] = useState(null);
   const categoryChartRef = useRef(null);
   const categoryChartInstance = useRef(null);
 
@@ -23,6 +28,19 @@ export const LibrarianDashboard = () => {
   const [returnForm, setReturnForm] = useState({ transactionId: '' });
   const [submittingIssue, setSubmittingIssue] = useState(false);
   const [submittingReturn, setSubmittingReturn] = useState(false);
+  const [showIssueDropdown, setShowIssueDropdown] = useState(false);
+  const [showBookDropdown, setShowBookDropdown] = useState(false);
+  const [showReturnDropdown, setShowReturnDropdown] = useState(false);
+  const [issueSearchResults, setIssueSearchResults] = useState({ users: [], books: [] });
+  const [returnSearchResults, setReturnSearchResults] = useState({ transactions: [], users: [], books: [] });
+
+  // Issue dropdown data
+  const [students, setStudents] = useState([]);
+  const [books, setBooks] = useState([]);
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [selectedBookId, setSelectedBookId] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
+  const [bookSearch, setBookSearch] = useState('');
 
   // Handle ESC key and body scroll lock
   useEffect(() => {
@@ -44,6 +62,27 @@ export const LibrarianDashboard = () => {
     };
   }, [showIssueModal, showReturnModal]);
 
+  // Click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showIssueDropdown && !e.target.closest('.issue-dropdown-container')) {
+        setShowIssueDropdown(false);
+      }
+      if (showBookDropdown && !e.target.closest('.book-dropdown-container')) {
+        setShowBookDropdown(false);
+      }
+      if (showReturnDropdown && !e.target.closest('.return-dropdown-container')) {
+        setShowReturnDropdown(false);
+      }
+    };
+
+    if (showIssueDropdown || showBookDropdown || showReturnDropdown) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showIssueDropdown, showBookDropdown, showReturnDropdown]);
+
   const loadDashboardData = async () => {
     setLoading(true);
     try {
@@ -54,6 +93,27 @@ export const LibrarianDashboard = () => {
     } catch (err) {
       console.error('Error fetching librarian analytics:', err);
       toast.error('Failed to load dashboard data');
+    }
+
+    try {
+      const usersRes = await adminAPI.getAllUsers({ limit: 100 });
+      if (usersRes.data?.users) {
+        const studentUsers = usersRes.data.users.filter(
+          (u) => u.role === 'student' || u.role === 'librarian'
+        );
+        setStudents(studentUsers);
+      }
+    } catch (err) {
+      console.error('Error loading students:', err);
+    }
+
+    try {
+      const booksRes = await booksAPI.getBooks({ limit: 100 });
+      if (booksRes.data?.books) {
+        setBooks(booksRes.data.books);
+      }
+    } catch (err) {
+      console.error('Error loading books:', err);
     } finally {
       setLoading(false);
     }
@@ -115,10 +175,74 @@ export const LibrarianDashboard = () => {
     }
   };
 
+  // Handle Approve Return (CASE A: no fine, or after fine paid)
+  const handleApproveReturn = async (txId) => {
+    setApprovingReturnId(txId);
+    try {
+      await transactionsAPI.approveReturn(txId);
+      toast.success('Book return approved successfully.');
+      loadDashboardData();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to approve return';
+      toast.error(msg);
+    } finally {
+      setApprovingReturnId(null);
+    }
+  };
+
+  // Handle Approve Payment (CASE B: fine paid → book returned)
+  const handleApprovePayment = async (txId) => {
+    setApprovingPaymentId(txId);
+    try {
+      await transactionsAPI.approvePayment(txId);
+      toast.success('Payment approved. Book returned successfully.');
+      loadDashboardData();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to approve payment';
+      toast.error(msg);
+    } finally {
+      setApprovingPaymentId(null);
+    }
+  };
+
+  // Render a student dropdown item with avatar
+  const renderStudentItem = (student, isSelected) => (
+    <div className="flex items-start gap-3">
+      <Avatar
+        name={student.name || ''}
+        src={student.profileImage}
+        size={2}
+        className="flex-shrink-0"
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-slate-200">{student.name}</p>
+        <p className="text-xs text-slate-400 mt-0.5">
+          {student.email} • {student.libraryId}
+        </p>
+      </div>
+    </div>
+  );
+
+  // Render a book dropdown item with thumbnail
+  const renderBookItem = (book, isSelected) => (
+    <div className="flex items-start gap-3">
+      <div className="h-14 w-10 overflow-hidden rounded flex-shrink-0 bg-input border border-border">
+        <CoverImage book={book} alt={book.title} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-slate-200">{book.title}</p>
+        <p className="text-xs text-slate-400 mt-0.5">by {book.author}</p>
+        <p className="text-xs text-slate-500 mt-1">
+          ISBN: {book.isbn} • {book.availableCopies ?? 0} available
+        </p>
+      </div>
+    </div>
+  );
+
   // Handle Issue Book Form Submit
   const handleConfirmIssue = async () => {
     if (!issueForm.userEmail && !issueForm.bookTitle) {
-      toast.warning('Please enter student email/ID and book title/ID');
+      toast.warning('Please select a student and book');
       return;
     }
     setSubmittingIssue(true);
@@ -130,6 +254,12 @@ export const LibrarianDashboard = () => {
       toast.success(res.data?.message || 'Book issued successfully!');
       setShowIssueModal(false);
       setIssueForm({ userEmail: '', bookTitle: '' });
+      setSelectedStudentId('');
+      setSelectedBookId('');
+      setStudentSearch('');
+      setBookSearch('');
+      setShowIssueDropdown(false);
+      setShowBookDropdown(false);
       loadDashboardData();
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to issue book';
@@ -147,16 +277,33 @@ export const LibrarianDashboard = () => {
     }
     setSubmittingReturn(true);
     try {
-      const res = await adminAPI.returnBook({
-        transactionId: returnForm.transactionId,
-        query: returnForm.transactionId,
-      });
-      toast.success(res.data?.message || 'Book returned successfully!');
+      // First, search for the transaction using the query
+      const searchRes = await adminAPI.globalSearch(returnForm.transactionId);
+      const transactions = searchRes.data?.results?.filter(r => r.type === 'transaction') || [];
+      
+      if (transactions.length === 0) {
+        toast.error('No active transaction found matching your query');
+        setSubmittingReturn(false);
+        return;
+      }
+
+      // Use the first matching transaction
+      const txId = transactions[0].id;
+      
+      // Submit return request using the student endpoint to follow proper workflow
+      const res = await transactionsAPI.returnBook(txId);
+      
+      const hasFine = res.data?.hasFine;
+      const message = hasFine 
+        ? `Return request submitted with fine of ₹${res.data.fine}. Student needs to pay before you can approve.`
+        : res.data?.message || 'Return request submitted successfully!';
+      
+      toast.success(message);
       setShowReturnModal(false);
       setReturnForm({ transactionId: '' });
       loadDashboardData();
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to return book';
+      const msg = err.response?.data?.message || 'Failed to process return request';
       toast.error(msg);
     } finally {
       setSubmittingReturn(false);
@@ -329,16 +476,7 @@ export const LibrarianDashboard = () => {
     toast.success('Report exported to CSV!');
   };
 
-  // Demo data fallbacks
-  const DEMO_RECENT_ACTIVITY = [
-    { _id: 'demo-1', name: 'John Doe', action: 'borrowed', book: 'The Great Gatsby', time: '2 min ago', status: 'Issued', initials: 'JD' },
-    { _id: 'demo-2', name: 'Jane Smith', action: 'returned', book: 'To Kill a Mockingbird', time: '15 min ago', status: 'Returned', initials: 'JS' },
-    { _id: 'demo-3', name: 'Alice Johnson', action: 'borrowed', book: '1984', time: '1 hour ago', status: 'Issued', initials: 'AJ' },
-    { _id: 'demo-4', name: 'Bob Wilson', action: 'returned', book: 'Pride and Prejudice', time: '2 hours ago', status: 'Returned', initials: 'BW' },
-    { _id: 'demo-5', name: 'Emma Davis', action: 'borrowed', book: 'The Catcher in the Rye', time: '3 hours ago', status: 'Issued', initials: 'ED' },
-  ];
-
-  const recentActivities = analytics?.recentActivities?.length > 0 ? analytics.recentActivities : DEMO_RECENT_ACTIVITY;
+  const recentActivities = analytics?.recentActivities?.length > 0 ? analytics.recentActivities : [];
 
   const statCards = [
     {
@@ -394,6 +532,8 @@ export const LibrarianDashboard = () => {
 
   // Pending requests for librarian
   const pendingRequests = analytics?.pendingRequests || [];
+  const returnRequests = analytics?.returnRequests || [];
+  const paymentPending = analytics?.paymentPending || [];
 
   return (
     <MainLayout>
@@ -528,6 +668,78 @@ export const LibrarianDashboard = () => {
               </div>
             )}
 
+            {/* Return Requests - Awaiting Librarian Approval */}
+            {returnRequests.length > 0 && (
+              <div className="card p-6">
+                <h3 className="font-bold text-slate-100 text-lg mb-4">Return Requests</h3>
+                <div className="space-y-3">
+                  {returnRequests.slice(0, 5).map((req) => (
+                    <div
+                      key={req._id}
+                      className="flex items-center justify-between p-4 rounded-xl bg-slate-900/30 border border-slate-800/40"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-sky-500/10 text-sky-300 font-bold text-sm flex items-center justify-center flex-shrink-0">
+                          {req.initials || 'RT'}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-100">
+                            {req.studentName} - {req.bookTitle}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {req.userEmail || ''} {req.fineAmount > 0 ? `• Fine: ₹${req.fineAmount}` : '• No fine'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleApproveReturn(req._id)}
+                        disabled={approvingReturnId === req._id}
+                        className="px-3 py-1.5 text-xs font-semibold btn-success disabled:opacity-50"
+                      >
+                        {approvingReturnId === req._id ? 'Approving...' : 'Approve Return'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Payment Pending - Awaiting Librarian Payment Approval */}
+            {paymentPending.length > 0 && (
+              <div className="card p-6">
+                <h3 className="font-bold text-slate-100 text-lg mb-4">Payment Approvals</h3>
+                <div className="space-y-3">
+                  {paymentPending.slice(0, 5).map((req) => (
+                    <div
+                      key={req._id}
+                      className="flex items-center justify-between p-4 rounded-xl bg-slate-900/30 border border-slate-800/40"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-amber-500/10 text-amber-300 font-bold text-sm flex items-center justify-center flex-shrink-0">
+                          {req.initials || 'PY'}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-100">
+                            {req.studentName} - {req.bookTitle}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {req.userEmail || ''} • Fine: ₹{req.fineAmount} {req.hasScreenshot ? '• 📎 Screenshot' : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleApprovePayment(req._id)}
+                        disabled={approvingPaymentId === req._id}
+                        className="px-3 py-1.5 text-xs font-semibold btn-success disabled:opacity-50"
+                      >
+                        {approvingPaymentId === req._id ? 'Approving...' : 'Approve Payment'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Today's Tasks */}
             <div className="card p-6">
               <h3 className="font-bold text-slate-100 text-lg mb-4">Today's Tasks</h3>
@@ -544,7 +756,7 @@ export const LibrarianDashboard = () => {
                 <div className="p-4 rounded-xl bg-slate-900/30 border border-slate-800/40">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-slate-400 font-medium">Books Issued Today</span>
-                    <span className="text-2xl font-bold text-emerald-300">{analytics?.issuedToday || 0}</span>
+                    <span className="text-2xl font-bold text-emerald-300">{analytics?.issuedToday ?? 0}</span>
                   </div>
                   <div className="w-full bg-slate-800/50 rounded-full h-2">
                     <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '70%' }}></div>
@@ -583,11 +795,15 @@ export const LibrarianDashboard = () => {
               <div className="space-y-3">
                 {recentActivities.slice(0, 6).map((activity, idx) => (
                   <div
-                    key={activity._id || idx}
+                    key={activity._id || activity.id || idx}
                     className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/30 border border-slate-800/40"
                   >
-                    <div className="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-300 font-bold text-xs flex items-center justify-center flex-shrink-0">
-                      {activity.initials || activity.name.substring(0, 2).toUpperCase()}
+                    <div className="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-300 font-bold text-xs flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {activity.avatar ? (
+                        <img src={activity.avatar} alt={activity.name} className="w-full h-full object-cover" />
+                      ) : (
+                        activity.initials || activity.name.substring(0, 2).toUpperCase()
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-slate-100 truncate">
@@ -615,19 +831,18 @@ export const LibrarianDashboard = () => {
             <div className="card p-6">
               <h3 className="font-bold text-slate-100 text-lg mb-4">Top Books</h3>
               <div className="space-y-3">
-                {(analytics?.topBooks || [
-                  { title: 'Clean Code', author: 'Robert C. Martin', borrowCount: 128 },
-                  { title: 'The Pragmatic Programmer', author: 'Andrew Hunt', borrowCount: 96 },
-                  { title: 'Design Patterns', author: 'Gang of Four', borrowCount: 84 },
-                ]).map((book, idx) => (
-                  <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/30 border border-slate-800/40">
+                {(analytics?.topBooks || []).map((book, idx) => (
+                  <div key={book._id || idx} className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/30 border border-slate-800/40">
                     <div className="w-8 h-8 rounded-full bg-amber-500/10 text-amber-300 font-bold text-xs flex items-center justify-center flex-shrink-0">
                       {idx + 1}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-slate-100 truncate">{book.title}</p>
                       <p className="text-[10px] text-slate-400 mt-0.5">{book.author}</p>
-                      <p className="text-[10px] text-indigo-300 mt-1">{book.borrowCount} borrows</p>
+                      <p className="text-[10px] text-indigo-300 mt-1">{book.count} borrows</p>
+                      {book.rating ? (
+                        <p className="text-[10px] text-amber-300 mt-0.5">⭐ {book.rating}/5</p>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -659,25 +874,61 @@ export const LibrarianDashboard = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">Student Email or Library ID</label>
-                <input
-                  type="text"
-                  value={issueForm.userEmail}
-                  onChange={(e) => setIssueForm({ ...issueForm, userEmail: e.target.value })}
-                  placeholder="e.g. alice@example.com or LIB-1001"
-                  className="w-full input-amo"
-                />
+                <label className="text-xs font-semibold text-slate-300 block mb-1">Select Student *</label>
+                <div className="relative issue-dropdown-container">
+                  <SearchableDropdown
+                    items={students}
+                    searchFields={['name', 'email', 'libraryId']}
+                    valueKey="_id"
+                    selectedId={selectedStudentId}
+                    inputValue={studentSearch}
+                    onInputChange={setStudentSearch}
+                    showDropdown={showIssueDropdown}
+                    onToggleDropdown={setShowIssueDropdown}
+                    onSelect={(s) => {
+                      setSelectedStudentId(s._id);
+                      setStudentSearch(s.name);
+                      setIssueForm({ ...issueForm, userEmail: s.email });
+                    }}
+                    onClear={() => {
+                      setSelectedStudentId('');
+                      setStudentSearch('');
+                      setIssueForm({ ...issueForm, userEmail: '' });
+                    }}
+                    placeholder="Search by name, email, or library ID..."
+                    containerClass="issue-dropdown-container"
+                    renderItem={renderStudentItem}
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">Book Title or ID</label>
-                <input
-                  type="text"
-                  value={issueForm.bookTitle}
-                  onChange={(e) => setIssueForm({ ...issueForm, bookTitle: e.target.value })}
-                  placeholder="e.g. Clean Code"
-                  className="w-full input-amo"
-                />
+                <label className="text-xs font-semibold text-slate-300 block mb-1">Select Book *</label>
+                <div className="relative book-dropdown-container">
+                  <SearchableDropdown
+                    items={books}
+                    searchFields={['title', 'isbn', 'author']}
+                    valueKey="_id"
+                    selectedId={selectedBookId}
+                    inputValue={bookSearch}
+                    onInputChange={setBookSearch}
+                    showDropdown={showBookDropdown}
+                    onToggleDropdown={setShowBookDropdown}
+                    onSelect={(b) => {
+                      setSelectedBookId(b._id);
+                      setBookSearch(b.title);
+                      setIssueForm({ ...issueForm, bookTitle: b.title });
+                    }}
+                    onClear={() => {
+                      setSelectedBookId('');
+                      setBookSearch('');
+                      setIssueForm({ ...issueForm, bookTitle: '' });
+                    }}
+                    placeholder="Search by title, ISBN, or author..."
+                    containerClass="book-dropdown-container"
+                    renderItem={renderBookItem}
+                  />
+                </div>
               </div>
             </div>
 
@@ -721,13 +972,24 @@ export const LibrarianDashboard = () => {
 
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-1">Book / Student / Transaction Query</label>
-              <input
-                type="text"
-                value={returnForm.transactionId}
-                onChange={(e) => setReturnForm({ transactionId: e.target.value })}
-                placeholder="e.g. sarah@example.com, LIB-1007, or The Hobbit"
-                className="w-full input-amo"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={returnForm.transactionId}
+                  onChange={(e) => setReturnForm({ transactionId: e.target.value })}
+                  placeholder="e.g. sarah@example.com, LIB-1007, or The Hobbit"
+                  className="w-full input-amo pr-8"
+                />
+                {returnForm.transactionId && (
+                  <button
+                    type="button"
+                    onClick={() => setReturnForm({ transactionId: '' })}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-lg leading-none"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">

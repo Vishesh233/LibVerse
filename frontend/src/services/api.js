@@ -30,6 +30,7 @@ export const authAPI = {
   updateProfile: (data) => apiClient.put('/auth/update-profile', data),
   completeOnboarding: (data) => apiClient.put('/auth/complete-onboarding', data),
   updateFavoriteGenres: (data) => apiClient.put('/auth/update-favorite-genres', data),
+  changePassword: (data) => apiClient.put('/auth/change-password', data),
   uploadAvatar: (formData) =>
     apiClient.post('/profile/upload-avatar', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -60,17 +61,21 @@ export const transactionsAPI = {
   getAllTransactions: (params) => apiClient.get('/transactions', { params }),
   approveIssueRequest: (id) => apiClient.put(`/transactions/${id}/approve`),
   rejectIssueRequest: (id) => apiClient.put(`/transactions/${id}/reject`),
+  approveReturn: (id) => apiClient.put(`/transactions/${id}/approve-return`),
+  submitPayment: (id, data) => apiClient.put(`/transactions/${id}/submit-payment`, data),
+  approvePayment: (id) => apiClient.put(`/transactions/${id}/approve-payment`),
 };
 
 // Admin endpoints
 export const adminAPI = {
   getDashboard: () => apiClient.get('/admin/dashboard'),
-  getReports: () => apiClient.get('/admin/reports'),
+  getReports: (params) => apiClient.get('/admin/reports', { params }),
   getNotifications: () => apiClient.get('/admin/notifications'),
   getAllUsers: (params) => apiClient.get('/admin/users', { params }),
   createUser: (data) => apiClient.post('/admin/users', data),
   updateUser: (id, data) => apiClient.put(`/admin/users/${id}`, data),
   deleteUser: (id) => apiClient.delete(`/admin/users/${id}`),
+  permanentDeleteUser: (id) => apiClient.delete(`/admin/users/${id}/permanent`),
   getPendingRequests: () => apiClient.get('/admin/pending-requests'),
   sendReminders: () => apiClient.post('/admin/send-reminders'),
   issueBook: (data) => apiClient.post('/admin/issue-book', data),

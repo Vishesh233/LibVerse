@@ -272,11 +272,10 @@ export const Profile = () => {
     setSuccess(null);
 
     try {
-      // TODO: Replace with actual API call when available
-      // await authAPI.changePassword({
-      //   currentPassword: formData.currentPassword,
-      //   newPassword: formData.newPassword,
-      // });
+      await authAPI.changePassword({
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+      });
       setSuccess('✅ Password changed successfully');
       setFormData((prev) => ({
         ...prev,

@@ -49,6 +49,19 @@ exports.getDashboard = async (req, res, next) => {
     const fineData = await Transaction.find({ status: 'returned', finePaid: true });
     const totalFines = fineData.reduce((sum, t) => sum + (t.fineAmount || 0), 0);
 
+    // Books issued today (real data from MongoDB)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    const issuedToday = await Transaction.countDocuments({
+      issueDate: { $gte: startOfToday, $lte: endOfToday },
+      status: { $in: ['issued', 'returned'] },
+    });
+
+    // Books returned (total) - real data from MongoDB
+    const returnedBooks = await Transaction.countDocuments({ status: 'returned' });
+
     // 2. Overdue Books Detailed List
     const overdueTransactions = await Transaction.find({
       status: 'issued',
@@ -62,7 +75,7 @@ exports.getDashboard = async (req, res, next) => {
       const due = new Date(tx.dueDate);
       const overdueMs = now.getTime() - due.getTime();
       const overdueDays = Math.max(1, Math.ceil(overdueMs / (1000 * 60 * 60 * 24)));
-      const fine = overdueDays * 10;
+      const fine = overdueDays * 5;
       const userName = tx.userId?.name || 'Student';
       const libraryId = tx.userId?.libraryId || 'N/A';
       const bookTitle = tx.bookId?.title || 'Book';
@@ -111,10 +124,74 @@ exports.getDashboard = async (req, res, next) => {
       };
     });
 
+    // 3b. Return Requests (awaiting librarian approval)
+    const returnRequestedTx = await Transaction.find({ status: 'return_requested' })
+      .populate('userId', 'name email libraryId')
+      .populate('bookId', 'title author coverImage')
+      .sort('-createdAt');
+
+    const returnRequests = returnRequestedTx.map((tx) => {
+      const studentName = tx.userId?.name || 'Student';
+      const initials = studentName
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .substring(0, 2);
+
+      return {
+        _id: tx._id,
+        studentName,
+        libraryId: tx.userId?.libraryId || '',
+        userEmail: tx.userId?.email || '',
+        initials,
+        bookTitle: tx.bookId?.title || 'Book',
+        requestTime: getRelativeTimeString(tx.createdAt),
+        createdAt: tx.createdAt,
+        userId: tx.userId,
+        bookId: tx.bookId,
+        fineAmount: tx.fineAmount || 0,
+        finePaid: tx.finePaid || false,
+        type: 'return',
+      };
+    });
+
+    // 3c. Payment Pending (awaiting librarian payment approval)
+    const paymentPendingTx = await Transaction.find({ status: 'payment_pending' })
+      .populate('userId', 'name email libraryId')
+      .populate('bookId', 'title author coverImage')
+      .sort('-createdAt');
+
+    const paymentPending = paymentPendingTx.map((tx) => {
+      const studentName = tx.userId?.name || 'Student';
+      const initials = studentName
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .substring(0, 2);
+
+      return {
+        _id: tx._id,
+        studentName,
+        libraryId: tx.userId?.libraryId || '',
+        userEmail: tx.userId?.email || '',
+        initials,
+        bookTitle: tx.bookId?.title || 'Book',
+        requestTime: getRelativeTimeString(tx.createdAt),
+        createdAt: tx.createdAt,
+        userId: tx.userId,
+        bookId: tx.bookId,
+        fineAmount: tx.fineAmount || 0,
+        hasScreenshot: !!tx.paymentScreenshot,
+        type: 'payment',
+      };
+    });
+
     // 4. Recent Activity Stream (Last 10 transactions across issued, returned, requested)
     const recentTx = await Transaction.find()
-      .populate('userId', 'name email libraryId')
-      .populate('bookId', 'title author')
+      .populate('userId', 'name email libraryId profileImage')
+      .populate('bookId', 'title author coverImage')
       .sort('-updatedAt')
       .limit(10);
 
@@ -149,17 +226,21 @@ exports.getDashboard = async (req, res, next) => {
 
       return {
         id: tx._id || idx + 1,
+        _id: tx._id,
         name,
         libraryId: tx.userId?.libraryId || '',
+        userEmail: tx.userId?.email || '',
+        avatar: tx.userId?.profileImage || null,
         initials,
         action,
         book,
+        bookCover: tx.bookId?.coverImage || null,
         time: getRelativeTimeString(timestamp),
         status: badgeStatus,
       };
     });
 
-    // 5. Top Books (Most Issued Books)
+    // 5. Top Books (Most Issued Books) - use real ratings from Book collection
     const topIssuedAgg = await Transaction.aggregate([
       { $group: { _id: '$bookId', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
@@ -179,7 +260,17 @@ exports.getDashboard = async (req, res, next) => {
           author: bookDoc.author,
           category: bookDoc.category || bookDoc.genre || 'General',
           count: item.count,
-          rating: '4.8',
+          rating: bookDoc.rating || 0,
+          publisher: bookDoc.publisher || '',
+          publishedYear: bookDoc.publicationYear || '',
+          pages: bookDoc.pages || '',
+          language: bookDoc.language || '',
+          isbn: bookDoc.isbn || '',
+          description: bookDoc.description || '',
+          availableCopies: bookDoc.availableCopies || 0,
+          issuedCopies: bookDoc.issuedCopies || 0,
+          genre: bookDoc.genre || '',
+          coverImage: bookDoc.coverImage || null,
         };
       })
       .filter(Boolean);
@@ -193,7 +284,17 @@ exports.getDashboard = async (req, res, next) => {
           author: b.author,
           category: b.category || b.genre || 'General',
           count: b.issuedCopies || 1,
-          rating: '4.8',
+          rating: b.rating || 0,
+          publisher: b.publisher || '',
+          publishedYear: b.publicationYear || '',
+          pages: b.pages || '',
+          language: b.language || '',
+          isbn: b.isbn || '',
+          description: b.description || '',
+          availableCopies: b.availableCopies || 0,
+          issuedCopies: b.issuedCopies || 0,
+          genre: b.genre || '',
+          coverImage: b.coverImage || null,
         });
       });
     }
@@ -250,8 +351,12 @@ exports.getDashboard = async (req, res, next) => {
         overdueBooks: overdueBooksCount,
         activeUsers,
         totalFines,
+        issuedToday,
+        returnedBooks,
         overdueList,
         pendingRequests,
+        returnRequests,
+        paymentPending,
         recentActivities,
         topBooks,
         booksByCategory,
@@ -396,7 +501,7 @@ exports.sendOverdueReminders = async (req, res, next) => {
       if (tx.userId && tx.bookId && tx.userId._id) {
         const due = new Date(tx.dueDate);
         const overdueDays = Math.max(1, Math.ceil((now - due) / (1000 * 60 * 60 * 24)));
-        const fine = overdueDays * 10;
+        const fine = overdueDays * 5;
 
         try {
           await createNotification(

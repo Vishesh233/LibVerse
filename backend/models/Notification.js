@@ -35,6 +35,10 @@ const notificationSchema = new mongoose.Schema(
         'NEW_RECOMMENDATIONS',
         'ISSUE_REQUEST',
         'RETURN_REQUEST',
+        'RETURN_REQUESTED',
+        'RETURN_APPROVED',
+        'PAYMENT_PENDING',
+        'PAYMENT_APPROVED',
         'PENDING_APPROVAL',
         'NEW_MEMBER',
         'LOW_STOCK',
@@ -56,5 +60,14 @@ const notificationSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Virtual for notificationId used by frontend/tests
+notificationSchema.virtual('notificationId').get(function () {
+  return `NOTIF-${this._id}`;
+});
+
+// Ensure virtuals are included in JSON output
+notificationSchema.set('toJSON', { virtuals: true });
+notificationSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Notification', notificationSchema);

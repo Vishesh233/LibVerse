@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { GENRES } from '../constants/genres';
 import { booksAPI } from '../services/api';
-
-const PLACEHOLDER_COVER = 'https://via.placeholder.com/400x300?text=No+Cover';
+import { getBookCoverCandidates, DEFAULT_BOOK_COVER } from '../utils/bookCover';
 
 export const BookForm = ({
   initialData = {},
@@ -24,13 +23,16 @@ export const BookForm = ({
     availableCopies: '',
     issuedCopies: '',
     rating: '',
-    coverImage: '',
+    pages: '',
+    language: '',
+    coverImage: '', // uploaded file or saved cover
+    imageUrl: '',   // URL-provided cover
   });
   const [uploadedImage, setUploadedImage] = useState('');
   const [imageError, setImageError] = useState(false);
   const [formError, setFormError] = useState('');
   const [uploadingCover, setUploadingCover] = useState(false);
-  const [urlPreviewKey, setUrlPreviewKey] = useState(Date.now());
+  const [coverCandidateIndex, setCoverCandidateIndex] = useState(0);
   const fileInputRef = useRef(null);
 
   // Helper to safely check if a value is a string (prevents startsWith crash)
@@ -39,25 +41,36 @@ export const BookForm = ({
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
       const existingCover = initialData.coverImage || '';
+      const existingImageUrl = initialData.imageUrl || '';
       // Safely check if it's a data URL - only call startsWith on strings
       const isDataUrl = isString(existingCover) && existingCover.startsWith('data:image/');
       // Also check if it's an uploaded server URL
       const isServerUpload = isString(existingCover) && existingCover.includes('/uploads/');
+      // Determine which image takes priority for preview:
+      // uploaded cover first, then imageUrl
+      const previewImage = existingCover && (isDataUrl || isServerUpload) ? existingCover : '';
       setFormData({
         title: initialData.title || '',
         author: initialData.author || '',
         isbn: initialData.isbn || '',
         genre: initialData.genre || '',
         publisher: initialData.publisher || '',
-        publicationYear: initialData.publicationYear ? String(initialData.publicationYear) : '',
+        publicationYear: initialData.publicationYear
+          ? String(initialData.publicationYear)
+          : initialData.publishedYear
+          ? String(initialData.publishedYear)
+          : '',
         description: initialData.description || '',
         totalCopies: String(initialData.totalCopies ?? initialData.availableCopies ?? ''),
         availableCopies: String(initialData.availableCopies ?? initialData.copiesAvailable ?? ''),
         issuedCopies: String(initialData.issuedCopies ?? 0),
         rating: initialData.rating ? String(initialData.rating) : '',
+        pages: initialData.pages ? String(initialData.pages) : '',
+        language: initialData.language || '',
         coverImage: existingCover,
+        imageUrl: existingImageUrl,
       });
-      setUploadedImage(isDataUrl || isServerUpload ? existingCover : '');
+      setUploadedImage(previewImage);
       setImageError(false);
       setFormError('');
     }
@@ -69,30 +82,23 @@ export const BookForm = ({
     setFormError('');
   };
 
-  // Handle URL input for cover image - resets error state so preview updates immediately
+  // Handle URL input for cover image - stores in imageUrl field
   const handleCoverUrlChange = (e) => {
     const { value } = e.target;
-    // Update form data - if there's an uploaded image, clear it so URL takes effect
     setFormData((prev) => ({
       ...prev,
-      coverImage: value,
+      imageUrl: value,
     }));
     // Clear uploaded image flag when typing in URL field
     if (uploadedImage) {
       setUploadedImage('');
     }
-    // Reset image error so new URL previews immediately
     setImageError(false);
     setFormError('');
-    // Bump key to force img re-render
-    setUrlPreviewKey(Date.now());
   };
 
-  // Handle cover URL blur/paste - validate and trigger preview
   const handleCoverUrlBlur = () => {
-    // Force preview reload even if the same URL is entered
     setImageError(false);
-    setUrlPreviewKey(Date.now());
   };
 
   // Upload image file to server via /books/upload-cover endpoint
@@ -185,7 +191,7 @@ export const BookForm = ({
 
   const handleRemoveImage = () => {
     setUploadedImage('');
-    setFormData((prev) => ({ ...prev, coverImage: '' }));
+    setFormData((prev) => ({ ...prev, coverImage: '', imageUrl: '' }));
     setImageError(false);
     setFormError('');
   };
@@ -220,21 +226,44 @@ export const BookForm = ({
       author: formData.author.trim(),
       isbn: formData.isbn.trim(),
       genre: formData.genre,
-      publisher: formData.publisher.trim() || undefined,
+      publisher: formData.publisher.trim(),
       publicationYear: formData.publicationYear ? parseInt(formData.publicationYear, 10) : undefined,
       description: formData.description.trim(),
       totalCopies: parseInt(formData.totalCopies, 10),
       availableCopies: formData.availableCopies ? parseInt(formData.availableCopies, 10) : undefined,
       issuedCopies: formData.issuedCopies ? parseInt(formData.issuedCopies, 10) : undefined,
-      rating: formData.rating ? parseFloat(formData.rating) : undefined,
-      coverImage: formData.coverImage || undefined,
+      rating: formData.rating === '' ? 0 : parseFloat(formData.rating),
+      pages: formData.pages ? parseInt(formData.pages, 10) : undefined,
+      language: formData.language || undefined,
+      coverImage: formData.coverImage,
+      imageUrl: formData.imageUrl || undefined,
     };
 
     onSubmit(submitData);
   };
 
-  // previewSrc calculates the image to show - error → placeholder, otherwise formData.coverImage
-  const previewSrc = imageError ? PLACEHOLDER_COVER : formData.coverImage || PLACEHOLDER_COVER;
+  // Build candidate list for preview using the proper fallback chain:
+  // 1. Uploaded image preview (formData.coverImage when it's a data URL or server upload)
+  // 2. Image URL preview (formData.imageUrl)
+  // 3. Existing saved cover (formData.coverImage from initialData)
+  // 4. OpenLibrary ISBN cover
+  // 5. Default placeholder (inline SVG, never breaks)
+  const coverCandidates = useMemo(() => {
+    const bookForCover = {
+      coverImage: uploadedImage || formData.coverImage,
+      imageUrl: formData.imageUrl,
+      isbn: formData.isbn,
+    };
+    return getBookCoverCandidates(bookForCover);
+  }, [uploadedImage, formData.coverImage, formData.imageUrl, formData.isbn]);
+
+  // Reset candidate index when coverImage, imageUrl or isbn changes
+  useEffect(() => {
+    setCoverCandidateIndex(0);
+    setImageError(false);
+  }, [formData.coverImage, formData.imageUrl, formData.isbn]);
+
+  const previewSrc = coverCandidates[coverCandidateIndex] || DEFAULT_BOOK_COVER;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -269,16 +298,18 @@ export const BookForm = ({
               <div className="relative">
                 <div className="h-64 w-44 overflow-hidden rounded-2xl bg-input border border-border shadow-glow">
                   <img
-                    key={urlPreviewKey}
                     src={previewSrc}
                     alt="Book cover preview"
-                    onError={() => setImageError(true)}
-                    onLoad={() => setImageError(false)}
+                    onError={() => {
+                      if (coverCandidateIndex < coverCandidates.length - 1) {
+                        setCoverCandidateIndex((i) => i + 1);
+                      }
+                    }}
                     className="h-full w-full object-cover"
                   />
                 </div>
 
-                {formData.coverImage && (
+                {(formData.coverImage || formData.imageUrl) && (
                   <button
                     type="button"
                     onClick={handleRemoveImage}
@@ -497,20 +528,47 @@ export const BookForm = ({
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              Pages
+            </label>
+            <input
+              type="number"
+              name="pages"
+              value={formData.pages}
+              onChange={handleChange}
+              placeholder="e.g. 350"
+              min="1"
+              className="w-full input-amo"
+              disabled={submitting}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              Language
+            </label>
+            <input
+              type="text"
+              name="language"
+              value={formData.language}
+              onChange={handleChange}
+              placeholder="e.g. English"
+              className="w-full input-amo"
+              disabled={submitting}
+            />
+          </div>
+
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-slate-300 mb-1.5">
               Image URL <span className="text-slate-500">(optional)</span>
             </label>
             <input
               type="url"
-              name="coverImage"
-              value={formData.coverImage || ''}
+              name="imageUrl"
+              value={formData.imageUrl || ''}
               onChange={handleCoverUrlChange}
               onBlur={handleCoverUrlBlur}
-              onPaste={() => setTimeout(() => {
-                setImageError(false);
-                setUrlPreviewKey(Date.now());
-              }, 50)}
               placeholder="https://example.com/book-cover.jpg"
               className="w-full input-amo"
               disabled={submitting || uploadingCover}

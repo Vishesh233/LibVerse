@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { CoverImage } from './CoverImage';
 
 export const BookCard = ({
   book,
@@ -13,10 +14,7 @@ export const BookCard = ({
   footer,
   statusLabel,
 }) => {
-  const [imageError, setImageError] = useState(false);
-
-  const placeholder = 'https://via.placeholder.com/400x300?text=No+Cover';
-  const imageUrl = imageError || !book.coverImage ? placeholder : book.coverImage;
+  const safeRating = Number(book?.rating) || 0;
 
   return (
     <div
@@ -25,18 +23,22 @@ export const BookCard = ({
     >
       <div className="flex items-start gap-4">
         <div className="h-28 w-20 overflow-hidden rounded-2xl bg-input flex-shrink-0">
-          <img
-            src={imageUrl}
-            alt={book.title}
-            onError={() => setImageError(true)}
-            className="h-full w-full object-cover"
-          />
+          <CoverImage book={book} alt={book?.title || 'Book cover'} />
         </div>
 
         <div className="min-w-0 flex-1">
-          <h3 className="text-base font-semibold text-slate-100 line-clamp-2">{book.title}</h3>
-          <p className="mt-1.5 text-sm text-slate-400 line-clamp-1">{book.author}</p>
-          {book.genre && (
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-semibold text-slate-100 line-clamp-2">{book?.title || 'Untitled'}</h3>
+              <p className="mt-1.5 text-sm text-slate-400 line-clamp-1">{book?.author || 'Author Unknown'}</p>
+            </div>
+            {safeRating > 0 && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-semibold flex-shrink-0">
+                ⭐ {safeRating.toFixed(1)}
+              </span>
+            )}
+          </div>
+          {book?.genre && (
             <span className="mt-2.5 inline-flex rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300 border border-indigo-500/20">{book.genre}</span>
           )}
         </div>
@@ -52,7 +54,7 @@ export const BookCard = ({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onActionClick?.(book._id || book.id);
+            onActionClick?.(book?._id || book?.id);
           }}
           disabled={actionDisabled || isLoading}
           className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"

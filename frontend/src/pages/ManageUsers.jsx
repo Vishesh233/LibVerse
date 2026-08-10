@@ -260,9 +260,19 @@ export const ManageUsers = () => {
                       <tr key={u._id} className="hover:bg-slate-900/30 transition-colors">
                         {/* USER */}
                         <td className="py-4 px-6">
-                          <div>
-                            <p className="font-bold text-slate-100 text-xs">{u.name}</p>
-                            <p className="text-[11px] text-slate-400">{u.email}</p>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-300 font-bold text-sm flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              {u.profileImage ? (
+                                <img src={u.profileImage} alt={u.name} className="w-full h-full object-cover" />
+                              ) : (
+                                u.name?.substring(0, 2).toUpperCase() || 'U'
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-100 text-xs">{u.name}</p>
+                              <p className="text-[11px] text-slate-400">{u.email}</p>
+                              <p className="text-[10px] text-slate-500 mt-0.5">ID: {u.libraryId || 'N/A'}</p>
+                            </div>
                           </div>
                         </td>
 

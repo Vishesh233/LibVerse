@@ -112,7 +112,7 @@ export const Fines = () => {
                       <td className="px-6 py-4 text-sm">
                         {!fine.finePaid && (
                           <Button
-                            onClick={() => navigate(`/pay-fine/${fine._id}`)}
+                            onClick={() => navigate(`/student/pay-fine/${fine._id}`)}
                             variant="secondary"
                             className="text-xs px-3 py-1"
                           >
