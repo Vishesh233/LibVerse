@@ -21,7 +21,7 @@ const router = express.Router();
 // Search route - accessible to all authenticated users (before admin middleware)
 router.get('/search', protect, globalSearch);
 
-// All other admin routes - require admin role
+// All other admin routes - require staff (librarian or admin)
 router.use(protect, isStaff);
 
 router.get('/dashboard', getDashboard);

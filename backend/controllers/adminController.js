@@ -4,6 +4,7 @@ const Transaction = require('../models/Transaction');
 const Notification = require('../models/Notification');
 const { createNotification } = require('./notificationController');
 const { calculateFine } = require('../utils/fineCalculator');
+const { takeBookCopy, returnBookCopy } = require('../utils/bookStock');
 const mongoose = require('mongoose');
 
 const USER_ROLES = ['student', 'librarian', 'admin'];
@@ -622,30 +623,37 @@ exports.adminIssueBook = async (req, res, next) => {
       book = await Book.findOne({ title: { $regex: new RegExp(bookTitle.trim(), 'i') } });
     }
 
-    if (!book) {
+    if (!book || book.isActive === false) {
       return res.status(404).json({ success: false, message: `Book not found matching "${bookTitle || bookId}"` });
     }
 
-    if (book.availableCopies <= 0) {
+    // Atomically take a copy first, so stock can never go negative
+    const takenBook = await takeBookCopy(book._id);
+    if (!takenBook) {
       return res.status(400).json({ success: false, message: `No available copies for "${book.title}"` });
     }
 
-    const dueDate = customDueDate ? new Date(customDueDate) : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    // Loan period starts now (unless the librarian chose a due date)
+    const now = new Date();
+    const dueDate = customDueDate ? new Date(customDueDate) : new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
-    const transaction = await Transaction.create({
-      userId: user._id,
-      bookId: book._id,
-      issueDate: new Date(),
-      dueDate,
-      status: 'issued',
-      isApproved: true,
-      approvedBy: req.user._id,
-      approvalDate: new Date(),
-    });
-
-    book.availableCopies -= 1;
-    book.issuedCopies += 1;
-    await book.save();
+    let transaction;
+    try {
+      transaction = await Transaction.create({
+        userId: user._id,
+        bookId: book._id,
+        issueDate: now,
+        dueDate,
+        status: 'issued',
+        isApproved: true,
+        approvedBy: req.user._id,
+        approvalDate: now,
+      });
+    } catch (createError) {
+      // Put the copy back if the transaction could not be recorded
+      await returnBookCopy(book._id);
+      throw createError;
+    }
 
     // Create notification for the student (non-fatal - never fails the main operation)
     try {
@@ -723,30 +731,32 @@ exports.adminReturnBook = async (req, res, next) => {
     }
 
     const fine = calculateFine(transaction.dueDate);
-    transaction.fineAmount = fine;
-    transaction.returnDate = new Date();
-    transaction.status = 'returned';
-    await transaction.save();
+
+    // Atomic status change - only one return can move it out of 'issued'
+    const returned = await Transaction.findOneAndUpdate(
+      { _id: transaction._id, status: 'issued' },
+      { $set: { fineAmount: fine, returnDate: new Date(), status: 'returned' } },
+      { new: true }
+    );
+
+    if (!returned) {
+      return res.status(400).json({ success: false, message: 'This book transaction is not in issued status' });
+    }
 
     if (fine > 0) {
-      const user = await User.findById(transaction.userId);
+      const user = await User.findById(returned.userId);
       if (user) {
         user.fineAmount += fine;
         await user.save();
       }
     }
 
-    const book = await Book.findById(transaction.bookId);
-    if (book) {
-      book.availableCopies += 1;
-      book.issuedCopies = Math.max(0, book.issuedCopies - 1);
-      await book.save();
-    }
+    const book = await returnBookCopy(returned.bookId);
 
     res.status(200).json({
       success: true,
       message: `Book "${book ? book.title : 'Book'}" returned successfully! ${fine > 0 ? `Fine incurred: ₹${fine}` : 'No fine.'}`,
-      transaction,
+      transaction: returned,
       fine,
     });
   } catch (error) {

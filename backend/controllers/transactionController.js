@@ -3,6 +3,11 @@ const Book = require('../models/Book');
 const User = require('../models/User');
 const { createNotification } = require('./notificationController');
 const { calculateFine, getDaysRemaining } = require('../utils/fineCalculator');
+const { takeBookCopy, returnBookCopy } = require('../utils/bookStock');
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const LOAN_DAYS = 14;
+const RENEWAL_DAYS = 7;
 
 /**
  * @route POST /api/transactions/issue
@@ -14,9 +19,9 @@ exports.requestIssueBook = async (req, res, next) => {
     const { bookId } = req.body;
     const userId = req.user.id;
 
-    // Check if book exists
+    // Check if book exists and has not been removed from the catalogue
     const book = await Book.findById(bookId);
-    if (!book) {
+    if (!book || book.isActive === false) {
       return res.status(404).json({ success: false, message: 'Book not found' });
     }
 
@@ -39,9 +44,8 @@ exports.requestIssueBook = async (req, res, next) => {
       });
     }
 
-    // Create due date (14 days from now)
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 14);
+    // Provisional due date; the loan period is reset when the request is approved
+    const dueDate = new Date(Date.now() + LOAN_DAYS * DAY_MS);
 
     // Create transaction request
     const transaction = await Transaction.create({
@@ -201,27 +205,33 @@ exports.approveReturn = async (req, res, next) => {
       });
     }
 
-    // Complete the return
-    transaction.returnDate = new Date();
-    transaction.status = 'returned';
-    transaction.returnApprovedBy = req.user.id;
+    // Complete the return atomically - only one approval can move it out of return_requested
+    const returned = await Transaction.findOneAndUpdate(
+      {
+        _id: transaction._id,
+        status: 'return_requested',
+        $or: [{ fineAmount: { $lte: 0 } }, { finePaid: true }],
+      },
+      { $set: { status: 'returned', returnDate: new Date(), returnApprovedBy: req.user.id } },
+      { new: true }
+    ).populate('bookId', 'title');
 
-    await transaction.save();
-
-    // Update book availability
-    const book = await Book.findById(transaction.bookId);
-    if (book) {
-      book.availableCopies += 1;
-      book.issuedCopies = Math.max(0, book.issuedCopies - 1);
-      await book.save();
+    if (!returned) {
+      return res.status(400).json({
+        success: false,
+        message: 'Transaction is not in return_requested status',
+      });
     }
 
-    const bookTitle = transaction.bookId?.title || book?.title || 'Book';
+    // Update book availability
+    const book = await returnBookCopy(transaction.bookId?._id || transaction.bookId);
+
+    const bookTitle = returned.bookId?.title || book?.title || 'Book';
 
     // Notify student
     try {
       await createNotification(
-        transaction.userId,
+        returned.userId,
         'student',
         'RETURN_APPROVED',
         'Book Return Approved',
@@ -234,7 +244,7 @@ exports.approveReturn = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Book return approved successfully',
-      transaction,
+      transaction: returned,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -344,43 +354,50 @@ exports.approvePayment = async (req, res, next) => {
       });
     }
 
-    // Mark fine as paid
-    transaction.finePaid = true;
-    transaction.paymentApprovedBy = req.user.id;
-    transaction.paymentApprovedAt = new Date();
+    // Mark fine as paid and complete the return atomically - only from payment_pending
+    const now = new Date();
+    const returned = await Transaction.findOneAndUpdate(
+      { _id: transaction._id, status: 'payment_pending' },
+      {
+        $set: {
+          finePaid: true,
+          paymentApprovedBy: req.user.id,
+          paymentApprovedAt: now,
+          returnDate: now,
+          status: 'returned',
+          returnApprovedBy: req.user.id,
+        },
+      },
+      { new: true }
+    ).populate('bookId', 'title');
 
-    // Complete the return
-    transaction.returnDate = new Date();
-    transaction.status = 'returned';
-    transaction.returnApprovedBy = req.user.id;
-
-    await transaction.save();
+    if (!returned) {
+      return res.status(400).json({
+        success: false,
+        message: 'Transaction is not in payment_pending status',
+      });
+    }
 
     // Deduct fine from user's total fineAmount
-    const user = await User.findById(transaction.userId);
+    const user = await User.findById(returned.userId);
     if (user) {
-      user.fineAmount = Math.max(0, (user.fineAmount || 0) - transaction.fineAmount);
+      user.fineAmount = Math.max(0, (user.fineAmount || 0) - returned.fineAmount);
       await user.save();
     }
 
     // Update book availability
-    const book = await Book.findById(transaction.bookId);
-    if (book) {
-      book.availableCopies += 1;
-      book.issuedCopies = Math.max(0, book.issuedCopies - 1);
-      await book.save();
-    }
+    const book = await returnBookCopy(transaction.bookId?._id || transaction.bookId);
 
-    const bookTitle = transaction.bookId?.title || book?.title || 'Book';
+    const bookTitle = returned.bookId?.title || book?.title || 'Book';
 
     // Notify student
     try {
       await createNotification(
-        transaction.userId,
+        returned.userId,
         'student',
         'PAYMENT_APPROVED',
         'Payment Approved & Book Returned',
-        `Your payment of ₹${transaction.fineAmount} for "${bookTitle}" has been verified. Your book has been returned successfully!`
+        `Your payment of ₹${returned.fineAmount} for "${bookTitle}" has been verified. Your book has been returned successfully!`
       );
     } catch (notifError) {
       console.error('Notification creation failed (non-fatal):', notifError.message);
@@ -389,7 +406,7 @@ exports.approvePayment = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Payment approved. Fine marked as paid. Book returned successfully.',
-      transaction,
+      transaction: returned,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -397,7 +414,6 @@ exports.approvePayment = async (req, res, next) => {
 };
 
 exports.initiatePayment = require('./fineController').initiatePayment;
-exports.payFine = require('./fineController').payFine;
 
 /**
  * @route GET /api/transactions/user/me
@@ -493,35 +509,60 @@ exports.approveIssueRequest = async (req, res, next) => {
     }
 
     const book = await Book.findById(transaction.bookId);
-    if (!book) {
+    if (!book || book.isActive === false) {
       return res.status(404).json({ success: false, message: 'Book not found' });
     }
 
-    if (book.availableCopies <= 0) {
-      return res.status(400).json({ success: false, message: 'Book is not available to approve' });
+    // 1. Atomically claim the request (pending -> issued). The loan period starts now.
+    const now = new Date();
+    const issued = await Transaction.findOneAndUpdate(
+      { _id: transaction._id, status: 'pending' },
+      {
+        $set: {
+          status: 'issued',
+          isApproved: true,
+          approvedBy: req.user.id,
+          approvalDate: now,
+          issueDate: now,
+          dueDate: new Date(now.getTime() + LOAN_DAYS * DAY_MS),
+        },
+      },
+      { new: true }
+    );
+
+    if (!issued) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only pending requests can be approved',
+      });
     }
 
-    // Update transaction
-    transaction.isApproved = true;
-    transaction.approvedBy = req.user.id;
-    transaction.approvalDate = new Date();
-    transaction.status = 'issued';
-
-    // Update book
-    book.availableCopies -= 1;
-    book.issuedCopies += 1;
-    await book.save();
-
-    await transaction.save();
+    // 2. Atomically take a copy; if none is left, put the request back to pending
+    const updatedBook = await takeBookCopy(book._id);
+    if (!updatedBook) {
+      await Transaction.updateOne(
+        { _id: transaction._id, status: 'issued' },
+        {
+          $set: {
+            status: 'pending',
+            isApproved: false,
+            issueDate: transaction.issueDate,
+            dueDate: transaction.dueDate,
+          },
+          $unset: { approvedBy: '', approvalDate: '' },
+        }
+      );
+      return res.status(400).json({ success: false, message: 'Book is not available to approve' });
+    }
 
     // Notify student
     try {
       await createNotification(
-        transaction.userId,
+        issued.userId,
         'student',
         'BOOK_ISSUED',
         'Book Issued Successfully',
-        `Your request for "${book.title}" has been approved. Please collect the book from the library. Due date: ${new Date(transaction.dueDate).toLocaleDateString()}`
+        `Your request for "${book.title}" has been approved. Please collect the book from the library. Due date: ${new Date(issued.dueDate).toLocaleDateString()}`
       );
     } catch (notifError) {
       console.error('Notification creation failed (non-fatal):', notifError.message);
@@ -530,7 +571,7 @@ exports.approveIssueRequest = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Issue request approved',
-      transaction,
+      transaction: issued,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -591,16 +632,30 @@ exports.renewBook = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Transaction not found' });
     }
 
+    // Only the borrower or staff may renew
+    const isOwner = transaction.userId.toString() === req.user.id.toString();
+    const isStaff = ['admin', 'librarian'].includes(req.user.role);
+    if (!isOwner && !isStaff) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
     if (transaction.status !== 'issued') {
       return res.status(400).json({ success: false, message: 'Only issued books can be renewed' });
+    }
+
+    if (transaction.dueDate < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Overdue books cannot be renewed. Please return the book and pay the fine.',
+      });
     }
 
     if (transaction.renewalCount >= 3) {
       return res.status(400).json({ success: false, message: 'Book cannot be renewed more than 3 times' });
     }
 
-    // Extend due date by 7 days
-    transaction.dueDate.setDate(transaction.dueDate.getDate() + 7);
+    // Extend due date by 7 days. Assign a new Date: in-place setDate() is not detected by Mongoose and was never saved.
+    transaction.dueDate = new Date(transaction.dueDate.getTime() + RENEWAL_DAYS * DAY_MS);
     transaction.renewalCount += 1;
 
     await transaction.save();

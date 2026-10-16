@@ -73,19 +73,6 @@ export const MyBooks = () => {
     }
   };
 
-  const handleRenew = async (id) => {
-    setActioningId(id);
-    try {
-      await transactionsAPI.renewBook(id);
-      const res = await transactionsAPI.getUserTransactions();
-      setBorrowed(res.data.transactions || res.data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setActioningId(null);
-    }
-  };
-
   return (
     <MainLayout>
       <div className="space-y-8">
@@ -124,8 +111,8 @@ export const MyBooks = () => {
                       <div>Status: {t.status || 'Borrowed'}</div>
                     </div>
                   }
-                  actionLabel={t.status === 'issued' ? 'Return Book' : 'Renew'}
-                  onActionClick={() => t.status === 'issued' ? handleReturn(t._id) : handleRenew(t._id)}
+                  actionLabel="Return Book"
+                  onActionClick={t.status === 'issued' ? () => handleReturn(t._id) : undefined}
                   statusLabel={t.status || 'Active'}
                   isLoading={actioningId === t._id}
                   actionDisabled={actioningId === t._id}

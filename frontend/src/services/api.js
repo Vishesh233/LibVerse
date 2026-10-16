@@ -22,6 +22,30 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Endpoints whose 401 means "wrong credentials", not "session expired"
+const CREDENTIAL_ENDPOINTS = ['/auth/login', '/auth/signup', '/auth/change-password'];
+
+// Log out on an invalid/expired session or a deactivated account.
+// Other 403s are normal permission denials and must not log the user out.
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const url = error.config?.url || '';
+    const isCredentialEndpoint = CREDENTIAL_ENDPOINTS.some((path) => url.includes(path));
+    const isDeactivated = status === 403 && error.response?.data?.message === 'Account is deactivated';
+
+    if (!isCredentialEndpoint && (status === 401 || isDeactivated)) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/login') {
+        window.location.assign('/login');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Auth endpoints
 export const authAPI = {
   signup: (data) => apiClient.post('/auth/signup', data),
@@ -85,7 +109,6 @@ export const adminAPI = {
 
 export const fineAPI = {
   initiatePayment: (fineId) => apiClient.post('/fines/initiate-payment', { fineId }),
-  payFine: (fineId) => apiClient.patch(`/fines/${fineId}/pay`),
 };
 
 // Wishlist endpoints

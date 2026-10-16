@@ -51,16 +51,18 @@ export const BookCard = ({
       )}
 
       <div className="mt-4 flex items-center gap-2">
+        {onActionClick && (
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onActionClick?.(book?._id || book?.id);
+            onActionClick(book?._id || book?.id);
           }}
           disabled={actionDisabled || isLoading}
           className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? 'Processing...' : actionLabel}
         </button>
+        )}
 
         {onWishlistClick && (
           <button
