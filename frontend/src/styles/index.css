@@ -18,28 +18,53 @@
    Theme Variables
 ---------------------------- */
 
+/* Design tokens - mirrored in tailwind.config.js. Text colours are contrast-checked
+   against --surface: primary 16.9:1, secondary 6.9:1, muted 5.8:1. */
 :root {
   --background: #050816; /* Primary Background */
   --background-secondary: #07111F; /* Secondary Background */
+  --surface: #111827;
+  --surface-raised: #172033;
   --card-bg: #111827; /* Card Background */
   --navbar: #081120;
   --sidebar: #0B1220;
   --input: #0F172A;
   --border: #1E293B;
+  --border-light: rgba(255, 255, 255, 0.08);
 
   --text-primary: #F8FAFC;
   --text-secondary: #94A3B8;
-  --text-muted: #64748B;
+  --text-muted: #8494AB; /* was #64748B (3.7:1 on cards) */
 
-  /* Primary gradient */
-  --primary-from: #6366F1;
+  /* Primary gradient - starts at #4F46E5 so white button text is 6.3:1 (was 4.47:1 on #6366F1) */
+  --primary-from: #4F46E5;
   --primary-to: #7C3AED;
-  --primary-hover-from: #4F46E5;
+  --primary-hover-from: #4338CA;
   --primary-hover-to: #6D28D9;
+  --primary: #6366F1;
+  --primary-soft: #A5B4FC;
+
+  /* Secondary accent - highlights, focus rings and glow only */
+  --accent: #22D3EE;
 
   --success: #22C55E;
+  --success-strong: #047857; /* filled success buttons: white text 5.5:1 */
   --warning: #F59E0B;
   --danger: #EF4444;
+
+  /* Radius scale */
+  --radius-sm: 8px;
+  --radius-control: 12px;
+  --radius-lg: 16px;
+  --radius-card: 24px;
+
+  /* Glow and glass */
+  --shadow-glow: 0 0 0 1px rgba(99, 102, 241, 0.25), 0 10px 40px rgba(99, 102, 241, 0.25);
+  --shadow-glow-accent: 0 0 0 1px rgba(34, 211, 238, 0.25), 0 10px 40px rgba(34, 211, 238, 0.18);
+  --glass-bg: rgba(17, 24, 39, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 /* ---------------------------
@@ -644,60 +669,87 @@ select {
 /* ---------------------------
    Premium Buttons & Cards
 ---------------------------- */
-.btn-primary {
-  background-image: linear-gradient(90deg, var(--primary-from), var(--primary-to));
-  color: var(--text-primary);
-  padding: 0.65rem 1.1rem;
-  border-radius: 999px;
+/* All button classes share one shape: 44px min height, 12px radius, visible focus ring */
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.btn-danger,
+.btn-success,
+.btn-warning {
+  min-height: 44px;
+  padding: 0.6rem 1.1rem;
+  border-radius: var(--radius-control);
   font-weight: 700;
+  font-size: 0.875rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  box-shadow: 0 8px 30px rgba(99,102,241,0.12);
-  transition: transform 250ms ease, box-shadow 250ms ease, filter 250ms ease;
+  border: 1px solid transparent;
+  transition: transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease, filter 200ms ease;
 }
-.btn-primary:hover {
-  transform: scale(1.03);
-  box-shadow: 0 14px 40px rgba(99,102,241,0.18);
+
+.btn-primary {
+  background-image: linear-gradient(90deg, var(--primary-from), var(--primary-to));
+  color: #FFFFFF;
+  box-shadow: 0 8px 30px rgba(99,102,241,0.18);
 }
+.btn-primary:hover:not(:disabled) {
+  background-image: linear-gradient(90deg, var(--primary-hover-from), var(--primary-hover-to));
+  box-shadow: var(--shadow-glow);
+}
+
+.btn-secondary {
+  background: var(--surface-raised);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+.btn-secondary:hover:not(:disabled) { background: #1E293B; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.btn-ghost:hover:not(:disabled) { background: rgba(148, 163, 184, 0.08); color: var(--text-primary); }
 
 .btn-danger {
   background: rgba(239,68,68,0.12);
-  border: 1px solid rgba(239,68,68,0.3);
-  color: #F87171;
-  padding: 0.55rem 1rem;
-  border-radius: 12px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+  border-color: rgba(239,68,68,0.3);
+  color: #FCA5A5;
 }
-.btn-danger:hover { background: rgba(239,68,68,0.2); }
+.btn-danger:hover:not(:disabled) { background: rgba(239,68,68,0.2); }
 
 .btn-success {
-  background: #22C55E;
-  color: white;
-  padding: 0.55rem 1rem;
-  border-radius: 12px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+  background: var(--success-strong);
+  color: #FFFFFF;
 }
+.btn-success:hover:not(:disabled) { background: #065F46; }
 
 .btn-warning {
   background: var(--warning);
-  color: white;
-  padding: 0.55rem 1rem;
-  border-radius: 12px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+  color: #1C1101; /* dark text: 9.6:1 on amber (white was 2.1:1) */
+}
+.btn-warning:hover:not(:disabled) { background: #D97706; }
+
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-ghost:disabled,
+.btn-danger:disabled,
+.btn-success:disabled,
+.btn-warning:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Visible keyboard focus everywhere (mouse clicks don't show it) */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none; /* inputs use the ring below */
 }
 
 /* Icon + Text Button helper: icon immediately before text, equal spacing, centered */
@@ -726,19 +778,57 @@ select {
   }
 }
 
-/* Inputs */
+/* Glass card: semi-transparent surface, 1px light border, backdrop blur */
+.card-glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-card);
+  padding: 28px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+@media (max-width: 640px) {
+  .card-glass {
+    padding: 20px;
+  }
+}
+
+/* Soft glow, used sparingly (e.g. KPI cards that need attention) */
+.glow-primary { box-shadow: var(--shadow-glow); }
+.glow-accent { box-shadow: var(--shadow-glow-accent); }
+
+/* Display font for page titles and big numbers */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* Inputs and selects: one style everywhere (44px tall, 12px radius, accent focus ring) */
 .input-amo {
   background: var(--input);
   border: 1px solid var(--border);
   color: var(--text-primary);
+  min-height: 44px;
   padding: 0.6rem 0.9rem;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   outline: none;
   transition: box-shadow 200ms ease, border-color 200ms ease;
 }
 .input-amo:focus {
-  box-shadow: 0 6px 30px rgba(99,102,241,0.12);
-  border-color: rgba(99,102,241,0.9);
+  border-color: rgba(99, 102, 241, 0.9);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+}
+.input-amo:focus-visible {
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35);
+}
+select.input-amo {
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2394A3B8'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
 }
 
 /* Search input with icon: padding-left reserved for icon */
@@ -859,6 +949,12 @@ select {
   border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
+.badge-info {
+  background: rgba(34, 211, 238, 0.1);
+  color: #67E8F9;
+  border: 1px solid rgba(34, 211, 238, 0.25);
+}
+
 /* ---------------------------
    Modal Overlay
 ---------------------------- */
@@ -916,6 +1012,158 @@ select {
 /* Disable scrolling when modal is open */
 body.modal-open {
   overflow: hidden;
+}
+
+/* ---------------------------
+   Skeleton loading placeholder
+---------------------------- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: var(--radius-sm);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.12), transparent);
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeletonShimmer {
+  to { transform: translateX(100%); }
+}
+
+/* ---------------------------
+   Toasts (react-toastify) in the app theme
+---------------------------- */
+:root {
+  --toastify-color-dark: var(--surface-raised);
+  --toastify-color-info: var(--accent);
+  --toastify-color-success: var(--success);
+  --toastify-color-warning: var(--warning);
+  --toastify-color-error: var(--danger);
+  --toastify-text-color-dark: var(--text-primary);
+  --toastify-font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --toastify-color-progress-dark: linear-gradient(90deg, var(--primary), var(--accent));
+}
+.Toastify__toast {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  background: rgba(23, 32, 51, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4);
+  font-size: 0.875rem;
+}
+.Toastify__progress-bar--wrp,
+.Toastify__progress-bar {
+  border-radius: 999px;
+}
+
+/* ---------------------------
+   LibVerse logo mark (components/LogoMark.jsx)
+---------------------------- */
+.logo-mark {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.logo-mark__tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, rgba(38, 42, 56, 0.78), rgba(18, 20, 30, 0.82));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(34, 211, 238, 0.06),
+    0 8px 28px rgba(34, 211, 238, 0.16);
+  color: var(--accent);
+}
+
+.logo-mark__icon {
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.45));
+}
+
+.logo-mark--sm .logo-mark__tile { width: 32px; height: 32px; border-radius: 10px; }
+.logo-mark--sm .logo-mark__icon { width: 18px; height: 18px; }
+
+.logo-mark--md .logo-mark__tile { width: 44px; height: 44px; border-radius: 13px; }
+.logo-mark--md .logo-mark__icon { width: 24px; height: 24px; }
+
+.logo-mark--lg { width: 168px; height: 168px; }
+.logo-mark--lg .logo-mark__tile { width: 92px; height: 92px; border-radius: 26px; }
+.logo-mark--lg .logo-mark__icon { width: 44px; height: 44px; }
+
+.logo-mark__ring-outer,
+.logo-mark__ring-inner,
+.logo-mark__orbit {
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.logo-mark__ring-outer {
+  inset: 0;
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.12), inset 0 0 24px rgba(34, 211, 238, 0.06);
+}
+
+.logo-mark__ring-inner {
+  inset: 18px;
+  border: 1px dashed rgba(167, 139, 250, 0.55);
+  animation: logoSpinReverse 28s linear infinite;
+}
+
+/* The orbit layer covers the outer ring; the dot sits on its top edge and travels round with it */
+.logo-mark__orbit {
+  inset: 0;
+  animation: logoOrbit 12s linear infinite;
+}
+
+.logo-mark__dot {
+  position: absolute;
+  top: -5px;
+  left: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #22D3EE;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.9), 0 0 22px rgba(34, 211, 238, 0.55);
+}
+
+@keyframes logoOrbit {
+  to { transform: rotate(360deg); }
+}
+@keyframes logoSpinReverse {
+  to { transform: rotate(-360deg); }
+}
+
+/* ---------------------------
+   New animations (sidebar pill, splash ring/glow, skeleton, logo mark) honour reduced motion
+---------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after,
+  .splash-enter,
+  .logo-mark__ring-inner,
+  .logo-mark__orbit {
+    animation: none !important;
+  }
+  .nav-pill,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-danger,
+  .btn-success,
+  .btn-warning {
+    transition: none !important;
+  }
 }
 
 /* ---------------------------
@@ -1083,6 +1331,69 @@ body.modal-open {
   50% {
     transform: rotate(calc(var(--rotate) + 2.5deg)) translateY(-14px);
   }
+}
+
+/* Splash foreground (Phase 1) - the background, books and particles above/below are unchanged */
+.splash-enter {
+  animation: scaleIn 450ms ease-out both;
+}
+
+.splash-progress-slim {
+  margin-top: 1.75rem;
+}
+
+.splash-progress-slim-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin-bottom: 0.6rem;
+}
+
+.splash-progress-slim-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.splash-progress-slim-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.45);
+}
+
+.splash-stats-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  animation: fadeInUp 300ms ease-out both;
+}
+
+.splash-stat {
+  border-radius: var(--radius-lg);
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  text-align: center;
+}
+
+.splash-stat strong {
+  display: block;
+  font-size: 1.5rem;
+  color: #FFFFFF;
+}
+
+.splash-stat span {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* Tiny particles */

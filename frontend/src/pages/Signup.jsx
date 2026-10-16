@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { authAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { Card, Button, Input } from '../components/UI';
+import { LogoMark } from '../components/LogoMark';
 
 export const Signup = () => {
   const [formData, setFormData] = useState({
@@ -50,13 +51,7 @@ export const Signup = () => {
       <Card className="w-full max-w-md bg-[radial-gradient(circle_at_top,_rgba(125,95,255,0.16),transparent_28%),linear-gradient(180deg,#050816_0%,#09112f_100%)] text-slate-100 border border-white/10 shadow-[0_50px_120px_rgba(8,12,34,0.55)]">
         <div className="pb-6 border-b border-white/10 mb-6 text-center">
           <div className="inline-flex items-center justify-center gap-4 rounded-[30px] bg-gradient-to-r from-[#4b3cff] via-[#6d5cff] to-[#8f75ff] px-6 py-4 shadow-[0_36px_120px_rgba(110,79,255,0.18)] mb-6">
-            <div className="w-14 h-14 rounded-[28px] bg-white/10 border border-white/10 flex items-center justify-center text-white shadow-[0_20px_60px_rgba(107,84,255,0.22)] backdrop-blur-sm">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-                <path d="M6 18.5V6.75A2.75 2.75 0 0 1 8.75 4H14a2.75 2.75 0 0 1 2.75 2.75V18.5" />
-                <path d="M6 18.5C6 19.328 6.672 20 7.5 20H14a2 2 0 0 0 2-2V6.75" />
-                <path d="M6 6.75C6 5.922 6.672 5.25 7.5 5.25H14" />
-              </svg>
-            </div>
+            <LogoMark size="md" />
             <div className="text-left">
               <p className="text-xl font-extrabold text-white">
                 Lib<span className="brand-verse">Verse</span>

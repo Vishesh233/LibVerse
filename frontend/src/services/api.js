@@ -63,7 +63,7 @@ export const authAPI = {
 
 // Books endpoints
 export const booksAPI = {
-  getBooks: (params) => apiClient.get('/books', { params }),
+  getBooks: (params, config = {}) => apiClient.get('/books', { params, ...config }),
   getBookById: (id) => apiClient.get(`/books/${id}`),
   createBook: (data) => apiClient.post('/books', data),
   updateBook: (id, data) => apiClient.put(`/books/${id}`, data),

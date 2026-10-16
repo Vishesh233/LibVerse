@@ -29,15 +29,33 @@ import { IssueReturn } from './pages/IssueReturn';
 import { Reports } from './pages/Reports';
 import { Onboarding } from './pages/Onboarding';
 
+// Splash shows once per browser session (a refresh in the same tab session skips it)
+const SPLASH_KEY = 'libverse:splash-shown';
+const SPLASH_MS = 1800;
+
+const splashAlreadyShown = () => {
+  try {
+    return sessionStorage.getItem(SPLASH_KEY) === '1';
+  } catch (e) {
+    return false; // storage blocked: just show it
+  }
+};
+
 function App() {
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => !splashAlreadyShown());
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowSplash(false), 3400);
+    if (!showSplash) return undefined;
+    try {
+      sessionStorage.setItem(SPLASH_KEY, '1'); // set immediately so a refresh during the splash doesn't replay it
+    } catch (e) {
+      /* storage unavailable */
+    }
+    const timer = setTimeout(() => setShowSplash(false), SPLASH_MS);
     return () => clearTimeout(timer);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (showSplash) return <SplashScreen />;
+  if (showSplash) return <SplashScreen duration={SPLASH_MS} />;
 
   return (
     <div className="dark min-h-screen bg-[#020713] text-slate-100">
@@ -333,7 +351,7 @@ function App() {
           <Route path="*" element={<Navigate to="/login" />} />
 
         </Routes>
-        <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
+        <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="dark" />
       </AuthProvider>
       </NotificationProvider>
     </Router>

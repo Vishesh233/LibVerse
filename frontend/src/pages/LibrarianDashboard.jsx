@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { SearchableDropdown } from '../components/SearchableDropdown';
 import { CoverImage } from '../components/CoverImage';
 import { Avatar } from '../components/Avatar';
+import { Card, Skeleton, PageHeader } from '../components/UI';
 
 export const LibrarianDashboard = () => {
   const navigate = useNavigate();
@@ -232,7 +233,7 @@ export const LibrarianDashboard = () => {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-slate-200">{book.title}</p>
         <p className="text-xs text-slate-400 mt-0.5">by {book.author}</p>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-slate-400 mt-1">
           ISBN: {book.isbn} • {book.availableCopies ?? 0} available
         </p>
       </div>
@@ -478,37 +479,48 @@ export const LibrarianDashboard = () => {
 
   const recentActivities = analytics?.recentActivities?.length > 0 ? analytics.recentActivities : [];
 
+  const waitingTotal =
+    (analytics?.pendingRequests?.length || 0) + (analytics?.returnRequests?.length || 0) + (analytics?.paymentPending?.length || 0);
+  const overdueFines = (analytics?.overdueList || []).reduce((sum, item) => sum + (item.rawFineAmount || 0), 0);
+
+  // Every number and sub-text below comes from GET /admin/dashboard - no made-up trends
   const statCards = [
     {
       title: 'Total Books',
       value: analytics?.totalBooks || 0,
       icon: '📚',
-      trend: '+12 this week',
-      trendUp: true,
+      sub: 'active titles in the catalogue',
       color: 'indigo',
     },
     {
       title: 'Issued Books',
       value: analytics?.issuedBooks || 0,
       icon: '✅',
-      trend: '+8 today',
-      trendUp: true,
+      sub: `${analytics?.issuedToday || 0} issued today`,
       color: 'emerald',
+    },
+    {
+      title: 'Pending Requests',
+      value: waitingTotal,
+      icon: '📥',
+      sub: `${analytics?.pendingRequests?.length || 0} issue · ${analytics?.returnRequests?.length || 0} return · ${analytics?.paymentPending?.length || 0} payment`,
+      color: 'cyan',
+      glow: waitingTotal > 0,
+      to: '/librarian/pending',
     },
     {
       title: 'Overdue Books',
       value: analytics?.overdueBooks || 0,
       icon: '⏰',
-      trend: '-5% this week',
-      trendUp: false,
+      sub: overdueFines > 0 ? `₹${overdueFines} in fines accruing` : 'nothing overdue',
       color: 'rose',
+      glow: (analytics?.overdueBooks || 0) > 0,
     },
     {
-      title: 'Active Users',
+      title: 'Active Borrowers',
       value: analytics?.activeUsers || 0,
       icon: '👥',
-      trend: '+5 this week',
-      trendUp: true,
+      sub: `of ${analytics?.totalUsers || 0} active students`,
       color: 'sky',
     },
   ];
@@ -519,6 +531,7 @@ export const LibrarianDashboard = () => {
       emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-300', border: 'border-emerald-500/20' },
       rose: { bg: 'bg-rose-500/10', text: 'text-rose-300', border: 'border-rose-500/20' },
       sky: { bg: 'bg-sky-500/10', text: 'text-sky-300', border: 'border-sky-500/20' },
+      cyan: { bg: 'bg-cyan-400/10', text: 'text-cyan-200', border: 'border-cyan-400/20' },
     };
     return colors[color] || colors.indigo;
   };
@@ -538,37 +551,48 @@ export const LibrarianDashboard = () => {
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto space-y-6 pb-14">
-        {/* Page Header with Greeting */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">Librarian Dashboard</h1>
-            <p className="mt-2 text-slate-400">Welcome back! Here's what's happening today.</p>
-          </div>
-          <div className="text-xs text-slate-400 font-medium">{formattedCurrentDate}</div>
-        </div>
+        <PageHeader
+          title="Librarian Dashboard"
+          subtitle="Welcome back! Here's what's happening today."
+          actions={<span className="text-xs font-medium text-slate-400">{formattedCurrentDate}</span>}
+          className="!mb-2"
+        />
 
         {/* Top Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statCards.map((card, idx) => {
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {statCards.map((card) => {
             const colorClasses = getColorClasses(card.color);
-            return (
-              <div
-                key={idx}
-                className="bg-card rounded-3xl border border-border p-6 shadow-card transition hover:-translate-y-0.5"
-              >
+            const body = (
+              <>
                 <div className="flex items-start justify-between gap-4">
-                  <div className={`rounded-2xl px-4 py-3 text-2xl ${colorClasses.bg}`}>
+                  <div className={`rounded-2xl px-3.5 py-2.5 text-2xl ${colorClasses.bg}`} aria-hidden="true">
                     {card.icon}
                   </div>
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colorClasses.bg} ${colorClasses.text}`}>
-                    {card.trend}
-                  </span>
+                  {card.to && <span className={`text-xs font-semibold ${colorClasses.text}`}>Review →</span>}
                 </div>
                 <div className="mt-4">
-                  <p className="text-3xl font-extrabold text-white leading-none">{card.value}</p>
-                  <p className="mt-2 text-xs text-slate-400 font-medium">{card.title}</p>
+                  {loading && !analytics ? (
+                    <Skeleton className="h-9 w-16" />
+                  ) : (
+                    <p className="font-display text-4xl font-bold leading-none text-white">{card.value}</p>
+                  )}
+                  <p className="mt-2 text-sm font-semibold text-slate-200">{card.title}</p>
+                  <p className="mt-1 text-xs text-slate-400">{card.sub}</p>
                 </div>
-              </div>
+              </>
+            );
+            return card.to ? (
+              <button
+                key={card.title}
+                onClick={() => navigate(card.to)}
+                className={`card-glass !p-6 text-left transition hover:-translate-y-0.5 motion-reduce:transform-none ${card.glow ? 'glow-accent' : ''}`}
+              >
+                {body}
+              </button>
+            ) : (
+              <Card key={card.title} variant="glass" className={`!p-6 ${card.glow ? '!shadow-[0_0_0_1px_rgba(244,63,94,0.25),0_10px_40px_rgba(244,63,94,0.18)]' : ''}`}>
+                {body}
+              </Card>
             );
           })}
         </div>
@@ -758,9 +782,13 @@ export const LibrarianDashboard = () => {
                     <span className="text-xs text-slate-400 font-medium">Books Issued Today</span>
                     <span className="text-2xl font-bold text-emerald-300">{analytics?.issuedToday ?? 0}</span>
                   </div>
-                  <div className="w-full bg-slate-800/50 rounded-full h-2">
-                    <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '70%' }}></div>
+                  <div className="w-full bg-slate-800/50 rounded-full h-2" aria-hidden="true">
+                    <div
+                      className="bg-emerald-500 h-2 rounded-full"
+                      style={{ width: `${analytics?.issuedBooks ? Math.min(100, Math.round(((analytics?.issuedToday || 0) / analytics.issuedBooks) * 100)) : 0}%` }}
+                    ></div>
                   </div>
+                  <p className="mt-2 text-xs text-slate-400">of {analytics?.issuedBooks || 0} books currently on loan</p>
                 </div>
               </div>
             </div>

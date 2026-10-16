@@ -1,10 +1,49 @@
-import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { transactionsAPI } from '../services/api';
+import { LogoMark } from './LogoMark';
 
-export const Sidebar = () => {
+// Statuses that need staff action; their sum is shown on the "Requests" menu item
+const REQUEST_STATUSES = ['pending', 'return_requested', 'payment_pending'];
+const REQUEST_COUNT_REFRESH_MS = 60 * 1000;
+
+const useRequestCount = (enabled) => {
+  const [count, setCount] = useState(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        // limit 1: only the pagination total is needed, not the lists
+        const responses = await Promise.all(
+          REQUEST_STATUSES.map((status) => transactionsAPI.getAllTransactions({ status, limit: 1 }))
+        );
+        const total = responses.reduce((sum, res) => sum + (res.data?.total ?? res.data?.transactions?.length ?? 0), 0);
+        if (!cancelled) setCount(total);
+      } catch (err) {
+        if (!cancelled) setCount(null); // hide the badge rather than show a wrong number
+      }
+    };
+
+    load();
+    const timer = setInterval(load, REQUEST_COUNT_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [enabled, location.pathname]);
+
+  return count;
+};
+
+export const Sidebar = ({ onNavigate }) => {
   const { user, isAdmin, isLibrarian, logout } = useAuth();
   const navigate = useNavigate();
+  const requestCount = useRequestCount(isAdmin || isLibrarian);
 
   const handleLogoClick = () => {
     if (user?.role === 'student') {
@@ -14,6 +53,7 @@ export const Sidebar = () => {
     } else if (user?.role === 'admin') {
       navigate('/admin');
     }
+    onNavigate?.();
   };
 
   const studentItems = [
@@ -229,38 +269,58 @@ export const Sidebar = () => {
   const navItems = isAdmin ? adminItems : isLibrarian ? librarianItems : studentItems;
 
   return (
-    <aside className="w-64 h-screen bg-sidebar border-r px-5 py-7 flex flex-col justify-between flex-shrink-0 text-slate-100" style={{ borderColor: 'var(--border)' }}>
-      <div>
-        <div className="mb-8 px-2">
-          <button onClick={handleLogoClick} className="text-left cursor-pointer">
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-100">
-              Lib<span className="brand-verse">Verse</span>
-            </h1>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">
-              {user?.role === 'librarian' ? 'Librarian Portal' : isAdmin ? 'Admin Portal' : 'Student Portal'}
-            </p>
+    <aside className="flex h-full w-64 flex-shrink-0 flex-col justify-between border-r border-border bg-sidebar px-4 py-6 text-slate-100">
+      <div className="min-h-0 overflow-y-auto">
+        <div className="mb-8 px-3">
+          <button onClick={handleLogoClick} className="flex cursor-pointer items-center gap-3 rounded-lg text-left">
+            <LogoMark size="md" />
+            <span>
+              <span className="block font-display text-2xl font-bold leading-tight tracking-tight text-slate-100">
+                Lib<span className="brand-verse">Verse</span>
+              </span>
+              <span className="mt-0.5 block text-xs font-medium text-slate-400">
+                {user?.role === 'librarian' ? 'Librarian Portal' : isAdmin ? 'Admin Portal' : 'Student Portal'}
+              </span>
+            </span>
           </button>
         </div>
 
-        <nav className="space-y-1.5">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              // Portal roots (/admin, /librarian) match only exactly, otherwise "Dashboard" stays highlighted on every sub-page
-              end={item.to === '/admin' || item.to === '/librarian'}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? 'bg-card text-slate-100 font-semibold border-l-4 border-indigo-500 pl-3'
-                    : 'text-slate-300 hover:bg-card hover:text-white rounded-lg'
-                }`
-              }
-            >
-              <span className="flex-shrink-0">{item.icon}</span>
-              {item.label}
-            </NavLink>
-          ))}
+        <nav className="space-y-1" aria-label="Main">
+          {navItems.map((item) => {
+            const isRequests = item.to.endsWith('/pending');
+            const showCount = isRequests && requestCount > 0;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => onNavigate?.()}
+                // Portal roots (/admin, /librarian) match only exactly, otherwise "Dashboard" stays highlighted on every sub-page
+                end={item.to === '/admin' || item.to === '/librarian'}
+                className={({ isActive }) =>
+                  `nav-pill flex min-h-[44px] items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'bg-indigo-500/15 font-semibold text-white shadow-[0_0_0_1px_rgba(99,102,241,0.28),0_8px_24px_rgba(99,102,241,0.18)]'
+                      : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <span className={`grid h-5 w-5 flex-shrink-0 place-items-center ${isActive ? 'text-indigo-300' : 'text-slate-400'}`}>{item.icon}</span>
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {showCount && (
+                      <span
+                        className="min-w-[1.5rem] rounded-full border border-cyan-400/30 bg-cyan-400/15 px-2 py-0.5 text-center text-xs font-bold text-cyan-200"
+                        aria-label={`${requestCount} waiting`}
+                      >
+                        {requestCount > 99 ? '99+' : requestCount}
+                      </span>
+                    )}
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
       </div>
 
@@ -268,10 +328,11 @@ export const Sidebar = () => {
         onClick={() => {
           logout();
           navigate('/login');
+          onNavigate?.();
         }}
-        className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-rose-400 hover:bg-rose-500/10 transition-colors w-full cursor-pointer"
+        className="mt-4 flex min-h-[44px] w-full cursor-pointer items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-rose-300 transition-colors hover:bg-rose-500/10"
       >
-        <svg className="w-5 h-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+        <svg className="h-5 w-5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4-4-4M21 12H9M13 8v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2h6a2 2 0 002-2v-2" />
         </svg>
         Logout

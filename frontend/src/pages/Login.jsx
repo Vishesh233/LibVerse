@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { motion, useInView } from 'framer-motion';
 import { authAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { LogoMark } from '../components/LogoMark';
 
 // Generate particles for background
 const PARTICLES = Array.from({ length: 50 }, (_, i) => ({
@@ -141,14 +142,8 @@ export const Login = () => {
         >
           {/* Branding Section */}
           <motion.div className="text-center mb-8" variants={itemVariants}>
-            <div className="login-logo-container inline-block mb-4">
-              <div className="login-logo-icon w-20 h-20 rounded-[24px] flex items-center justify-center mx-auto">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10 text-white">
-                  <path d="M6 18.5V6.75A2.75 2.75 0 0 1 8.75 4H14a2.75 2.75 0 0 1 2.75 2.75V18.5" />
-                  <path d="M6 18.5C6 19.328 6.672 20 7.5 20H14a2 2 0 0 0 2-2V6.75" />
-                  <path d="M6 6.75C6 5.922 6.672 5.25 7.5 5.25H14" />
-                </svg>
-              </div>
+            <div className="mb-2 flex justify-center">
+              <LogoMark size="lg" />
             </div>
             <h1 className="text-3xl font-extrabold text-white mb-2">
               <span className="brand-verse">LibVerse</span>

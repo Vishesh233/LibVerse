@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { SearchableDropdown } from '../components/SearchableDropdown';
 import { CoverImage } from '../components/CoverImage';
 import { Avatar } from '../components/Avatar';
+import { Card, Button, Badge, EmptyState, Skeleton, PageHeader } from '../components/UI';
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -193,7 +194,7 @@ export const AdminDashboard = () => {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-slate-200">{book.title}</p>
         <p className="text-xs text-slate-400 mt-0.5">by {book.author}</p>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-slate-400 mt-1">
           ISBN: {book.isbn} • {book.availableCopies ?? 0} available
         </p>
       </div>
@@ -292,48 +293,50 @@ export const AdminDashboard = () => {
     toast.success('Library entries report exported to CSV!');
   };
 
-  // Demo data fallbacks
-  const DEMO_RECENT_ACTIVITY = [
-    { _id: 'demo-1', name: 'John Doe', action: 'borrowed', book: 'The Great Gatsby', time: '2 min ago', status: 'Issued', initials: 'JD' },
-    { _id: 'demo-2', name: 'Jane Smith', action: 'returned', book: 'To Kill a Mockingbird', time: '15 min ago', status: 'Returned', initials: 'JS' },
-    { _id: 'demo-3', name: 'Alice Johnson', action: 'borrowed', book: '1984', time: '1 hour ago', status: 'Issued', initials: 'AJ' },
-    { _id: 'demo-4', name: 'Bob Wilson', action: 'returned', book: 'Pride and Prejudice', time: '2 hours ago', status: 'Returned', initials: 'BW' },
-    { _id: 'demo-5', name: 'Emma Davis', action: 'borrowed', book: 'The Catcher in the Rye', time: '3 hours ago', status: 'Issued', initials: 'ED' },
-  ];
+  const recentActivities = analytics?.recentActivities || [];
+  const pendingIssueRequests = analytics?.pendingRequests || [];
+  const waitingTotal =
+    pendingIssueRequests.length + (analytics?.returnRequests?.length || 0) + (analytics?.paymentPending?.length || 0);
+  const overdueFines = (analytics?.overdueList || []).reduce((sum, item) => sum + (item.rawFineAmount || 0), 0);
 
-  const recentActivities = analytics?.recentActivities?.length > 0 ? analytics.recentActivities : DEMO_RECENT_ACTIVITY;
-
+  // Every number and sub-text below comes from GET /admin/dashboard - no made-up trends
   const statCards = [
     {
       title: 'Total Books',
       value: analytics?.totalBooks || 0,
       icon: '📚',
-      trend: '+12 this week',
-      trendUp: true,
+      sub: 'active titles in the catalogue',
       color: 'indigo',
     },
     {
       title: 'Issued Books',
       value: analytics?.issuedBooks || 0,
       icon: '✅',
-      trend: '+8 today',
-      trendUp: true,
+      sub: `${analytics?.issuedToday || 0} issued today`,
       color: 'emerald',
+    },
+    {
+      title: 'Pending Requests',
+      value: waitingTotal,
+      icon: '📥',
+      sub: `${pendingIssueRequests.length} issue · ${analytics?.returnRequests?.length || 0} return · ${analytics?.paymentPending?.length || 0} payment`,
+      color: 'cyan',
+      glow: waitingTotal > 0,
+      to: '/admin/pending',
     },
     {
       title: 'Overdue Books',
       value: analytics?.overdueBooks || 0,
       icon: '⏰',
-      trend: '-5% this week',
-      trendUp: false,
+      sub: overdueFines > 0 ? `₹${overdueFines} in fines accruing` : 'nothing overdue',
       color: 'rose',
+      glow: (analytics?.overdueBooks || 0) > 0,
     },
     {
-      title: 'Active Users',
+      title: 'Active Borrowers',
       value: analytics?.activeUsers || 0,
       icon: '👥',
-      trend: '+5 this week',
-      trendUp: true,
+      sub: `of ${analytics?.totalUsers || 0} active students`,
       color: 'sky',
     },
   ];
@@ -344,8 +347,18 @@ export const AdminDashboard = () => {
       emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-300', border: 'border-emerald-500/20' },
       rose: { bg: 'bg-rose-500/10', text: 'text-rose-300', border: 'border-rose-500/20' },
       sky: { bg: 'bg-sky-500/10', text: 'text-sky-300', border: 'border-sky-500/20' },
+      cyan: { bg: 'bg-cyan-400/10', text: 'text-cyan-200', border: 'border-cyan-400/20' },
     };
     return colors[color] || colors.indigo;
+  };
+
+  const STATUS_BADGE = {
+    Pending: 'warning',
+    Issued: 'primary',
+    'Return Requested': 'info',
+    'Payment Pending': 'warning',
+    Returned: 'success',
+    Rejected: 'danger',
   };
 
   const formattedCurrentDate = new Date().toLocaleDateString('en-GB', {
@@ -358,46 +371,121 @@ export const AdminDashboard = () => {
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto space-y-6 pb-14">
-        {/* Page Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">{pageTitle}</h1>
-            <p className="mt-2 text-slate-400">Welcome back! Here's what's happening today.</p>
-          </div>
-          <div className="text-xs text-slate-400 font-medium">{formattedCurrentDate}</div>
-        </div>
+        <PageHeader
+          title={pageTitle}
+          subtitle="Welcome back! Here's what's happening today."
+          actions={<span className="text-xs font-medium text-slate-400">{formattedCurrentDate}</span>}
+          className="!mb-2"
+        />
 
         {/* Top Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statCards.map((card, idx) => {
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {statCards.map((card) => {
             const colorClasses = getColorClasses(card.color);
-            return (
-              <div
-                key={idx}
-                className="bg-card rounded-3xl border border-border p-6 shadow-card transition hover:-translate-y-0.5"
-              >
+            const body = (
+              <>
                 <div className="flex items-start justify-between gap-4">
-                  <div className={`rounded-2xl px-4 py-3 text-2xl ${colorClasses.bg}`}>
+                  <div className={`rounded-2xl px-3.5 py-2.5 text-2xl ${colorClasses.bg}`} aria-hidden="true">
                     {card.icon}
                   </div>
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colorClasses.bg} ${colorClasses.text}`}>
-                    {card.trend}
-                  </span>
+                  {card.to && <span className={`text-xs font-semibold ${colorClasses.text}`}>Review →</span>}
                 </div>
                 <div className="mt-4">
-                  <p className="text-3xl font-extrabold text-white leading-none">{card.value}</p>
-                  <p className="mt-2 text-xs text-slate-400 font-medium">{card.title}</p>
+                  {loading && !analytics ? (
+                    <Skeleton className="h-9 w-16" />
+                  ) : (
+                    <p className="font-display text-4xl font-bold leading-none text-white">{card.value}</p>
+                  )}
+                  <p className="mt-2 text-sm font-semibold text-slate-200">{card.title}</p>
+                  <p className="mt-1 text-xs text-slate-400">{card.sub}</p>
                 </div>
-              </div>
+              </>
+            );
+            return card.to ? (
+              <button
+                key={card.title}
+                onClick={() => navigate(card.to)}
+                className={`card-glass !p-6 text-left transition hover:-translate-y-0.5 motion-reduce:transform-none ${card.glow ? 'glow-accent' : ''}`}
+              >
+                {body}
+              </button>
+            ) : (
+              <Card key={card.title} variant="glass" className={`!p-6 ${card.glow ? '!shadow-[0_0_0_1px_rgba(244,63,94,0.25),0_10px_40px_rgba(244,63,94,0.18)]' : ''}`}>
+                {body}
+              </Card>
             );
           })}
         </div>
+
+        {/* Requests queue: first 5 pending issue requests */}
+        <Card variant="glass" className="!p-6">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div>
+              <h3 className="font-display text-lg font-semibold text-slate-100">Requests queue</h3>
+              <p className="mt-0.5 text-xs text-slate-400">Latest pending issue requests</p>
+            </div>
+            <Button variant="ghost" size="sm" fullWidth={false} onClick={() => navigate('/admin/pending')}>
+              View all →
+            </Button>
+          </div>
+          {loading && !analytics ? (
+            <Skeleton lines={3} className="h-12 w-full" />
+          ) : pendingIssueRequests.length === 0 ? (
+            <EmptyState bare icon="✅" title="No pending requests" message="New issue requests from students will appear here." />
+          ) : (
+            <ul className="divide-y divide-border">
+              {pendingIssueRequests.slice(0, 5).map((req) => (
+                <li key={req._id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full bg-indigo-500/10 text-sm font-bold text-indigo-300" aria-hidden="true">
+                      {req.initials || 'ST'}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-100">{req.bookTitle}</p>
+                      <p className="truncate text-xs text-slate-400">
+                        {req.studentName}
+                        {req.libraryId ? ` · ${req.libraryId}` : ''} · {req.requestTime}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-shrink-0 gap-2">
+                    <Button
+                      variant="success"
+                      size="sm"
+                      fullWidth={false}
+                      loading={approvingId === req._id}
+                      disabled={rejectingId === req._id}
+                      onClick={() => handleApprove(req._id)}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      fullWidth={false}
+                      loading={rejectingId === req._id}
+                      disabled={approvingId === req._id}
+                      onClick={() => handleReject(req._id)}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
 
         {/* Recent Activity & Quick Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Activity - 2 columns */}
           <div className="lg:col-span-2 card p-6">
-            <h3 className="font-bold text-slate-100 text-lg mb-6">Recent Activity</h3>
+            <h3 className="font-display text-lg font-semibold text-slate-100 mb-6">Recent Activity</h3>
+            {loading && !analytics ? (
+              <Skeleton lines={4} className="h-14 w-full" />
+            ) : recentActivities.length === 0 ? (
+              <EmptyState bare icon="🕘" title="No activity yet" message="Issues, returns and requests will show up here." />
+            ) : (
             <div className="space-y-4">
               {recentActivities.map((activity, idx) => (
                 <div
@@ -415,25 +503,18 @@ export const AdminDashboard = () => {
                       <p className="text-xs text-slate-400 mt-0.5">{activity.time}</p>
                     </div>
                   </div>
-                  <span
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-full ${
-                      activity.status === 'Issued'
-                        ? 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20'
-                        : activity.status === 'Returned'
-                        ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
-                        : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
-                    }`}
-                  >
+                  <Badge variant={STATUS_BADGE[activity.status] || 'neutral'} size="md" className="flex-shrink-0">
                     {activity.status}
-                  </span>
+                  </Badge>
                 </div>
               ))}
             </div>
+            )}
           </div>
 
           {/* Quick Actions - 1 column */}
           <div className="card p-6">
-            <h3 className="font-bold text-slate-100 text-lg mb-6">Quick Actions</h3>
+            <h3 className="font-display text-lg font-semibold text-slate-100 mb-6">Quick Actions</h3>
             <div className="space-y-3">
               <button
                 onClick={() => navigate('/admin/books/add')}

@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { LogoMark } from './LogoMark';
 import { useDebounce } from '../hooks/useDebounce';
 import { useNotification } from '../hooks/useNotification';
 import { adminAPI, notificationAPI } from '../services/api';
 import Avatar from './Avatar';
 
-export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
+export const Navbar = ({ isFullscreen, onToggleFullscreen, onOpenMenu }) => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -187,7 +188,23 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
   );
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-4 text-slate-100 px-6 py-3 bg-navbar backdrop-blur-md border-b" style={{ borderColor: 'var(--border)' }}>
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border bg-navbar/95 px-4 text-slate-100 backdrop-blur-md sm:gap-4 sm:px-6">
+      {/* Menu button (mobile/tablet: the sidebar lives in a drawer) */}
+      {onOpenMenu && (
+        <button
+          onClick={onOpenMenu}
+          className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl text-slate-300 transition-colors hover:bg-white/5 hover:text-white lg:hidden"
+          aria-label="Open menu"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      )}
+
+      {/* Brand mark on mobile/tablet, where the sidebar is hidden */}
+      <LogoMark size="sm" label="LibVerse" className="lg:hidden" />
+
       {/* Search Input Left */}
       <div ref={searchRef} className="relative flex-1 max-w-2xl mx-auto">
         <svg
@@ -208,6 +225,7 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
             if (searchResults.length > 0) setShowSearchDropdown(true);
           }}
           placeholder="Search books, users, or records..."
+          aria-label="Search books, users, or records"
           className="w-full search-glass input-amo input-search pr-4 text-sm"
         />
 
@@ -311,7 +329,7 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
                         <p className="text-sm font-semibold text-slate-100 truncate group-hover:text-white transition-colors">{result.title}</p>
                         <p className="text-xs text-slate-400 truncate">{result.subtitle}</p>
                       </div>
-                      <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider flex-shrink-0">{result.type}</span>
+                      <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider flex-shrink-0">{result.type}</span>
                     </button>
                   );
                 })}
@@ -322,11 +340,11 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-4 flex-shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
         {/* Fullscreen Toggle Button */}
         <button
           onClick={onToggleFullscreen}
-          className="p-2 rounded-xl text-slate-300 hover:text-white hover:scale-105 transition-all"
+          className="hidden h-11 w-11 place-items-center rounded-xl text-slate-300 transition-colors hover:bg-white/5 hover:text-white lg:grid"
           aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
           title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
         >
@@ -348,19 +366,19 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
               setShowNotifications((prev) => !prev);
               if (!showNotifications) markAllRead();
             }}
-            className="relative p-2 rounded-xl text-slate-300 hover:text-white hover:scale-105 transition-all"
+            className="relative grid h-11 w-11 place-items-center rounded-xl text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
             aria-label="Notifications"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
             {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-navbar" />
             )}
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-3 w-96 rounded-2xl card text-slate-100 shadow-xl border z-50 overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+            <div className="absolute right-0 mt-3 w-[min(24rem,calc(100vw-2rem))] rounded-2xl card text-slate-100 shadow-xl border z-50 overflow-hidden" style={{ borderColor: 'var(--border)' }}>
               <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
                 <div>
                   <h3 className="font-semibold text-sm">Notifications</h3>
@@ -399,7 +417,7 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold text-slate-100">{notification.title}</p>
                           <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{notification.message}</p>
-                          <p className="text-[10px] text-slate-500 mt-1">{getRelativeTime(notification.createdAt)}</p>
+                          <p className="text-[10px] text-slate-400 mt-1">{getRelativeTime(notification.createdAt)}</p>
                         </div>
                         {!notification.isRead && (
                           <div className="w-2 h-2 bg-indigo-500 rounded-full flex-shrink-0 mt-1" />
@@ -425,7 +443,7 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setShowProfileMenu((prev) => !prev)}
-              className="flex items-center gap-3 rounded-xl hover:scale-105 p-1.5 transition-all text-left"
+              className="flex min-h-[44px] items-center gap-3 rounded-xl px-2 py-1 text-left transition-colors hover:bg-white/5"
             >
               <Avatar
                 name={user?.name || 'G'}
@@ -436,7 +454,7 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
 
               <div className="hidden sm:block">
                 <p className="font-bold text-slate-100 text-sm leading-tight">
-                  {user?.name || 'ghr'}
+                  {user?.name || 'User'}
                 </p>
                 <p className="text-xs text-slate-400 capitalize font-medium">
                   {user?.role === 'librarian' ? 'Librarian' : user?.role === 'admin' ? 'Admin' : 'Student'}

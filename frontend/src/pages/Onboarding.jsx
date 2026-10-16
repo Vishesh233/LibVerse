@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { authAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { GENRES as CATALOGUE_GENRES } from '../constants/genres';
+import { LogoMark } from '../components/LogoMark';
 
 // Same 18 genres as the book catalogue (Book.genre enum); styles are only visual
 const GENRE_STYLES = {
@@ -122,6 +123,9 @@ export const Onboarding = () => {
       >
         {/* Header */}
         <div className="text-center mb-12">
+          <div className="mb-6 flex justify-center">
+            <LogoMark size="md" />
+          </div>
           <motion.h1
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
