@@ -254,23 +254,20 @@ exports.getDashboard = async (req, res, next) => {
         .toUpperCase()
         .substring(0, 2);
       const book = tx.bookId?.title || 'Book';
-      const action =
-        tx.status === 'issued'
-          ? 'borrowed'
-          : tx.status === 'returned'
-          ? 'returned'
-          : tx.status === 'pending'
-          ? 'requested'
-          : 'processed';
-
-      const badgeStatus =
-        tx.status === 'issued'
-          ? 'Issued'
-          : tx.status === 'returned'
-          ? 'Returned'
-          : tx.status === 'pending'
-          ? 'Pending'
-          : 'Rejected';
+      // Every status is mapped explicitly; anything unexpected shows as "updated" with its raw status
+      const ACTIVITY_BY_STATUS = {
+        pending: { action: 'requested', status: 'Pending' },
+        issued: { action: 'borrowed', status: 'Issued' },
+        return_requested: { action: 'requested to return', status: 'Return Requested' },
+        payment_pending: { action: 'submitted fine payment for', status: 'Payment Pending' },
+        returned: { action: 'returned', status: 'Returned' },
+        rejected: { action: 'request rejected for', status: 'Rejected' },
+      };
+      const rawStatus = tx.status || 'unknown';
+      const { action, status: badgeStatus } = ACTIVITY_BY_STATUS[rawStatus] || {
+        action: 'updated',
+        status: rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1),
+      };
 
       const timestamp = tx.status === 'returned' ? tx.returnDate : tx.updatedAt || tx.createdAt;
 

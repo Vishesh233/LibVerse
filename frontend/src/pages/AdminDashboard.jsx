@@ -454,6 +454,15 @@ export const AdminDashboard = () => {
                 Issue Book
               </button>
               <button
+                onClick={() => navigate('/admin/pending')}
+                className="w-full rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-sm font-semibold text-slate-300 hover:scale-105 transition-all border border-border bg-slate-800/40"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 17l-4 4m0 0l-4-4m4 4V3" />
+                </svg>
+                Review Requests
+              </button>
+              <button
                 onClick={() => navigate('/admin/users')}
                 className="w-full rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-sm font-semibold text-slate-300 hover:scale-105 transition-all border border-border bg-slate-800/40"
               >

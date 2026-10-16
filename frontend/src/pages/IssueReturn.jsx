@@ -467,8 +467,16 @@ export const IssueReturn = () => {
 
               <div className="space-y-3">
                 {recentTransactions.slice(0, 6).map((tx, idx) => {
-                  const isIssue = tx.action === 'borrowed' || tx.status === 'Issued';
-                  const dateStr = '4/15/2026';
+                  // Label by the real status (from getDashboard recentActivities)
+                  const TX_LABELS = {
+                    Pending: { label: 'REQUEST', className: 'text-amber-400' },
+                    Issued: { label: 'ISSUE', className: 'text-emerald-400' },
+                    'Return Requested': { label: 'RETURN REQUEST', className: 'text-violet-300' },
+                    'Payment Pending': { label: 'PAYMENT PENDING', className: 'text-orange-400' },
+                    Returned: { label: 'RETURN', className: 'text-sky-400' },
+                    Rejected: { label: 'REJECTED', className: 'text-rose-400' },
+                  };
+                  const txLabel = TX_LABELS[tx.status] || { label: (tx.status || 'UPDATED').toUpperCase(), className: 'text-slate-400' };
 
                   return (
                     <div
@@ -476,26 +484,17 @@ export const IssueReturn = () => {
                       className="p-3.5 rounded-xl bg-slate-900/25 border border-slate-800/40 space-y-1"
                     >
                       <div className="flex items-center gap-1.5 text-[11px] font-bold">
-                        {isIssue ? (
-                          <span className="text-emerald-400 flex items-center gap-1">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            ISSUE
-                          </span>
-                        ) : (
-                          <span className="text-sky-400 flex items-center gap-1">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            RETURN
-                          </span>
-                        )}
+                        <span className={`${txLabel.className} flex items-center gap-1`}>
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          {txLabel.label}
+                        </span>
                       </div>
 
                       <p className="text-xs font-bold text-slate-100">{tx.name}</p>
                       <p className="text-[11px] text-slate-400 font-medium">{tx.book}</p>
-                      <p className="text-[10px] text-slate-400">{tx.time || dateStr}</p>
+                      <p className="text-[10px] text-slate-400">{tx.time}</p>
                     </div>
                   );
                 })}

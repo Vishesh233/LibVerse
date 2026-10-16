@@ -1,98 +1,79 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { transactionsAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
-import { Card, Badge, Button, EmptyState, Alert } from '../components/UI';
+import { Card, Badge, Button, EmptyState } from '../components/UI';
 import { Loader } from '../components/Loader';
 import { useAuth } from '../hooks/useAuth';
 import { formatDate } from '../utils/dateUtils';
 
+// One tab per status that needs librarian/admin action
+const TABS = [
+  { key: 'issue', status: 'pending', label: 'Issue Requests', emptyIcon: '✅', emptyMessage: 'No pending book issue requests' },
+  { key: 'return', status: 'return_requested', label: 'Return Requests', emptyIcon: '📚', emptyMessage: 'No books waiting for return approval' },
+  { key: 'payment', status: 'payment_pending', label: 'Payment Verification', emptyIcon: '💳', emptyMessage: 'No fine payments waiting for verification' },
+];
+
 export const PendingRequests = () => {
-  const [requests, setRequests] = useState([]);
+  const [activeTab, setActiveTab] = useState('issue');
+  const [lists, setLists] = useState({ issue: [], return: [], payment: [] });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const [approvingId, setApprovingId] = useState(null);
+  const [actioningId, setActioningId] = useState(null);
   const { isAdmin, isLibrarian } = useAuth();
   const canAccess = isAdmin || isLibrarian;
-  const pageTitle = isLibrarian ? 'Librarian Pending Requests' : 'Pending Requests';
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  useEffect(() => {
-    if (canAccess) {
-      fetchPendingRequests();
-    }
-  }, [canAccess]);
-
-  // Auto-clear alerts after 4 seconds
-  useEffect(() => {
-    if (error || success) {
-      const timer = setTimeout(() => {
-        setError(null);
-        setSuccess(null);
-      }, 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [error, success]);
-
-  const fetchPendingRequests = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
-      const response = await transactionsAPI.getAllTransactions({ status: 'pending' });
-      setRequests(response.data.transactions || []);
+      const responses = await Promise.all(
+        TABS.map((tab) => transactionsAPI.getAllTransactions({ status: tab.status, limit: 100 }))
+      );
+      const next = {};
+      TABS.forEach((tab, i) => {
+        next[tab.key] = responses[i].data.transactions || [];
+      });
+      setLists(next);
     } catch (err) {
-      console.error('Error fetching pending requests:', err);
-      setError(err.response?.data?.message || 'Failed to load pending requests');
+      console.error('Error fetching requests:', err);
+      toast.error(err.response?.data?.message || 'Failed to load requests');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleApprove = async (requestId, bookTitle, studentName) => {
-    setApprovingId(requestId);
-    setError(null);
-    setSuccess(null);
+  useEffect(() => {
+    if (canAccess) {
+      fetchAll();
+    }
+  }, [canAccess, fetchAll]);
 
+  // Run an approval action, then refresh every list
+  const runAction = async (txId, apiCall, successMessage, failureMessage) => {
+    setActioningId(txId);
     try {
-      await transactionsAPI.approveIssueRequest(requestId);
-      const message = 'Request approved successfully.';
-      setSuccess(message);
-      toast.success(message);
-      fetchPendingRequests();
+      await apiCall(txId);
+      toast.success(successMessage);
     } catch (err) {
-      console.error('Error approving request:', err);
-      const message = err.response?.data?.message || 'Failed to approve request';
-      setError(message);
-      toast.error(message);
+      console.error(failureMessage, err);
+      toast.error(err.response?.data?.message || failureMessage);
     } finally {
-      setApprovingId(null);
+      setActioningId(null);
+      fetchAll();
     }
   };
 
-  const handleReject = async (requestId, bookTitle, studentName) => {
-    setApprovingId(requestId);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      await transactionsAPI.rejectIssueRequest(requestId);
-      const message = 'Request rejected successfully.';
-      setSuccess(message);
-      toast.success(message);
-      fetchPendingRequests();
-    } catch (err) {
-      console.error('Error rejecting request:', err);
-      const message = err.response?.data?.message || 'Failed to reject request';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setApprovingId(null);
-    }
-  };
+  const handleApprove = (txId) =>
+    runAction(txId, transactionsAPI.approveIssueRequest, 'Request approved successfully.', 'Failed to approve request');
+  const handleReject = (txId) =>
+    runAction(txId, transactionsAPI.rejectIssueRequest, 'Request rejected successfully.', 'Failed to reject request');
+  const handleApproveReturn = (txId) =>
+    runAction(txId, transactionsAPI.approveReturn, 'Return approved successfully.', 'Failed to approve return');
+  const handleApprovePayment = (txId) =>
+    runAction(txId, transactionsAPI.approvePayment, 'Payment approved. Book returned.', 'Failed to approve payment');
 
   if (!canAccess) {
     return (
@@ -104,88 +85,124 @@ export const PendingRequests = () => {
     );
   }
 
+  const tab = TABS.find((t) => t.key === activeTab);
+  const rows = lists[activeTab];
+
+  const renderActions = (tx) => {
+    const busy = actioningId === tx._id;
+    if (activeTab === 'issue') {
+      return (
+        <>
+          <Button onClick={() => handleApprove(tx._id)} variant="success" disabled={busy} className="text-xs px-3 py-1">
+            {busy ? 'Working...' : '✅ Approve'}
+          </Button>
+          <Button onClick={() => handleReject(tx._id)} variant="danger" disabled={busy} className="text-xs px-3 py-1">
+            ❌ Reject
+          </Button>
+        </>
+      );
+    }
+    if (activeTab === 'return') {
+      const waitingForFine = tx.fineAmount > 0 && !tx.finePaid;
+      return (
+        <Button
+          onClick={() => handleApproveReturn(tx._id)}
+          variant="success"
+          disabled={busy || waitingForFine}
+          className="text-xs px-3 py-1"
+        >
+          {waitingForFine ? 'Waiting for fine payment' : busy ? 'Working...' : '✅ Approve Return'}
+        </Button>
+      );
+    }
+    return (
+      <Button onClick={() => handleApprovePayment(tx._id)} variant="success" disabled={busy} className="text-xs px-3 py-1">
+        {busy ? 'Working...' : '✅ Approve Payment'}
+      </Button>
+    );
+  };
+
+  const renderDetails = (tx) => {
+    if (activeTab === 'issue') {
+      return <Badge variant="warning">Pending</Badge>;
+    }
+    if (activeTab === 'return') {
+      return tx.fineAmount > 0 ? (
+        <span className="space-x-2">
+          <span className="text-slate-100 font-semibold">₹{tx.fineAmount}</span>
+          <Badge variant={tx.finePaid ? 'success' : 'danger'}>{tx.finePaid ? 'Paid' : 'Unpaid'}</Badge>
+        </span>
+      ) : (
+        <Badge variant="success">No fine</Badge>
+      );
+    }
+    return (
+      <span className="space-x-2">
+        <span className="text-slate-100 font-semibold">₹{tx.fineAmount || 0}</span>
+        <Badge variant={tx.paymentScreenshot ? 'primary' : 'neutral'}>
+          {tx.paymentScreenshot ? 'Screenshot uploaded' : 'No screenshot'}
+        </Badge>
+      </span>
+    );
+  };
+
+  const dateFor = (tx) =>
+    activeTab === 'issue' ? tx.createdAt : activeTab === 'return' ? tx.returnRequestedAt || tx.updatedAt : tx.paymentSubmittedAt || tx.updatedAt;
+
   return (
     <MainLayout>
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">⏳ {pageTitle}</h1>
-          <p className="text-slate-400 mt-1">Review and approve book issue requests from students.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">⏳ Requests</h1>
+          <p className="text-slate-400 mt-1">Review issue requests, returns and fine payments from students.</p>
         </div>
 
-        {/* Alerts */}
-        {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
-        {success && <Alert type="success" message={success} onClose={() => setSuccess(null)} />}
+        {/* Tabs with counts */}
+        <div className="mb-6 flex flex-wrap items-center gap-1 rounded-xl border border-border bg-input p-1 w-fit">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                activeTab === t.key
+                  ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {t.label}
+              <span className="ml-2 text-xs font-bold text-amber-400">{lists[t.key].length}</span>
+            </button>
+          ))}
+        </div>
 
-        {/* Stats Card */}
-        <Card className="mb-6">
-          <div className="text-center">
-            <h3 className="text-slate-400 text-sm font-semibold mb-2">Pending Requests</h3>
-            <p className="text-4xl font-bold text-amber-400">{requests.length}</p>
-          </div>
-        </Card>
-
-        {/* Requests Table */}
         <Card>
           {loading ? (
             <Loader />
-          ) : requests.length === 0 ? (
-            <EmptyState
-              icon="✅"
-              title="All Caught Up!"
-              message="No pending book issue requests"
-            />
+          ) : rows.length === 0 ? (
+            <EmptyState icon={tab.emptyIcon} title="All Caught Up!" message={tab.emptyMessage} />
           ) : (
             <div className="overflow-x-auto">
               <table className="table-amo w-full">
                 <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left">Student Name</th>
+                    <th className="px-6 py-3 text-left">Student</th>
                     <th className="px-6 py-3 text-left">Book Title</th>
-                    <th className="px-6 py-3 text-left">Request Date</th>
-                    <th className="px-6 py-3 text-left">Status</th>
+                    <th className="px-6 py-3 text-left">Date</th>
+                    <th className="px-6 py-3 text-left">{activeTab === 'issue' ? 'Status' : 'Fine'}</th>
                     <th className="px-6 py-3 text-left">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {requests.map((req) => (
-                    <tr
-                      key={req._id}
-                      className="border-b border-border hover:bg-slate-800/40 transition-colors"
-                    >
+                  {rows.map((tx) => (
+                    <tr key={tx._id} className="border-b border-border hover:bg-slate-800/40 transition-colors">
                       <td className="px-6 py-4 text-sm font-medium text-slate-100">
-                        {req.userId?.name || 'Unknown'}
+                        {tx.userId?.name || 'Unknown'}
+                        {tx.userId?.libraryId && <p className="text-[11px] text-slate-500">{tx.userId.libraryId}</p>}
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-400">
-                        {req.bookId?.title || 'Unknown'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-400">
-                        {formatDate(req.requestDate || req.createdAt)}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <Badge variant="warning">Pending</Badge>
-                      </td>
-                      <td className="px-6 py-4 text-sm space-x-2">
-                        <Button
-                          onClick={() =>
-                            handleApprove(req._id, req.bookId?.title, req.userId?.name)
-                          }
-                          variant="success"
-                          disabled={approvingId === req._id}
-                          className="text-xs px-3 py-1"
-                        >
-                          {approvingId === req._id ? 'Approving...' : '✅ Approve'}
-                        </Button>
-                        <Button
-                          onClick={() =>
-                            handleReject(req._id, req.bookId?.title, req.userId?.name)
-                          }
-                          variant="danger"
-                          disabled={approvingId === req._id}
-                          className="text-xs px-3 py-1"
-                        >
-                          {approvingId === req._id ? 'Rejecting...' : '❌ Reject'}
-                        </Button>
-                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-400">{tx.bookId?.title || 'Unknown'}</td>
+                      <td className="px-6 py-4 text-sm text-slate-400">{formatDate(dateFor(tx))}</td>
+                      <td className="px-6 py-4 text-sm">{renderDetails(tx)}</td>
+                      <td className="px-6 py-4 text-sm space-x-2">{renderActions(tx)}</td>
                     </tr>
                   ))}
                 </tbody>

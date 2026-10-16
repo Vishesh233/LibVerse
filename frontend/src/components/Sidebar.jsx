@@ -112,7 +112,7 @@ export const Sidebar = () => {
       ),
     },
     {
-      label: 'Pending Requests',
+      label: 'Requests',
       to: '/librarian/pending',
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -179,6 +179,15 @@ export const Sidebar = () => {
       ),
     },
     {
+      label: 'Requests',
+      to: '/admin/pending',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16 17l-4 4m0 0l-4-4m4 4V3" />
+        </svg>
+      ),
+    },
+    {
       label: 'Users',
       to: '/admin/users',
       icon: (
@@ -238,6 +247,8 @@ export const Sidebar = () => {
             <NavLink
               key={item.to}
               to={item.to}
+              // Portal roots (/admin, /librarian) match only exactly, otherwise "Dashboard" stays highlighted on every sub-page
+              end={item.to === '/admin' || item.to === '/librarian'}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-200 ${
                   isActive
