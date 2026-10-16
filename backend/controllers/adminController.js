@@ -6,6 +6,55 @@ const { createNotification } = require('./notificationController');
 const { calculateFine } = require('../utils/fineCalculator');
 const mongoose = require('mongoose');
 
+const USER_ROLES = ['student', 'librarian', 'admin'];
+
+/**
+ * Check whether `actor` may change `target` (role and/or isActive).
+ * Returns { status, message } when the change is not allowed, otherwise null.
+ * - Librarians may only manage students and may never change a role.
+ * - Nobody can demote or deactivate themselves.
+ * - The last active admin can never be demoted or deactivated.
+ */
+const checkUserChange = async (actor, target, { role, isActive }) => {
+  const roleChanged = role !== undefined && role !== target.role;
+  const deactivating = isActive === false && target.isActive !== false;
+
+  if (role !== undefined && !USER_ROLES.includes(role)) {
+    return { status: 400, message: 'Invalid role' };
+  }
+
+  if (actor.role === 'librarian') {
+    if (target.role !== 'student') {
+      return { status: 403, message: 'Librarians can only manage student accounts' };
+    }
+    if (roleChanged) {
+      return { status: 403, message: 'Librarians cannot change user roles' };
+    }
+  }
+
+  if (actor._id.toString() === target._id.toString()) {
+    if (roleChanged) {
+      return { status: 400, message: 'You cannot change your own role' };
+    }
+    if (deactivating) {
+      return { status: 400, message: 'You cannot deactivate your own account' };
+    }
+  }
+
+  if (target.role === 'admin' && target.isActive !== false && (roleChanged || deactivating)) {
+    const otherActiveAdmins = await User.countDocuments({
+      role: 'admin',
+      isActive: { $ne: false },
+      _id: { $ne: target._id },
+    });
+    if (otherActiveAdmins === 0) {
+      return { status: 400, message: 'The last active admin cannot be demoted or deactivated' };
+    }
+  }
+
+  return null;
+};
+
 /**
  * Helper to calculate relative time string (e.g. "2 min ago", "1 hr ago", "Yesterday")
  */
@@ -455,6 +504,14 @@ exports.createUser = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please provide name, email, and password' });
     }
 
+    if (!USER_ROLES.includes(role)) {
+      return res.status(400).json({ success: false, message: 'Invalid role' });
+    }
+
+    if (req.user.role === 'librarian' && role !== 'student') {
+      return res.status(403).json({ success: false, message: 'Librarians can only create student accounts' });
+    }
+
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'User with this email already exists' });
@@ -789,13 +846,14 @@ exports.updateUser = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    if (targetUser.isSuperAdmin && req.user._id.toString() !== targetUser._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Super Admin cannot be modified' });
-    }
-
     // Avoid accidentally overwriting sensitive fields via findByIdAndUpdate
     // (which bypasses the pre('save') password-hashing hook)
     const { name, email, role, phone, address, libraryId, isActive, password } = req.body;
+
+    const denied = await checkUserChange(req.user, targetUser, { role, isActive });
+    if (denied) {
+      return res.status(denied.status).json({ success: false, message: denied.message });
+    }
 
     if (name !== undefined) targetUser.name = name;
     if (email !== undefined) targetUser.email = email.trim().toLowerCase();
@@ -826,8 +884,9 @@ exports.deleteUser = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    if (targetUser.isSuperAdmin) {
-      return res.status(403).json({ success: false, message: 'Super Admin account cannot be deactivated' });
+    const denied = await checkUserChange(req.user, targetUser, { isActive: !targetUser.isActive });
+    if (denied) {
+      return res.status(denied.status).json({ success: false, message: denied.message });
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -928,13 +987,13 @@ exports.globalSearch = async (req, res, next) => {
     // Helper to get role-based book URL
     const getBookUrl = (bookId) => {
       if (userRole === 'librarian') return `/librarian/books/${bookId}`;
-      if (userRole === 'admin' || userRole === 'superadmin') return `/admin/books/${bookId}`;
+      if (userRole === 'admin') return `/admin/books/${bookId}`;
       return `/student/books/${bookId}`;
     };
 
     // Helper to get role-based user URL
     const getUserUrl = (userId) => {
-      if (userRole === 'admin' || userRole === 'superadmin') return `/admin/users/${userId}`;
+      if (userRole === 'admin') return `/admin/users/${userId}`;
       return `/users/${userId}`;
     };
 
@@ -965,7 +1024,7 @@ exports.globalSearch = async (req, res, next) => {
     });
 
     // Search Users (only for admin/librarian)
-    if (userRole === 'admin' || userRole === 'superadmin' || userRole === 'librarian') {
+    if (userRole === 'admin' || userRole === 'librarian') {
       const users = await User.find({
         $or: [
           { name: { $regex: searchTerm, $options: 'i' } },
@@ -990,7 +1049,7 @@ exports.globalSearch = async (req, res, next) => {
     }
 
     // Search Transactions (Borrow Records) - for admin/librarian
-    if (userRole === 'admin' || userRole === 'superadmin' || userRole === 'librarian') {
+    if (userRole === 'admin' || userRole === 'librarian') {
       const transactions = await Transaction.find({
         $or: [
           { 'userId.name': { $regex: searchTerm, $options: 'i' } },

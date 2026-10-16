@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 const roleMap = {
   student: ['student'],
   librarian: ['librarian'],
-  admin: ['admin', 'superadmin'],
+  admin: ['admin'],
 };
 
 const roleRedirectPath = {

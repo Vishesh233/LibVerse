@@ -63,16 +63,11 @@ export const ManageUsers = () => {
     return users;
   }, [users, isLibrarian]);
 
-  const canEditUser = (u) => {
-    if (isAdmin) return true;
-    if (isLibrarian && u.role === 'librarian' && u._id !== currentUser?._id) return false;
-    return true;
-  };
+  // Admins manage everyone; librarians manage student accounts only (enforced by the backend too)
+  const canEditUser = (u) => isAdmin || (isLibrarian && u.role === 'student');
 
-  const canToggleStatus = (u) => {
-    if (isAdmin) return true;
-    return !(isLibrarian && u.role === 'librarian' && u._id !== currentUser?._id);
-  };
+  // Nobody can deactivate their own account
+  const canToggleStatus = (u) => u._id !== currentUser?._id && canEditUser(u);
 
   // Handle Add New User
   const handleAddUser = async (e) => {
@@ -243,7 +238,7 @@ export const ManageUsers = () => {
                 ) : (
                   visibleUsers.map((u) => {
                     const roleBadgeClass =
-                      u.role === 'admin' || u.isSuperAdmin
+                      u.role === 'admin'
                         ? 'bg-purple-500/10 text-purple-300 border border-purple-500/20'
                         : u.role === 'librarian'
                         ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
@@ -281,7 +276,7 @@ export const ManageUsers = () => {
                           <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${roleBadgeClass}`}>
                             {u.role === 'student' && '🎓'}
                             {u.role === 'librarian' && '📚'}
-                            {(u.role === 'admin' || u.isSuperAdmin) && '⚡'}
+                            {u.role === 'admin' && '⚡'}
                             {roleLabel}
                           </span>
                         </td>
@@ -308,30 +303,25 @@ export const ManageUsers = () => {
                         {/* ACTIONS */}
                         <td className="py-4 px-6 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            {canEditUser(u) && (
                             <button
                               onClick={() => openEdit(u)}
-                              title={canEditUser(u) ? 'Edit User' : 'Cannot edit librarian account'}
-                              disabled={!canEditUser(u)}
-                              className={`p-1.5 rounded-lg transition-colors ${
-                                canEditUser(u)
-                                    ? 'text-slate-400 hover:text-indigo-300 hover:bg-indigo-900/30 cursor-pointer'
-                                      : 'text-slate-400/60 bg-slate-800/20 cursor-not-allowed'
-                              }`}
+                              title="Edit User"
+                              className="p-1.5 rounded-lg transition-colors text-slate-400 hover:text-indigo-300 hover:bg-indigo-900/30 cursor-pointer"
                             >
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                             </button>
+                            )}
+                            {canToggleStatus(u) && (
                             <button
                               onClick={() => handleToggleStatus(u)}
-                              title={canToggleStatus(u) ? (u.isActive ? 'Deactivate User' : 'Restore User') : 'Cannot change librarian account'}
-                              disabled={!canToggleStatus(u)}
+                              title={u.isActive ? 'Deactivate User' : 'Restore User'}
                               className={`p-1.5 rounded-lg transition-colors ${
-                                canToggleStatus(u)
-                                    ? u.isActive
-                                      ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-900/20 cursor-pointer'
-                                      : 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/20 cursor-pointer'
-                                    : 'text-slate-400/60 bg-slate-800/20 cursor-not-allowed'
+                                u.isActive
+                                  ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-900/20 cursor-pointer'
+                                  : 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/20 cursor-pointer'
                               }`}
                             >
                               {u.isActive ? (
@@ -344,6 +334,7 @@ export const ManageUsers = () => {
                                 </svg>
                               )}
                             </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -483,11 +474,12 @@ export const ManageUsers = () => {
                 <select
                   value={editForm.role}
                   onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                  className="w-full input-amo cursor-pointer"
+                  disabled={!isAdmin || editingUser?._id === currentUser?._id}
+                  className="w-full input-amo cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <option value="student">Student</option>
-                  <option value="librarian">Librarian</option>
-                  <option value="admin">Admin</option>
+                  {isAdmin && <option value="librarian">Librarian</option>}
+                  {isAdmin && <option value="admin">Admin</option>}
                 </select>
               </div>
 

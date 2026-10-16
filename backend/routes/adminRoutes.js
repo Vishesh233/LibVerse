@@ -14,7 +14,7 @@ const {
   getReports,
   globalSearch,
 } = require('../controllers/adminController');
-const { protect, isAdmin } = require('../middleware/authMiddleware');
+const { protect, isStaff, isAdminRole } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -22,7 +22,7 @@ const router = express.Router();
 router.get('/search', protect, globalSearch);
 
 // All other admin routes - require admin role
-router.use(protect, isAdmin);
+router.use(protect, isStaff);
 
 router.get('/dashboard', getDashboard);
 router.get('/reports', getReports);
@@ -32,7 +32,7 @@ router.post('/users', createUser);
 router.put('/users/:id', updateUser);
 router.delete('/users/:id', deleteUser);
 router.get('/pending-requests', getPendingRequests);
-router.post('/create-admin', createAdminUser);
+router.post('/create-admin', isAdminRole, createAdminUser);
 router.post('/send-reminders', sendOverdueReminders);
 router.post('/issue-book', adminIssueBook);
 router.post('/return-book', adminReturnBook);

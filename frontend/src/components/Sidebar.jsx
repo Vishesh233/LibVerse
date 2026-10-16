@@ -11,7 +11,7 @@ export const Sidebar = () => {
       navigate('/student/dashboard');
     } else if (user?.role === 'librarian') {
       navigate('/librarian');
-    } else if (user?.role === 'admin' || user?.role === 'superadmin') {
+    } else if (user?.role === 'admin') {
       navigate('/admin');
     }
   };

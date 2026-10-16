@@ -94,7 +94,7 @@ export const Profile = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (user) {
-      if (user.role === 'admin' || user.role === 'superadmin') {
+      if (user.role === 'admin') {
         fetchAdminAnalytics();
       } else {
         fetchTransactionStats();
@@ -386,10 +386,10 @@ export const Profile = () => {
 
             <div className="mt-3">
               <Badge
-                variant={user?.role === 'admin' || user?.role === 'superadmin' ? 'danger' : 'primary'}
+                variant={user?.role === 'admin' ? 'danger' : 'primary'}
                 className="inline-block px-3 py-1 capitalize"
               >
-                {user?.role === 'admin' ? '🔐 Admin' : user?.role === 'superadmin' ? '⚡ Super Admin' : user?.role === 'librarian' ? '📚 Librarian' : '👤 Student'}
+                {user?.role === 'admin' ? '🔐 Admin' : user?.role === 'librarian' ? '📚 Librarian' : '👤 Student'}
               </Badge>
             </div>
 

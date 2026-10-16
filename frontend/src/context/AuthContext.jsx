@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }) => {
 
   const isAuthenticated = !!token && !!user;
   const isLibrarian = user?.role === 'librarian';
-  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const isAdmin = user?.role === 'admin';
   const isStudent = user?.role === 'student';
 
   return (

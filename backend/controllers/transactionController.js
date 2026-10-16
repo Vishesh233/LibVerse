@@ -111,7 +111,7 @@ exports.returnBook = async (req, res, next) => {
 
     // Only the student who borrowed it can request return, or a librarian/admin acting on their behalf
     const isOwner = transaction.userId.toString() === req.user.id.toString();
-    const isLibrarian = ['admin', 'librarian', 'superadmin'].includes(req.user.role);
+    const isLibrarian = ['admin', 'librarian'].includes(req.user.role);
     if (!isOwner && !isLibrarian) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }

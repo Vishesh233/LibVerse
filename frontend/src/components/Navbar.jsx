@@ -28,14 +28,14 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
       navigate('/student/dashboard');
     } else if (user?.role === 'librarian') {
       navigate('/librarian');
-    } else if (user?.role === 'admin' || user?.role === 'superadmin') {
+    } else if (user?.role === 'admin') {
       navigate('/admin');
     }
   };
 
   const booksBasePath = React.useMemo(() => {
     if (user?.role === 'librarian') return '/librarian/books';
-    if (user?.role === 'admin' || user?.role === 'superadmin') return '/admin/books';
+    if (user?.role === 'admin') return '/admin/books';
     return '/student/books';
   }, [user?.role]);
 
@@ -90,7 +90,7 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
 
       try {
         // Use appropriate API based on user role
-        const response = await (user.role === 'admin' || user.role === 'librarian' || user.role === 'superadmin'
+        const response = await (user.role === 'admin' || user.role === 'librarian'
           ? adminAPI.getNotifications()
           : notificationAPI.getNotifications());
         
@@ -116,7 +116,7 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
   }, [user, addNotification]);
 
   const profilePath = React.useMemo(() => {
-    if (user?.role === 'admin' || user?.role === 'superadmin') return '/admin/profile';
+    if (user?.role === 'admin') return '/admin/profile';
     if (user?.role === 'librarian') return '/librarian/profile';
     return '/student/profile';
   }, [user?.role]);
@@ -439,7 +439,7 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen }) => {
                   {user?.name || 'ghr'}
                 </p>
                 <p className="text-xs text-slate-400 capitalize font-medium">
-                  {user?.role === 'librarian' ? 'Librarian' : (user?.role === 'admin' || user?.role === 'superadmin') ? 'Admin' : 'Student'}
+                  {user?.role === 'librarian' ? 'Librarian' : user?.role === 'admin' ? 'Admin' : 'Student'}
                 </p>
               </div>
 

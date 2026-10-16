@@ -78,7 +78,7 @@ export const Login = () => {
       login(user, token);
       toast.success('Signed in successfully');
 
-      if (user?.role === 'admin' || user?.role === 'superadmin') {
+      if (user?.role === 'admin') {
         navigate('/admin');
       } else if (user?.role === 'librarian') {
         navigate('/librarian');

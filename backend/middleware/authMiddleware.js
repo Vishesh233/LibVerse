@@ -34,13 +34,26 @@ exports.protect = async (req, res, next) => {
 };
 
 /**
- * Middleware to check if user is admin
+ * Middleware to check if user is staff (librarian or admin)
  */
-exports.isAdmin = (req, res, next) => {
-  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'librarian' && req.user.role !== 'superadmin')) {
+exports.isStaff = (req, res, next) => {
+  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'librarian')) {
     return res.status(403).json({
       success: false,
       message: 'Librarian/Admin access required'
+    });
+  }
+  next();
+};
+
+/**
+ * Middleware to check if user is admin (top-level role)
+ */
+exports.isAdminRole = (req, res, next) => {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Admin access required'
     });
   }
   next();
@@ -51,19 +64,6 @@ exports.isAdmin = (req, res, next) => {
 exports.isStudent = async (req, res, next) => {
   if (req.user.role !== 'student') {
     return res.status(403).json({ success: false, message: 'Only students can access this route' });
-  }
-  next();
-};
-
-/**
- * Middleware to check if user is super admin
- */
-exports.isSuperAdmin = (req, res, next) => {
-  if (!req.user || !req.user.isSuperAdmin) {
-    return res.status(403).json({
-      success: false,
-      message: 'Super Admin access only'
-    });
   }
   next();
 };

@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['student', 'librarian', 'admin', 'superadmin'],
+      enum: ['student', 'librarian', 'admin'],
       required: true,
     },
     title: {
