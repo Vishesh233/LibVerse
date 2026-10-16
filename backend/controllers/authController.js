@@ -1,4 +1,9 @@
 const User = require('../models/User');
+const Book = require('../models/Book');
+
+// Favourite genres must be real catalogue genres (the Book.genre enum)
+const VALID_GENRES = Book.schema.path('genre').enumValues;
+const invalidGenres = (genres) => genres.filter((g) => !VALID_GENRES.includes(g));
 const { createNotification } = require('./notificationController');
 const jwt = require('jsonwebtoken');
 
@@ -171,6 +176,13 @@ exports.completeOnboarding = async (req, res, next) => {
       });
     }
 
+    if (invalidGenres(favoriteGenres).length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid genre(s): ${invalidGenres(favoriteGenres).join(', ')}`,
+      });
+    }
+
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({
@@ -222,6 +234,14 @@ exports.updateProfile = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Please provide at least one field to update',
+      });
+    }
+
+    // Avatars are uploaded via /profile/upload-avatar; only an http(s) URL may be stored here
+    if (profileImage && (typeof profileImage !== 'string' || !/^https?:\/\//i.test(profileImage) || profileImage.length > 2048)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Profile image must be an http(s) URL of at most 2048 characters',
       });
     }
 
@@ -290,6 +310,13 @@ exports.updateFavoriteGenres = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'You can select maximum 5 genres',
+      });
+    }
+
+    if (invalidGenres(favoriteGenres).length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid genre(s): ${invalidGenres(favoriteGenres).join(', ')}`,
       });
     }
 

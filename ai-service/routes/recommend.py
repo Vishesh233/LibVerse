@@ -2,10 +2,28 @@
 Recommendation API route for the AI service
 """
 
+import hmac
+import os
+from functools import wraps
+
 from flask import Blueprint, request, jsonify
 from model.recommender import recommender
 
 recommend_bp = Blueprint('recommend', __name__, url_prefix='/api')
+
+
+def require_service_token(view):
+    """Allow only callers that send X-Service-Token equal to AI_SERVICE_TOKEN (503 if it is not configured)"""
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        expected = os.getenv('AI_SERVICE_TOKEN', '')
+        if not expected:
+            return jsonify({'success': False, 'error': 'AI_SERVICE_TOKEN is not configured'}), 503
+        provided = request.headers.get('X-Service-Token', '')
+        if not hmac.compare_digest(provided.encode('utf-8'), expected.encode('utf-8')):
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+        return view(*args, **kwargs)
+    return wrapper
 
 @recommend_bp.route('/recommend', methods=['POST'])
 def get_recommendations():
@@ -75,6 +93,7 @@ def get_similar_books(book_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @recommend_bp.route('/train', methods=['POST'])
+@require_service_token
 def train_model():
     """Train the recommendation model with books"""
     try:
@@ -96,6 +115,7 @@ def train_model():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @recommend_bp.route('/user-history', methods=['POST'])
+@require_service_token
 def add_user_history():
     """Add user's reading history"""
     try:

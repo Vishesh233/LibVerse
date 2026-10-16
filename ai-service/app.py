@@ -13,8 +13,9 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Enable CORS
-CORS(app)
+# CORS allowlist: CORS_ORIGINS (comma-separated), default the local frontend dev server
+CORS_ORIGINS = [o.strip() for o in os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',') if o.strip()]
+CORS(app, origins=CORS_ORIGINS)
 
 # Configuration
 app.config['JSON_SORT_KEYS'] = False
@@ -42,7 +43,9 @@ def internal_error(error):
 
 if __name__ == '__main__':
     PORT = int(os.getenv('PORT', 5000))
-    DEBUG = os.getenv('DEBUG', 'True') == 'True'
-    
-    print(f"Starting AI Recommendation Service on port {PORT}...")
-    app.run(debug=DEBUG, port=PORT, host='0.0.0.0')
+    # Safe defaults: debugger off, listen on localhost only (set HOST=0.0.0.0 explicitly to expose it)
+    DEBUG = os.getenv('DEBUG', 'False').strip().lower() == 'true'
+    HOST = os.getenv('HOST', '127.0.0.1')
+
+    print(f"Starting AI Recommendation Service on {HOST}:{PORT}...")
+    app.run(debug=DEBUG, port=PORT, host=HOST)

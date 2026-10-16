@@ -2,6 +2,7 @@ const Book = require('../models/Book');
 const User = require('../models/User');
 const Review = require('../models/Review');
 const { generateQRCode } = require('../utils/qrGenerator');
+const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
 
 /**
  * @route GET /api/books
@@ -10,15 +11,21 @@ const { generateQRCode } = require('../utils/qrGenerator');
  */
 exports.getBooks = async (req, res, next) => {
   try {
-    const { title, author, genre, rating, availability, page = 1, limit = 10 } = req.query;
+    // Only plain strings are used; objects/arrays (e.g. ?genre[$ne]=x) are treated as absent
+    const title = toQueryString(req.query.title);
+    const author = toQueryString(req.query.author);
+    const genre = toQueryString(req.query.genre);
+    const rating = toQueryString(req.query.rating);
+    const availability = toQueryString(req.query.availability);
+    const { page, limit, skip } = toPagination(req.query.page, req.query.limit, 10);
 
     let filter = { isActive: true };
 
     if (title) {
-      filter.title = { $regex: title, $options: 'i' };
+      filter.title = { $regex: escapeRegex(title), $options: 'i' };
     }
     if (author) {
-      filter.author = { $regex: author, $options: 'i' };
+      filter.author = { $regex: escapeRegex(author), $options: 'i' };
     }
     if (genre) {
       filter.genre = genre;
@@ -35,9 +42,8 @@ exports.getBooks = async (req, res, next) => {
       filter.availableCopies = { $lte: 0 };
     }
 
-    const skip = (page - 1) * limit;
     const books = await Book.find(filter)
-      .limit(limit * 1)
+      .limit(limit)
       .skip(skip)
       .exec();
 
@@ -122,12 +128,12 @@ exports.getBook = async (req, res, next) => {
   try {
     const book = await Book.findById(req.params.id);
 
-    if (!book) {
+    if (!book || book.isActive === false) {
       return res.status(404).json({ success: false, message: 'Book not found' });
     }
 
-    // Get reviews
-    const reviews = await Review.find({ bookId: req.params.id }).populate('userId', 'name email');
+    // Get reviews (public page: reviewer name only, never the email)
+    const reviews = await Review.find({ bookId: req.params.id }).populate('userId', 'name');
 
     res.status(200).json({
       success: true,

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { calculateFine } = require('../utils/fineCalculator');
 
 const transactionSchema = new mongoose.Schema(
   {
@@ -77,15 +78,10 @@ const transactionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Calculate fine based on overdue days
+// Calculate fine based on overdue calendar days (same formula as utils/fineCalculator)
 transactionSchema.methods.calculateFine = function (fineRate = 5) {
   if (this.status === 'returned') return 0;
-  const today = new Date();
-  if (today > this.dueDate) {
-    const daysOverdue = Math.floor((today - this.dueDate) / (1000 * 60 * 60 * 24));
-    return daysOverdue * fineRate;
-  }
-  return 0;
+  return calculateFine(this.dueDate, new Date(), fineRate);
 };
 
 module.exports = mongoose.model('Transaction', transactionSchema);

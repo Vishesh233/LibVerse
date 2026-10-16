@@ -88,6 +88,7 @@ export const transactionsAPI = {
   approveReturn: (id) => apiClient.put(`/transactions/${id}/approve-return`),
   submitPayment: (id, data) => apiClient.put(`/transactions/${id}/submit-payment`, data),
   approvePayment: (id) => apiClient.put(`/transactions/${id}/approve-payment`),
+  getPaymentScreenshot: (id) => apiClient.get(`/transactions/${id}/payment-screenshot`),
 };
 
 // Admin endpoints

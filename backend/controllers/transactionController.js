@@ -2,12 +2,25 @@ const Transaction = require('../models/Transaction');
 const Book = require('../models/Book');
 const User = require('../models/User');
 const { createNotification } = require('./notificationController');
-const { calculateFine, getDaysRemaining } = require('../utils/fineCalculator');
+const { calculateFine, getDaysRemaining, isOverdue } = require('../utils/fineCalculator');
 const { takeBookCopy, returnBookCopy } = require('../utils/bookStock');
+const { toQueryString, toPagination } = require('../utils/escapeRegex');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const LOAN_DAYS = 14;
 const RENEWAL_DAYS = 7;
+
+// Payment screenshots: PNG/JPEG/WEBP data URI, at most ~3 MB once decoded
+const SCREENSHOT_PATTERN = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
+const MAX_SCREENSHOT_BYTES = 3 * 1024 * 1024;
+const isValidScreenshot = (value) => {
+  if (typeof value !== 'string') return false;
+  const match = value.match(SCREENSHOT_PATTERN);
+  if (!match) return false;
+  const base64 = match[2];
+  const decodedBytes = Math.floor((base64.length * 3) / 4) - (base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0);
+  return decodedBytes > 0 && decodedBytes <= MAX_SCREENSHOT_BYTES;
+};
 
 /**
  * @route POST /api/transactions/issue
@@ -284,6 +297,13 @@ exports.submitPayment = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Fine is already paid' });
     }
 
+    if (req.body.paymentScreenshot !== undefined && !isValidScreenshot(req.body.paymentScreenshot)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment screenshot must be a PNG, JPEG or WEBP image of at most 3 MB',
+      });
+    }
+
     // Update status
     transaction.status = 'payment_pending';
     transaction.paymentSubmittedAt = new Date();
@@ -459,20 +479,30 @@ exports.getUserTransactions = async (req, res, next) => {
  */
 exports.getAllTransactions = async (req, res, next) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const status = toQueryString(req.query.status);
+    const { limit, skip } = toPagination(req.query.page, req.query.limit, 10);
 
     let filter = {};
     if (status) {
       filter.status = status;
     }
 
-    const skip = (page - 1) * limit;
-    const transactions = await Transaction.find(filter)
+    // Lists never carry the (large) screenshot itself - only whether one exists
+    const docs = await Transaction.find(filter)
+      .select('-paymentScreenshot')
       .populate('userId', 'name email libraryId')
       .populate('bookId', 'title author')
-      .limit(limit * 1)
+      .limit(limit)
       .skip(skip)
       .sort('-createdAt');
+
+    const withScreenshot = await Transaction.find({
+      _id: { $in: docs.map((t) => t._id) },
+      paymentScreenshot: { $exists: true, $nin: [null, ''] },
+    }).select('_id');
+    const screenshotIds = new Set(withScreenshot.map((t) => t._id.toString()));
+
+    const transactions = docs.map((t) => ({ ...t.toObject(), hasScreenshot: screenshotIds.has(t._id.toString()) }));
 
     const total = await Transaction.countDocuments(filter);
 
@@ -483,6 +513,25 @@ exports.getAllTransactions = async (req, res, next) => {
       pages: Math.ceil(total / limit),
       transactions,
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @route GET /api/transactions/:id/payment-screenshot
+ * @desc Get the payment screenshot of one transaction (for verification)
+ * @access Private/Staff
+ */
+exports.getPaymentScreenshot = async (req, res, next) => {
+  try {
+    const transaction = await Transaction.findById(req.params.id).select('paymentScreenshot');
+
+    if (!transaction || !transaction.paymentScreenshot) {
+      return res.status(404).json({ success: false, message: 'No payment screenshot found' });
+    }
+
+    res.status(200).json({ success: true, paymentScreenshot: transaction.paymentScreenshot });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -643,7 +692,8 @@ exports.renewBook = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Only issued books can be renewed' });
     }
 
-    if (transaction.dueDate < new Date()) {
+    // Calendar-day rule (same as fines): a book due today is not overdue yet and can still be renewed
+    if (isOverdue(transaction.dueDate)) {
       return res.status(400).json({
         success: false,
         message: 'Overdue books cannot be renewed. Please return the book and pay the fine.',

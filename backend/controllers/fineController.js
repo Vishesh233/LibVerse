@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const Transaction = require('../models/Transaction');
-const { calculateFine } = require('../utils/fineCalculator');
+const { calculateFine, getDaysOverdue } = require('../utils/fineCalculator');
 
 exports.initiatePayment = async (req, res, next) => {
   try {
@@ -24,9 +24,7 @@ exports.initiatePayment = async (req, res, next) => {
     }
 
     const paymentReference = `PAY-${crypto.randomUUID().split('-')[0].toUpperCase()}`;
-    const daysLate = transaction.status === 'issued'
-      ? Math.max(1, Math.ceil((new Date() - new Date(transaction.dueDate)) / (1000 * 60 * 60 * 24)))
-      : 0;
+    const daysLate = transaction.status === 'issued' ? getDaysOverdue(transaction.dueDate) : 0;
 
     return res.status(200).json({
       success: true,

@@ -10,6 +10,7 @@ const {
   approveReturn,
   submitPayment,
   approvePayment,
+  getPaymentScreenshot,
 } = require('../controllers/transactionController');
 const { protect, isStaff, isStudent } = require('../middleware/authMiddleware');
 
@@ -24,6 +25,7 @@ router.put('/:id/submit-payment', protect, submitPayment);
 
 // Admin routes
 router.get('/', protect, isStaff, getAllTransactions);
+router.get('/:id/payment-screenshot', protect, isStaff, getPaymentScreenshot);
 router.put('/:id/approve', protect, isStaff, approveIssueRequest);
 router.put('/:id/reject', protect, isStaff, rejectIssueRequest);
 router.put('/:id/approve-return', protect, isStaff, approveReturn);

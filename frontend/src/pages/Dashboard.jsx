@@ -5,6 +5,7 @@ import { MainLayout } from '../layouts/MainLayout';
 import { useAuth } from '../hooks/useAuth';
 import { transactionsAPI, booksAPI } from '../services/api';
 import { CoverImage } from '../components/CoverImage';
+import { getDaysUntilDue } from '../utils/fineCalculator';
 
 const toSafeNumber = (value, fallback = 0) => {
   const n = Number(value);
@@ -275,15 +276,12 @@ export const Dashboard = () => {
                 ];
                 const theme = themes[index % 3];
 
-                // Calculate days remaining
+                // Calculate calendar days remaining (same rule as fines)
                 const getDaysRemaining = (dueDate) => {
                   if (!dueDate) return null;
                   const due = new Date(dueDate);
                   if (Number.isNaN(due.getTime())) return null;
-                  const now = new Date();
-                  const diffTime = due - now;
-                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  return diffDays;
+                  return getDaysUntilDue(due);
                 };
 
                 const daysRemaining = getDaysRemaining(item?.dueDate);

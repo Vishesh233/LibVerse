@@ -3,11 +3,34 @@ const Book = require('../models/Book');
 const Transaction = require('../models/Transaction');
 const Notification = require('../models/Notification');
 const { createNotification } = require('./notificationController');
-const { calculateFine } = require('../utils/fineCalculator');
+const { calculateFine, getDaysOverdue, startOfDay } = require('../utils/fineCalculator');
 const { takeBookCopy, returnBookCopy } = require('../utils/bookStock');
+const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
 const mongoose = require('mongoose');
 
 const USER_ROLES = ['student', 'librarian', 'admin'];
+
+/**
+ * Turn Mongoose validation / duplicate-key errors into a 400 response.
+ * Returns true when the error was handled.
+ */
+const sendUserSaveError = (res, error) => {
+  if (error.name === 'ValidationError') {
+    // Never echo the submitted value back (Mongoose's default password message contains it)
+    const message = Object.values(error.errors)
+      .map((e) => (e.path === 'password' ? 'Password must be at least 6 characters' : e.message))
+      .join(', ');
+    res.status(400).json({ success: false, message });
+    return true;
+  }
+  if (error.code === 11000) {
+    const field = Object.keys(error.keyPattern || error.keyValue || {})[0];
+    const message = field === 'email' ? 'Email already in use' : field === 'libraryId' ? 'Library ID already in use' : 'Duplicate field value';
+    res.status(400).json({ success: false, message });
+    return true;
+  }
+  return false;
+};
 
 /**
  * Check whether `actor` may change `target` (role and/or isActive).
@@ -90,7 +113,7 @@ exports.getDashboard = async (req, res, next) => {
     const issuedBooks = await Transaction.countDocuments({ status: 'issued' });
     const overdueBooksCount = await Transaction.countDocuments({
       status: 'issued',
-      dueDate: { $lt: now },
+      dueDate: { $lt: startOfDay(now) },
     });
 
     const activeUserIds = await Transaction.distinct('userId', { status: 'issued' });
@@ -115,17 +138,15 @@ exports.getDashboard = async (req, res, next) => {
     // 2. Overdue Books Detailed List
     const overdueTransactions = await Transaction.find({
       status: 'issued',
-      dueDate: { $lt: now },
+      dueDate: { $lt: startOfDay(now) },
     })
       .populate('userId', 'name email libraryId fineAmount')
       .populate('bookId', 'title author coverImage location')
       .sort('dueDate');
 
     const overdueList = overdueTransactions.map((tx) => {
-      const due = new Date(tx.dueDate);
-      const overdueMs = now.getTime() - due.getTime();
-      const overdueDays = Math.max(1, Math.ceil(overdueMs / (1000 * 60 * 60 * 24)));
-      const fine = overdueDays * 5;
+      const overdueDays = getDaysOverdue(tx.dueDate, now);
+      const fine = calculateFine(tx.dueDate, now);
       const userName = tx.userId?.name || 'Student';
       const libraryId = tx.userId?.libraryId || 'N/A';
       const bookTitle = tx.bookId?.title || 'Book';
@@ -428,7 +449,7 @@ exports.getReports = async (req, res, next) => {
     
     const overdueCount = await Transaction.countDocuments({
       status: 'issued',
-      dueDate: { $lt: new Date() },
+      dueDate: { $lt: startOfDay(new Date()) },
     });
 
     const fineData = await Transaction.find({ finePaid: true });
@@ -512,7 +533,7 @@ exports.createUser = async (req, res, next) => {
 
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-      return res.status(400).json({ success: false, message: 'User with this email already exists' });
+      return res.status(400).json({ success: false, message: 'Email already in use' });
     }
 
     const generatedLibraryId = libraryId || `LIB-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -534,6 +555,7 @@ exports.createUser = async (req, res, next) => {
       user: newUser,
     });
   } catch (error) {
+    if (sendUserSaveError(res, error)) return;
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -548,15 +570,14 @@ exports.sendOverdueReminders = async (req, res, next) => {
     const now = new Date();
     const overdueTxs = await Transaction.find({
       status: 'issued',
-      dueDate: { $lt: now },
+      dueDate: { $lt: startOfDay(now) },
     }).populate('userId bookId');
 
     let count = 0;
     for (const tx of overdueTxs) {
       if (tx.userId && tx.bookId && tx.userId._id) {
-        const due = new Date(tx.dueDate);
-        const overdueDays = Math.max(1, Math.ceil((now - due) / (1000 * 60 * 60 * 24)));
-        const fine = overdueDays * 5;
+        const overdueDays = getDaysOverdue(tx.dueDate, now);
+        const fine = calculateFine(tx.dueDate, now);
 
         try {
           await createNotification(
@@ -590,7 +611,12 @@ exports.sendOverdueReminders = async (req, res, next) => {
  */
 exports.adminIssueBook = async (req, res, next) => {
   try {
-    const { userEmail, libraryId, bookTitle, bookId, dueDate: customDueDate } = req.body;
+    // Plain strings only - objects in the JSON body can never become Mongo operators
+    const userEmail = toQueryString(req.body.userEmail);
+    const libraryId = toQueryString(req.body.libraryId);
+    const bookTitle = toQueryString(req.body.bookTitle);
+    const bookId = toQueryString(req.body.bookId);
+    const customDueDate = toQueryString(req.body.dueDate);
 
     if (!userEmail && !libraryId) {
       return res.status(400).json({ success: false, message: 'Please select a student' });
@@ -617,7 +643,7 @@ exports.adminIssueBook = async (req, res, next) => {
       book = await Book.findById(bookId);
     }
     if (!book && bookTitle) {
-      book = await Book.findOne({ title: { $regex: new RegExp(bookTitle.trim(), 'i') } });
+      book = await Book.findOne({ title: { $regex: escapeRegex(bookTitle), $options: 'i' } });
     }
 
     if (!book || book.isActive === false) {
@@ -682,7 +708,10 @@ exports.adminIssueBook = async (req, res, next) => {
  */
 exports.adminReturnBook = async (req, res, next) => {
   try {
-    const { transactionId, query, userEmail, bookId } = req.body;
+    const transactionId = toQueryString(req.body.transactionId);
+    const query = toQueryString(req.body.query);
+    const userEmail = toQueryString(req.body.userEmail);
+    const bookId = toQueryString(req.body.bookId);
 
     let transaction;
     if (transactionId && mongoose.Types.ObjectId.isValid(transactionId)) {
@@ -705,11 +734,11 @@ exports.adminReturnBook = async (req, res, next) => {
           $or: [
             { email: query.trim().toLowerCase() },
             { libraryId: query.trim().toUpperCase() },
-            { name: { $regex: new RegExp(query.trim(), 'i') } },
+            { name: { $regex: escapeRegex(query), $options: 'i' } },
           ],
         });
         const bookMatch = await Book.findOne({
-          title: { $regex: new RegExp(query.trim(), 'i') },
+          title: { $regex: escapeRegex(query), $options: 'i' },
         });
 
         if (userMatch) filter.userId = userMatch._id;
@@ -792,23 +821,25 @@ exports.getNotifications = async (req, res, next) => {
  */
 exports.getAllUsers = async (req, res, next) => {
   try {
-    const { page = 1, limit = 50, role, search } = req.query;
+    const role = toQueryString(req.query.role);
+    const search = toQueryString(req.query.search);
+    const { limit, skip } = toPagination(req.query.page, req.query.limit, 50);
 
     const filter = {};
     if (role && role !== 'All Roles') {
       filter.role = role.toLowerCase();
     }
     if (search) {
+      const pattern = escapeRegex(search);
       filter.$or = [
-        { name: { $regex: new RegExp(search.trim(), 'i') } },
-        { email: { $regex: new RegExp(search.trim(), 'i') } },
-        { libraryId: { $regex: new RegExp(search.trim(), 'i') } },
+        { name: { $regex: pattern, $options: 'i' } },
+        { email: { $regex: pattern, $options: 'i' } },
+        { libraryId: { $regex: pattern, $options: 'i' } },
       ];
     }
 
-    const skip = (page - 1) * limit;
     const rawUsers = await User.find(filter)
-      .limit(limit * 1)
+      .limit(limit)
       .skip(skip)
       .sort('-createdAt');
 
@@ -875,6 +906,7 @@ exports.updateUser = async (req, res, next) => {
 
     res.status(200).json({ success: true, message: 'User updated successfully', user: targetUser });
   } catch (error) {
+    if (sendUserSaveError(res, error)) return;
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -981,14 +1013,15 @@ exports.createAdminUser = async (req, res, next) => {
  */
 exports.globalSearch = async (req, res, next) => {
   try {
-    const { query } = req.query;
+    const query = toQueryString(req.query.query);
     const userRole = req.user?.role || 'student';
-    
-    if (!query || query.trim().length === 0) {
+
+    if (!query) {
       return res.status(200).json({ success: true, results: [] });
     }
 
-    const searchTerm = query.trim();
+    // Escaped so the text is matched literally (every $regex below uses searchTerm)
+    const searchTerm = escapeRegex(query);
     const results = [];
 
     // Helper to get role-based book URL

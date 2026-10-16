@@ -3,22 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
 import { Card, Button, Badge, EmptyState, Alert } from '../components/UI';
 import { transactionsAPI } from '../services/api';
-import { calculateFine, isOverdue } from '../utils/fineCalculator';
+import { calculateFine, getDaysOverdue } from '../utils/fineCalculator';
 import { formatDate } from '../utils/dateUtils';
 
-const getDaysLate = (transaction) => {
-  if (transaction.returnDate) {
-    const due = new Date(transaction.dueDate);
-    const returned = new Date(transaction.returnDate);
-    return Math.max(0, Math.ceil((returned - due) / (1000 * 60 * 60 * 24)));
-  }
-
-  if (isOverdue(transaction.dueDate)) {
-    return Math.max(1, Math.ceil((new Date() - new Date(transaction.dueDate)) / (1000 * 60 * 60 * 24)));
-  }
-
-  return 0;
-};
+// Calendar days late, measured to the return date if returned, otherwise to today
+const getDaysLate = (transaction) => getDaysOverdue(transaction.dueDate, transaction.returnDate || new Date());
 
 export const Fines = () => {
   const [fines, setFines] = useState([]);

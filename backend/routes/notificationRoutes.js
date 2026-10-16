@@ -1,5 +1,5 @@
 const express = require('express');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, isStaff } = require('../middleware/authMiddleware');
 const {
   getUserNotifications,
   markAsRead,
@@ -12,6 +12,6 @@ const router = express.Router();
 router.get('/', protect, getUserNotifications);
 router.put('/read/:id', protect, markAsRead);
 router.put('/read-all', protect, markAllAsRead);
-router.post('/admin', protect, createAdminNotification);
+router.post('/admin', protect, isStaff, createAdminNotification);
 
 module.exports = router;

@@ -4,32 +4,34 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { authAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { GENRES as CATALOGUE_GENRES } from '../constants/genres';
 
-const GENRES = [
-  { name: 'Programming', icon: '💻', color: 'from-blue-500 to-cyan-500' },
-  { name: 'Java', icon: '☕', color: 'from-red-500 to-orange-500' },
-  { name: 'Python', icon: '🐍', color: 'from-yellow-500 to-green-500' },
-  { name: 'Web Development', icon: '🌐', color: 'from-purple-500 to-pink-500' },
-  { name: 'AI & Machine Learning', icon: '🤖', color: 'from-indigo-500 to-purple-500' },
-  { name: 'Cyber Security', icon: '🔒', color: 'from-gray-600 to-gray-800' },
-  { name: 'Computer Science', icon: '🖥️', color: 'from-blue-600 to-indigo-600' },
-  { name: 'Database', icon: '🗄️', color: 'from-cyan-600 to-blue-600' },
-  { name: 'Networking', icon: '🔗', color: 'from-teal-500 to-cyan-500' },
-  { name: 'Operating Systems', icon: '⚙️', color: 'from-slate-600 to-slate-800' },
-  { name: 'Algorithms', icon: '📊', color: 'from-emerald-500 to-teal-500' },
-  { name: 'Technology', icon: '📱', color: 'from-violet-500 to-purple-500' },
-  { name: 'Science', icon: '🔬', color: 'from-green-500 to-emerald-500' },
-  { name: 'Business', icon: '💼', color: 'from-amber-500 to-orange-500' },
-  { name: 'Finance', icon: '💰', color: 'from-green-600 to-emerald-600' },
-  { name: 'Startup', icon: '🚀', color: 'from-pink-500 to-rose-500' },
-  { name: 'History', icon: '📚', color: 'from-yellow-600 to-amber-600' },
-  { name: 'Biography', icon: '👤', color: 'from-blue-500 to-indigo-500' },
-  { name: 'Psychology', icon: '🧠', color: 'from-purple-600 to-pink-600' },
-  { name: 'Motivation', icon: '⭐', color: 'from-yellow-400 to-orange-400' },
-  { name: 'Self Help', icon: '🌱', color: 'from-green-400 to-emerald-400' },
-  { name: 'Fiction', icon: '📖', color: 'from-rose-500 to-pink-500' },
-  { name: 'Non Fiction', icon: '📕', color: 'from-slate-500 to-gray-600' },
-];
+// Same 18 genres as the book catalogue (Book.genre enum); styles are only visual
+const GENRE_STYLES = {
+  'Self-Help': { icon: '🌱', color: 'from-green-400 to-emerald-400' },
+  Programming: { icon: '💻', color: 'from-blue-500 to-cyan-500' },
+  'Computer Science': { icon: '🖥️', color: 'from-blue-600 to-indigo-600' },
+  Finance: { icon: '💰', color: 'from-green-600 to-emerald-600' },
+  Business: { icon: '💼', color: 'from-amber-500 to-orange-500' },
+  Fiction: { icon: '📖', color: 'from-rose-500 to-pink-500' },
+  'Non-Fiction': { icon: '📕', color: 'from-slate-500 to-gray-600' },
+  History: { icon: '📚', color: 'from-yellow-600 to-amber-600' },
+  Biography: { icon: '👤', color: 'from-blue-500 to-indigo-500' },
+  Science: { icon: '🔬', color: 'from-green-500 to-emerald-500' },
+  Technology: { icon: '📱', color: 'from-violet-500 to-purple-500' },
+  Startup: { icon: '🚀', color: 'from-pink-500 to-rose-500' },
+  Motivation: { icon: '⭐', color: 'from-yellow-400 to-orange-400' },
+  Psychology: { icon: '🧠', color: 'from-purple-600 to-pink-600' },
+  Database: { icon: '🗄️', color: 'from-cyan-600 to-blue-600' },
+  Networking: { icon: '🔗', color: 'from-teal-500 to-cyan-500' },
+  'Cyber Security': { icon: '🔒', color: 'from-gray-600 to-gray-800' },
+  'AI & Machine Learning': { icon: '🤖', color: 'from-indigo-500 to-purple-500' },
+};
+
+const GENRES = CATALOGUE_GENRES.map((name) => ({
+  name,
+  ...(GENRE_STYLES[name] || { icon: '📘', color: 'from-slate-500 to-slate-700' }),
+}));
 
 export const Onboarding = () => {
   const [selectedGenres, setSelectedGenres] = useState([]);

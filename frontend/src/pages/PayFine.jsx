@@ -70,8 +70,13 @@ export const PayFine = () => {
   const handleScreenshotChange = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file only');
+    // Same limits as the server: PNG, JPEG or WEBP, at most 3 MB
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      setError('Please upload a PNG, JPEG or WEBP image');
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setError('Screenshot must be 3 MB or smaller');
       return;
     }
 

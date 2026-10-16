@@ -19,6 +19,7 @@ export const PendingRequests = () => {
   const [lists, setLists] = useState({ issue: [], return: [], payment: [] });
   const [loading, setLoading] = useState(true);
   const [actioningId, setActioningId] = useState(null);
+  const [screenshot, setScreenshot] = useState(null); // { loading, src } while the viewer is open
   const { isAdmin, isLibrarian } = useAuth();
   const canAccess = isAdmin || isLibrarian;
 
@@ -74,6 +75,18 @@ export const PendingRequests = () => {
     runAction(txId, transactionsAPI.approveReturn, 'Return approved successfully.', 'Failed to approve return');
   const handleApprovePayment = (txId) =>
     runAction(txId, transactionsAPI.approvePayment, 'Payment approved. Book returned.', 'Failed to approve payment');
+
+  // Screenshots are not part of the list response; load one on demand
+  const handleViewScreenshot = async (txId) => {
+    setScreenshot({ loading: true, src: null });
+    try {
+      const res = await transactionsAPI.getPaymentScreenshot(txId);
+      setScreenshot({ loading: false, src: res.data.paymentScreenshot });
+    } catch (err) {
+      setScreenshot(null);
+      toast.error(err.response?.data?.message || 'Failed to load screenshot');
+    }
+  };
 
   if (!canAccess) {
     return (
@@ -139,9 +152,14 @@ export const PendingRequests = () => {
     return (
       <span className="space-x-2">
         <span className="text-slate-100 font-semibold">₹{tx.fineAmount || 0}</span>
-        <Badge variant={tx.paymentScreenshot ? 'primary' : 'neutral'}>
-          {tx.paymentScreenshot ? 'Screenshot uploaded' : 'No screenshot'}
+        <Badge variant={tx.hasScreenshot ? 'primary' : 'neutral'}>
+          {tx.hasScreenshot ? 'Screenshot uploaded' : 'No screenshot'}
         </Badge>
+        {tx.hasScreenshot && (
+          <Button onClick={() => handleViewScreenshot(tx._id)} variant="secondary" className="text-xs px-3 py-1">
+            🖼️ View screenshot
+          </Button>
+        )}
       </span>
     );
   };
@@ -211,6 +229,25 @@ export const PendingRequests = () => {
           )}
         </Card>
       </div>
+
+      {/* Payment screenshot viewer */}
+      {screenshot && (
+        <div className="fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4" onClick={() => setScreenshot(null)}>
+          <div className="modal-amo w-full max-w-2xl animate-scale-in relative" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-100">Payment screenshot</h3>
+              <Button onClick={() => setScreenshot(null)} variant="secondary" className="text-xs px-3 py-1">
+                Close
+              </Button>
+            </div>
+            {screenshot.loading ? (
+              <Loader />
+            ) : (
+              <img src={screenshot.src} alt="Payment screenshot" className="max-h-[70vh] w-full object-contain rounded-xl" />
+            )}
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 };

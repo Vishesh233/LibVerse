@@ -1,60 +1,62 @@
 /**
- * Calculate fine based on due date
- * @param {string} dueDate - ISO format date string
- * @param {string} returnDate - ISO format date string (defaults to today)
- * @param {number} finePerDay - Fine amount per day (default: 10)
- * @returns {number} Fine amount
+ * Fine and due-date helpers - same calendar-day logic as backend/utils/fineCalculator.js,
+ * so the UI shows the same numbers as the server. A book due on the 10th and returned
+ * any time on the 13th is 3 days late.
  */
-export const calculateFine = (dueDate, returnDate = new Date().toISOString(), finePerDay = 5) => {
+
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+const startOfDay = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+// Whole calendar days from `from` to `to` (Math.round absorbs daylight-saving shifts)
+const calendarDaysBetween = (from, to) => Math.round((startOfDay(to) - startOfDay(from)) / DAY_MS);
+
+/**
+ * Calendar days a book is late
+ * @param {string|Date} dueDate - Due date
+ * @param {string|Date} asOf - Return date / date to measure against (defaults to now)
+ * @returns {number} Days late (0 if not late)
+ */
+export const getDaysOverdue = (dueDate, asOf = new Date()) => {
   if (!dueDate) return 0;
-
-  const due = new Date(dueDate);
-  const returned = new Date(returnDate);
-
-  // Only charge fine if return is late
-  if (returned <= due) {
-    return 0;
-  }
-
-  const timeDiff = returned - due;
-  const daysLate = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-
-  return daysLate * finePerDay;
+  return Math.max(0, calendarDaysBetween(dueDate, asOf));
 };
 
 /**
- * Get due date (default: 7 days from issue date)
+ * Calculate fine based on due date
+ * @param {string|Date} dueDate - Due date
+ * @param {string|Date} asOf - Return date / date to measure against (defaults to now)
+ * @param {number} finePerDay - Fine amount per day (default: 5)
+ * @returns {number} Fine amount
+ */
+export const calculateFine = (dueDate, asOf = new Date(), finePerDay = 5) => getDaysOverdue(dueDate, asOf) * finePerDay;
+
+/**
+ * Get due date (default: 14 days from issue date, the library loan period)
  * @param {string} issueDate - ISO format date string
- * @param {number} daysAllowed - Number of days allowed (default: 7)
+ * @param {number} daysAllowed - Number of days allowed (default: 14)
  * @returns {string} Due date in ISO format
  */
-export const getDueDate = (issueDate, daysAllowed = 7) => {
+export const getDueDate = (issueDate, daysAllowed = 14) => {
   const date = new Date(issueDate);
   date.setDate(date.getDate() + daysAllowed);
   return date.toISOString();
 };
 
 /**
- * Check if a transaction is overdue
+ * Check if a transaction is overdue (due on an earlier calendar day than today)
  * @param {string} dueDate - ISO format date string
  * @returns {boolean}
  */
-export const isOverdue = (dueDate) => {
-  return new Date() > new Date(dueDate);
-};
+export const isOverdue = (dueDate) => getDaysOverdue(dueDate) > 0;
 
 /**
- * Get days until due or days overdue
+ * Get calendar days until due or days overdue
  * @param {string} dueDate - ISO format date string
  * @returns {number} Negative if overdue, positive if upcoming
  */
-export const getDaysUntilDue = (dueDate) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const due = new Date(dueDate);
-  due.setHours(0, 0, 0, 0);
-
-  const timeDiff = due - today;
-  return Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-};
+export const getDaysUntilDue = (dueDate) => calendarDaysBetween(new Date(), dueDate);
