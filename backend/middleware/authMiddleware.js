@@ -16,12 +16,21 @@ exports.protect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = await User.findById(decoded.id);
-    next();
   } catch (error) {
     return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
   }
+
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
+  }
+
+  if (req.user.isActive === false) {
+    return res.status(403).json({ success: false, message: 'Account is deactivated' });
+  }
+
+  next();
 };
 
 /**

@@ -8,7 +8,6 @@ const {
   deleteUser,
   getPendingRequests,
   createAdminUser,
-  recoverAdmin,
   sendOverdueReminders,
   adminIssueBook,
   adminReturnBook,
@@ -18,9 +17,6 @@ const {
 const { protect, isAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
-
-// Emergency recovery route - NO authentication required
-router.put('/recover', recoverAdmin);
 
 // Search route - accessible to all authenticated users (before admin middleware)
 router.get('/search', protect, globalSearch);

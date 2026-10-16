@@ -7,6 +7,12 @@ const errorMiddleware = require('./middleware/errorMiddleware');
 // Load environment variables
 dotenv.config();
 
+// JWT_SECRET is required - refuse to start without it (value is never logged)
+if (!process.env.JWT_SECRET || !process.env.JWT_SECRET.trim()) {
+  console.error('FATAL: JWT_SECRET environment variable is missing or empty. Set it in backend/.env before starting the server.');
+  process.exit(1);
+}
+
 // Connect to database
 connectDB();
 

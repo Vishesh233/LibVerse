@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
  * Generate JWT Token
  */
 const signToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'your_jwt_secret_key', {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || '30d',
   });
 };
@@ -18,7 +18,8 @@ const signToken = (id) => {
  */
 exports.signup = async (req, res, next) => {
   try {
-    const { name, email, password, role, phone, address } = req.body;
+    // Only whitelisted fields are read; role and other privileged fields are never taken from the request
+    const { name, email, password, phone, address } = req.body;
 
     // Validation
     if (!name || !email || !password) {
@@ -42,7 +43,7 @@ exports.signup = async (req, res, next) => {
       name,
       email: email.trim().toLowerCase(),
       password,
-      role: role || 'student',
+      role: 'student',
       phone,
       address,
       libraryId: `LIB-${Date.now()}`,
@@ -79,15 +80,8 @@ exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    // Diagnostic logging: print the exact reason for any login failure
-    // instead of a generic "Invalid credentials" message.
-    console.log('\n========== LOGIN ATTEMPT ==========');
-    console.log('[login] Received email (raw):', email);
-    console.log('[login] Received password length:', password ? password.length : 'undefined');
-
     // Validation
     if (!email || !password) {
-      console.log('[login] -> 400 Missing email or password');
       return res.status(400).json({
         success: false,
         message: 'Please provide email and password',
@@ -95,27 +89,22 @@ exports.login = async (req, res, next) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    console.log('[login] Normalized email:', normalizedEmail);
 
     // Check user exists (normalize email to lowercase to match stored format)
     const user = await User.findOne({ email: normalizedEmail }).select('+password');
-    console.log('[login] User found:', user ? `YES (${user.email}, role=${user.role})` : 'NO');
-    if (!user) {
-      console.log('[login] -> 401 User not found for email:', normalizedEmail);
+
+    // Same message for unknown email and wrong password, so accounts can't be enumerated
+    if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials: no account found with that email',
+        message: 'Invalid email or password',
       });
     }
 
-    // Check password
-    const isMatch = await user.matchPassword(password);
-    console.log('[login] bcrypt.compare result:', isMatch);
-    if (!isMatch) {
-      console.log('[login] -> 401 Password mismatch for email:', normalizedEmail);
-      return res.status(401).json({
+    if (user.isActive === false) {
+      return res.status(403).json({
         success: false,
-        message: 'Invalid credentials: incorrect password',
+        message: 'Account is deactivated',
       });
     }
 
