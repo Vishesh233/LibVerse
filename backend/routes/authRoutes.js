@@ -1,5 +1,6 @@
 const express = require('express');
 const { signup, login, getCurrentUser, updateProfile, completeOnboarding, updateFavoriteGenres, changePassword } = require('../controllers/authController');
+const { getMyStats, getMyActivity } = require('../controllers/accountController');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -10,6 +11,8 @@ router.post('/login', login);
 
 // Protected routes
 router.get('/me', protect, getCurrentUser);
+router.get('/me/stats', protect, getMyStats);
+router.get('/me/activity', protect, getMyActivity);
 router.put('/update-profile', protect, updateProfile);
 router.put('/complete-onboarding', protect, completeOnboarding);
 router.put('/update-favorite-genres', protect, updateFavoriteGenres);

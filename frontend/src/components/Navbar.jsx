@@ -19,6 +19,8 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen, onOpenMenu }) => {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const avatarSrc = !imageError && user?.profileImage ? user.profileImage : undefined;
+  // A new photo (e.g. changed on the Profile page) gets a fresh chance to load
+  useEffect(() => setImageError(false), [user?.profileImage]);
   const debouncedSearch = useDebounce(searchTerm, 300);
   const { notifications, unreadCount, markAsRead, markAllRead, refreshNotifications } = useNotification();
   const [panelTab, setPanelTab] = useState('all');

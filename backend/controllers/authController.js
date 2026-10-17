@@ -8,6 +8,26 @@ const { createNotification, notifyStaff } = require('./notificationController');
 const jwt = require('jsonwebtoken');
 
 /**
+ * The user fields sent to the client after signup, login and profile changes.
+ * The frontend stores this object as the session user, so it must carry everything the UI reads
+ * (createdAt for "Member since", phone/address for the profile form) - not a partial copy.
+ */
+const toPublicUser = (user) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  libraryId: user.libraryId,
+  phone: user.phone,
+  address: user.address,
+  fineAmount: user.fineAmount,
+  profileImage: user.profileImage,
+  isOnboardingCompleted: user.isOnboardingCompleted,
+  favoriteGenres: user.favoriteGenres,
+  createdAt: user.createdAt,
+});
+
+/**
  * Generate JWT Token
  */
 const signToken = (id) => {
@@ -60,16 +80,7 @@ exports.signup = async (req, res, next) => {
     res.status(201).json({
       success: true,
       token,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        libraryId: user.libraryId,
-        profileImage: user.profileImage,
-        isOnboardingCompleted: user.isOnboardingCompleted,
-        favoriteGenres: user.favoriteGenres,
-      },
+      user: toPublicUser(user),
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -119,17 +130,7 @@ exports.login = async (req, res, next) => {
     res.status(200).json({
       success: true,
       token,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        libraryId: user.libraryId,
-        fineAmount: user.fineAmount,
-        profileImage: user.profileImage,
-        isOnboardingCompleted: user.isOnboardingCompleted,
-        favoriteGenres: user.favoriteGenres,
-      },
+      user: toPublicUser(user),
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -205,16 +206,7 @@ exports.completeOnboarding = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Onboarding completed successfully',
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        libraryId: user.libraryId,
-        profileImage: user.profileImage,
-        isOnboardingCompleted: user.isOnboardingCompleted,
-        favoriteGenres: user.favoriteGenres,
-      },
+      user: toPublicUser(user),
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -223,17 +215,50 @@ exports.completeOnboarding = async (req, res, next) => {
 
 /**
  * @route PUT /api/auth/update-profile
- * @desc Update user profile (name, profileImage)
+ * @desc Update user profile (name, phone, address, profileImage)
  * @access Private
  */
+const NAME_MAX = 60;
+const ADDRESS_MAX = 200;
+// Digits with optional leading +, spaces, hyphens or brackets; 7-15 digits in total
+const PHONE_PATTERN = /^\+?[\d\s()-]+$/;
+
 exports.updateProfile = async (req, res, next) => {
   try {
-    const { name, profileImage } = req.body;
+    const { name, profileImage, phone, address } = req.body;
 
-    if (!name && !profileImage) {
+    if (name === undefined && !profileImage && phone === undefined && address === undefined) {
       return res.status(400).json({
         success: false,
         message: 'Please provide at least one field to update',
+      });
+    }
+
+    const trimmedName = typeof name === 'string' ? name.trim() : name;
+    if (trimmedName !== undefined && (typeof trimmedName !== 'string' || trimmedName.length < 2 || trimmedName.length > NAME_MAX)) {
+      return res.status(400).json({
+        success: false,
+        message: `Name must be between 2 and ${NAME_MAX} characters`,
+      });
+    }
+
+    // Phone and address are optional; an empty string clears them
+    const trimmedPhone = typeof phone === 'string' ? phone.trim() : phone;
+    if (trimmedPhone !== undefined && trimmedPhone !== '') {
+      const digits = typeof trimmedPhone === 'string' ? trimmedPhone.replace(/\D/g, '').length : 0;
+      if (typeof trimmedPhone !== 'string' || !PHONE_PATTERN.test(trimmedPhone) || digits < 7 || digits > 15) {
+        return res.status(400).json({
+          success: false,
+          message: 'Phone must be 7-15 digits (spaces, hyphens and a leading + are allowed)',
+        });
+      }
+    }
+
+    const trimmedAddress = typeof address === 'string' ? address.trim() : address;
+    if (trimmedAddress !== undefined && (typeof trimmedAddress !== 'string' || trimmedAddress.length > ADDRESS_MAX)) {
+      return res.status(400).json({
+        success: false,
+        message: `Address must be at most ${ADDRESS_MAX} characters`,
       });
     }
 
@@ -254,16 +279,18 @@ exports.updateProfile = async (req, res, next) => {
     }
 
     const oldName = user.name;
-    if (name) user.name = name;
+    if (trimmedName !== undefined) user.name = trimmedName;
+    if (trimmedPhone !== undefined) user.phone = trimmedPhone || undefined;
+    if (trimmedAddress !== undefined) user.address = trimmedAddress || undefined;
     if (profileImage) user.profileImage = profileImage;
     await user.save();
 
-    if (user.role === 'student' && name && oldName !== name) {
+    if (user.role === 'student' && trimmedName !== undefined && oldName !== trimmedName) {
       // Staff-facing, one per active librarian/admin (non-fatal: notifyStaff never throws)
       await notifyStaff({
         type: 'NAME_CHANGE',
         title: 'Student name change',
-        message: `${user.libraryId ? `Student ${user.libraryId}` : 'A student'} changed their name from "${oldName}" to "${name}".`,
+        message: `${user.libraryId ? `Student ${user.libraryId}` : 'A student'} changed their name from "${oldName}" to "${trimmedName}".`,
         path: '/users',
       });
     }
@@ -271,7 +298,7 @@ exports.updateProfile = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully',
-      user,
+      user: toPublicUser(user),
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -329,16 +356,7 @@ exports.updateFavoriteGenres = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Favorite genres updated successfully',
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        libraryId: user.libraryId,
-        profileImage: user.profileImage,
-        isOnboardingCompleted: user.isOnboardingCompleted,
-        favoriteGenres: user.favoriteGenres,
-      },
+      user: toPublicUser(user),
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
