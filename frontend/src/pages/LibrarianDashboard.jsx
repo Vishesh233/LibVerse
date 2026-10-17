@@ -570,11 +570,11 @@ export const LibrarianDashboard = () => {
                   </div>
                   {card.to && <span className={`text-xs font-semibold ${colorClasses.text}`}>Review →</span>}
                 </div>
-                <div className="mt-4">
+                <div className="kpi-body mt-4">
                   {loading && !analytics ? (
                     <Skeleton className="h-9 w-16" />
                   ) : (
-                    <p className="font-display text-4xl font-bold leading-none text-white">{card.value}</p>
+                    <p className="kpi-value font-display text-4xl font-bold leading-none text-white">{card.value}</p>
                   )}
                   <p className="mt-2 text-sm font-semibold text-slate-200">{card.title}</p>
                   <p className="mt-1 text-xs text-slate-400">{card.sub}</p>
@@ -585,12 +585,12 @@ export const LibrarianDashboard = () => {
               <button
                 key={card.title}
                 onClick={() => navigate(card.to)}
-                className={`card-glass !p-6 text-left transition hover:-translate-y-0.5 motion-reduce:transform-none ${card.glow ? 'glow-accent' : ''}`}
+                className={`kpi-card card-glass !p-6 text-left transition hover:-translate-y-0.5 motion-reduce:transform-none ${card.glow ? 'glow-accent' : ''}`}
               >
                 {body}
               </button>
             ) : (
-              <Card key={card.title} variant="glass" className={`!p-6 ${card.glow ? '!shadow-[0_0_0_1px_rgba(244,63,94,0.25),0_10px_40px_rgba(244,63,94,0.18)]' : ''}`}>
+              <Card key={card.title} variant="glass" className={`kpi-card !p-6 ${card.glow ? '!shadow-[0_0_0_1px_rgba(244,63,94,0.25),0_10px_40px_rgba(244,63,94,0.18)]' : ''}`}>
                 {body}
               </Card>
             );

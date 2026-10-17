@@ -15,11 +15,11 @@ import { GENRES } from '../constants/genres';
 const PAGE_SIZE = 12;
 
 const GridSkeleton = ({ count = PAGE_SIZE }) => (
-  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5" aria-busy="true" aria-label="Loading books">
+  <div className="book-grid" aria-busy="true" aria-label="Loading books">
     {Array.from({ length: count }).map((_, i) => (
       <div key={i} className="card-glass !p-0 overflow-hidden">
         <Skeleton className="aspect-[2/3] w-full !rounded-none" />
-        <div className="space-y-2 p-3 sm:p-4">
+        <div className="space-y-2 p-3">
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-3 w-2/3" />
           <Skeleton className="h-9 w-full" />
@@ -257,7 +257,7 @@ export const Books = () => {
           />
         ) : (
           <div
-            className={`grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5 transition-opacity ${refreshing ? 'opacity-60' : ''}`}
+            className={`book-grid transition-opacity ${refreshing ? 'opacity-60' : ''}`}
             aria-busy={refreshing || undefined}
           >
             {books.map((book) => {

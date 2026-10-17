@@ -33,11 +33,11 @@ export const Wishlist = () => {
         />
 
         {loading && wishlist.length === 0 ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5" aria-busy="true" aria-label="Loading wishlist">
+          <div className="book-grid" aria-busy="true" aria-label="Loading wishlist">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="card-glass !p-0 overflow-hidden">
                 <Skeleton className="aspect-[2/3] w-full !rounded-none" />
-                <div className="space-y-2 p-3 sm:p-4">
+                <div className="space-y-2 p-3">
                   <Skeleton className="h-4 w-full" />
                   <Skeleton className="h-3 w-2/3" />
                 </div>
@@ -52,7 +52,7 @@ export const Wishlist = () => {
             action={<Button fullWidth={false} onClick={() => navigate('/student/books')}>Browse books</Button>}
           />
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="book-grid">
             {wishlist.map((book) => (
               <BookCard
                 key={book._id}

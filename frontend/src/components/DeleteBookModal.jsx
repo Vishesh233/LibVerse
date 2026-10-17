@@ -12,9 +12,11 @@ export const DeleteBookModal = ({
   return (
     <div className="fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4">
       <div className="modal-amo w-full max-w-md animate-scale-in relative overflow-hidden">
-        {/* Subtle gradient glow decoration */}
-        <div className="pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full bg-rose-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-24 h-48 w-48 rounded-full bg-indigo-500/10 blur-3xl" />
+        {/* Subtle gradient glow decoration (clipped layer, so it never adds scroll height to the modal) */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden="true">
+          <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-rose-500/10 blur-3xl" />
+          <div className="absolute -bottom-24 -left-24 h-48 w-48 rounded-full bg-indigo-500/10 blur-3xl" />
+        </div>
 
         <div className="relative">
           <div className="flex items-start gap-4">

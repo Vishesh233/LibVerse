@@ -120,10 +120,10 @@ export const Signup = () => {
   });
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#02040f] via-[#040813] to-[#0b1534] px-4 py-10">
-      <Card variant="glass" className="w-full max-w-md text-slate-100 shadow-[0_50px_120px_rgba(8,12,34,0.55)]">
-        <div className="pb-6 border-b border-white/10 mb-6 text-center">
-          <div className="mb-5 inline-flex items-center gap-3">
+    <div className="auth-page min-h-screen flex items-center justify-center bg-gradient-to-br from-[#02040f] via-[#040813] to-[#0b1534] px-4 py-[clamp(12px,4vh,40px)]">
+      <Card variant="glass" className="auth-card signup-card text-slate-100 shadow-[0_50px_120px_rgba(8,12,34,0.55)]">
+        <div className="signup-head border-b border-white/10 text-center">
+          <div className="signup-logo mb-5 inline-flex items-center gap-3">
             <LogoMark size="md" />
             <div className="text-left">
               <p className="brand-wordmark text-2xl font-bold leading-none">
@@ -132,8 +132,8 @@ export const Signup = () => {
               <p className="mt-1 text-[11px] uppercase tracking-[0.24em] text-slate-400">Library Management System</p>
             </div>
           </div>
-          <h1 className="font-display text-3xl font-bold text-white">Create account</h1>
-          <p className="text-sm text-slate-400 mt-2">Join the library and start exploring.</p>
+          <h1 className="signup-title font-display text-3xl font-bold text-white">Create account</h1>
+          <p className="signup-sub text-sm text-slate-400 mt-2">Join the library and start exploring.</p>
         </div>
 
         {error && (
@@ -142,7 +142,7 @@ export const Signup = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-5">
+        <form onSubmit={handleSubmit} noValidate className="auth-form">
           <Field id="signup-name" label="Full name" error={errors.name}>
             <input {...inputProps('name')} type="text" autoComplete="name" placeholder="Enter your full name" required />
           </Field>
@@ -182,13 +182,16 @@ export const Signup = () => {
             </div>
           </Field>
 
-          <Field id="signup-phone" label="Phone (optional)">
-            <input {...inputProps('phone')} type="tel" autoComplete="tel" placeholder="+91 98765 43210" />
-          </Field>
+          {/* Side by side on short screens (see .signup-optional) */}
+          <div className="signup-optional">
+            <Field id="signup-phone" label="Phone (optional)">
+              <input {...inputProps('phone')} type="tel" autoComplete="tel" placeholder="+91 98765 43210" />
+            </Field>
 
-          <Field id="signup-address" label="Address (optional)">
-            <input {...inputProps('address')} type="text" autoComplete="street-address" placeholder="Enter your address" />
-          </Field>
+            <Field id="signup-address" label="Address (optional)">
+              <input {...inputProps('address')} type="text" autoComplete="street-address" placeholder="Enter your address" />
+            </Field>
+          </div>
 
           <Button type="submit" loading={loading} variant="primary" size="lg">
             {loading ? 'Creating account...' : 'Create account'}

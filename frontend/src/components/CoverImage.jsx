@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { getBookCoverCandidates, DEFAULT_BOOK_COVER } from '../utils/bookCover';
+import { getBookCoverCandidates, withCoverSize, DEFAULT_BOOK_COVER } from '../utils/bookCover';
 
 /**
  * Reusable book cover image with fallback chain:
@@ -16,6 +16,10 @@ import { getBookCoverCandidates, DEFAULT_BOOK_COVER } from '../utils/bookCover';
  *
  * The fallback index only resets when the actual candidate list changes
  * (via useEffect), preventing flicker from parent re-renders.
+ *
+ * - size: Open Library cover size, 'M' for cards (default) and 'L' for the details page
+ * - backdrop: cover cards - the whole cover is shown (object-fit: contain) over a blurred,
+ *   darkened copy of the same image that fills the frame. The parent must be position: relative.
  */
 export const CoverImage = React.memo(function CoverImage({
   book,
@@ -24,6 +28,8 @@ export const CoverImage = React.memo(function CoverImage({
   className = '',
   eager = false,
   iconClassName = 'text-slate-500',
+  size = 'M',
+  backdrop = false,
 }) {
   const [candidateIndex, setCandidateIndex] = useState(0);
 
@@ -34,11 +40,12 @@ export const CoverImage = React.memo(function CoverImage({
   const isbn = book?.isbn;
 
   const candidates = useMemo(() => {
-    if (src) {
-      return [src, ...getBookCoverCandidates({ coverImage, imageUrl, isbn }).filter((c) => c !== src), DEFAULT_BOOK_COVER];
-    }
-    return getBookCoverCandidates({ coverImage, imageUrl, isbn });
-  }, [src, coverImage, imageUrl, isbn]);
+    const list = src
+      ? [src, ...getBookCoverCandidates({ coverImage, imageUrl, isbn }).filter((c) => c !== src), DEFAULT_BOOK_COVER]
+      : getBookCoverCandidates({ coverImage, imageUrl, isbn });
+    // Same fallback order, with Open Library URLs at the requested size (duplicates removed)
+    return [...new Set(list.map((c) => withCoverSize(c, size)))];
+  }, [src, coverImage, imageUrl, isbn, size]);
 
   // Reset the fallback index only when candidates actually change.
   // Using useEffect (not setState during render) to avoid render-phase side effects.
@@ -69,18 +76,36 @@ export const CoverImage = React.memo(function CoverImage({
     );
   }
 
+  const handleError = () => {
+    // Only advance if there is a next candidate (prevents infinite loop)
+    if (candidateIndex < candidates.length - 1) {
+      setCandidateIndex((i) => i + 1);
+    }
+  };
+
+  if (backdrop) {
+    return (
+      <>
+        <img src={currentSrc} alt="" aria-hidden="true" loading={eager ? 'eager' : 'lazy'} decoding="async" className="cover-backdrop" />
+        <img
+          src={currentSrc}
+          alt={alt}
+          loading={eager ? 'eager' : 'lazy'}
+          decoding="async"
+          onError={handleError}
+          className={`cover-contain ${className}`}
+        />
+      </>
+    );
+  }
+
   return (
     <img
       src={currentSrc}
       alt={alt}
       loading={eager ? 'eager' : 'lazy'}
       decoding="async"
-      onError={() => {
-        // Only advance if there is a next candidate (prevents infinite loop)
-        if (candidateIndex < candidates.length - 1) {
-          setCandidateIndex((i) => i + 1);
-        }
-      }}
+      onError={handleError}
       className={`h-full w-full object-cover ${className}`}
     />
   );

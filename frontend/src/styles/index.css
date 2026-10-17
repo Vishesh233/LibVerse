@@ -1009,6 +1009,11 @@ select.input-amo {
   border-radius: 24px;
   padding: 1.25rem;
   box-shadow: 0 30px 90px rgba(0,0,0,0.45);
+  /* Always fits the viewport; long content scrolls inside the modal */
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* small utilities */
@@ -1249,9 +1254,14 @@ body.modal-open {
 .logo-mark--md .logo-mark__tile { width: 44px; height: 44px; border-radius: 13px; }
 .logo-mark--md .logo-mark__icon { width: 24px; height: 24px; }
 
-.logo-mark--lg { width: 168px; height: 168px; }
-.logo-mark--lg .logo-mark__tile { width: 92px; height: 92px; border-radius: 26px; }
-.logo-mark--lg .logo-mark__icon { width: 44px; height: 44px; }
+/* lg is sized from one variable so it can shrink on short screens (168px frame, 92px tile, 44px icon) */
+.logo-mark--lg { --logo-lg: 168px; width: var(--logo-lg); height: var(--logo-lg); }
+.logo-mark--lg .logo-mark__tile {
+  width: calc(var(--logo-lg) * 0.5476);
+  height: calc(var(--logo-lg) * 0.5476);
+  border-radius: calc(var(--logo-lg) * 0.155);
+}
+.logo-mark--lg .logo-mark__icon { width: calc(var(--logo-lg) * 0.262); height: calc(var(--logo-lg) * 0.262); }
 
 .logo-mark__ring-outer,
 .logo-mark__ring-inner,
@@ -1268,7 +1278,7 @@ body.modal-open {
 }
 
 .logo-mark__ring-inner {
-  inset: 18px;
+  inset: calc(var(--logo-lg, 168px) * 0.107);
   border: 1px dashed rgba(167, 139, 250, 0.55);
   animation: logoSpinReverse 28s linear infinite;
 }
@@ -1335,7 +1345,7 @@ body.modal-open {
 
 .splash-inner {
   width: min(92vw, 540px);
-  padding: 2.25rem 1.75rem;
+  padding: clamp(1.25rem, 4vh, 2.25rem) 1.75rem;
   border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 24px;
   backdrop-filter: blur(16px);
@@ -1491,7 +1501,7 @@ body.modal-open {
 }
 
 .splash-progress-slim {
-  margin-top: 1.75rem;
+  margin-top: clamp(1rem, 3vh, 1.75rem);
 }
 
 .splash-progress-slim-labels {
@@ -1652,3 +1662,205 @@ body.modal-open {
 .brand-wordmark-accent {
   color: #67E8F9;
 }
+
+/* ===========================
+   Viewport fit (short laptop screens, e.g. 1536x730 / 1366x650 CSS px at 100% zoom)
+   Larger screens keep the original design; height queries only tighten spacing.
+   Tailwind appends responsive variants (sm:, lg:) after this file's rules, so overrides
+   of those use two-class selectors.
+=========================== */
+
+/* ---- Auth pages (Login, Signup, Onboarding) ---- */
+/* Login's animated background is position:fixed + overflow:hidden, so the content scrolls inside it */
+.auth-scroll {
+  position: relative;
+  z-index: 10;
+  height: 100%;
+  overflow-y: auto;
+}
+.auth-center {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 4vh, 40px) 1rem;
+}
+
+.auth-card {
+  --auth-pad-x: 2rem;
+  --auth-pad-t: 2rem;
+  --auth-pad-b: 1.25rem;
+  --auth-section: 2rem;
+  --auth-field-gap: 1.25rem;
+  --auth-footer: 1.5rem;
+  width: 100%;
+  max-width: 440px;
+}
+.login-card.auth-card {
+  padding: var(--auth-pad-t) var(--auth-pad-x) var(--auth-pad-b);
+}
+.auth-brand { margin-bottom: var(--auth-section); }
+.auth-logo { margin-bottom: 0.5rem; display: flex; justify-content: center; }
+.auth-logo-md { display: none; }
+.auth-wordmark { font-size: 1.875rem; line-height: 2.25rem; margin-bottom: 0.5rem; }
+.auth-welcome { margin-bottom: var(--auth-section); }
+.auth-heading { font-size: 1.5rem; line-height: 2rem; margin-bottom: 0.5rem; }
+.auth-form { display: flex; flex-direction: column; gap: var(--auth-field-gap); }
+.auth-footer { margin-top: var(--auth-footer); }
+
+/* Signup: optional fields stack by default */
+.signup-head { padding-bottom: 1.5rem; margin-bottom: 1.5rem; }
+.signup-optional { display: flex; flex-direction: column; gap: var(--auth-field-gap); }
+
+@media (max-height: 860px) {
+  .auth-card {
+    --auth-pad-x: 1.75rem;
+    --auth-pad-t: 1.5rem;
+    --auth-pad-b: 1rem;
+    --auth-section: 1.25rem;
+    --auth-field-gap: 1rem;
+    --auth-footer: 1rem;
+  }
+  .auth-logo-lg { display: none; }
+  .auth-logo-md { display: inline-grid; }
+  .auth-tagline { display: none; }
+  .auth-card .login-input,
+  .auth-card .input-amo {
+    height: 48px;
+    min-height: 48px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .auth-card .login-button { min-height: 48px; padding-top: 0.75rem; padding-bottom: 0.75rem; }
+
+  .auth-page .signup-card.card-glass { padding: var(--auth-pad-t) var(--auth-pad-x) var(--auth-pad-b); }
+  .signup-head { padding-bottom: 1rem; margin-bottom: 1rem; }
+  .signup-head .signup-logo { margin-bottom: 0.75rem; }
+  .signup-title { font-size: 1.5rem; line-height: 2rem; }
+  .signup-sub { margin-top: 0.25rem; }
+  .signup-card .auth-divider { display: none; } /* decorative; the sign-in link stays */
+  .signup-card .btn-primary.btn-primary { min-height: 48px !important; }
+}
+/* Side by side only where two ~190px columns fit */
+@media (max-height: 860px) and (min-width: 480px) {
+  .signup-optional { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-height: 720px) {
+  .auth-card {
+    --auth-pad-x: 1.5rem;
+    --auth-pad-t: 1.25rem;
+    --auth-pad-b: 0.875rem;
+    --auth-section: 1rem;
+    --auth-field-gap: 0.75rem;
+    --auth-footer: 0.75rem;
+  }
+  .auth-wordmark { font-size: 1.5rem; line-height: 2rem; margin-bottom: 0.25rem; }
+  .auth-heading { font-size: 1.25rem; line-height: 1.75rem; margin-bottom: 0.25rem; }
+  .auth-card .field-label { margin-bottom: 0.375rem; }
+  .signup-head { padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
+  .signup-head .signup-logo { margin-bottom: 0.5rem; }
+  .signup-title { font-size: 1.25rem; line-height: 1.75rem; }
+  .signup-sub { display: none; }
+}
+
+/* Onboarding: same content, tighter on short screens (6 genres per row on wide ones) */
+@media (max-height: 860px) {
+  .onb-page .onb-header { margin-bottom: 1.5rem; }
+  .onb-page .onb-logo { margin-bottom: 1rem; }
+  .onb-page .onb-title { font-size: 2.5rem; line-height: 1.1; margin-bottom: 0.75rem; }
+  .onb-page .onb-lead { font-size: 1rem; line-height: 1.5rem; margin-bottom: 0.25rem; }
+  .onb-page .onb-genres { margin-bottom: 1.25rem; }
+  .onb-page .onb-tile { padding: 0.75rem; }
+  .onb-page .onb-tile-icon { font-size: 1.75rem; line-height: 2rem; margin-bottom: 0.25rem; }
+  .onb-page .onb-actions { gap: 0.75rem; }
+  .onb-page .onb-continue { min-height: 48px !important; }
+}
+@media (max-height: 860px) and (min-width: 1024px) {
+  .onb-page .onb-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.75rem; }
+}
+@media (max-height: 720px) {
+  .onb-page .onb-header { margin-bottom: 1rem; }
+  .onb-page .onb-logo { margin-bottom: 0.75rem; }
+  .onb-page .onb-title { font-size: 2.125rem; margin-bottom: 0.5rem; }
+  .onb-page .onb-sub { font-size: 0.875rem; }
+  .onb-page .onb-genres { margin-bottom: 1rem; }
+  .onb-page .onb-tile { padding: 0.625rem; }
+}
+
+/* Splash: the large logo shrinks with the viewport height */
+.libverse-splash .logo-mark--lg { --logo-lg: clamp(112px, 22vh, 168px); }
+
+/* ---- App shell ---- */
+@media (max-height: 760px) {
+  .app-sidebar { padding-top: 1rem; padding-bottom: 1rem; }
+  .app-sidebar .sidebar-brand { margin-bottom: 1rem; }
+}
+@media (max-height: 860px) and (min-width: 1024px) {
+  .app-main.app-main { padding: 1.5rem 2rem; }
+}
+@media (max-height: 860px) and (min-width: 640px) {
+  .page-header.page-header { margin-bottom: 1.5rem; }
+  .page-header .page-header__title { font-size: 1.875rem; line-height: 2.25rem; }
+}
+/* Staff dashboard KPI cards */
+@media (max-height: 860px) {
+  .kpi-card.kpi-card { padding: 1.25rem !important; }
+  .kpi-card .kpi-value { font-size: 1.875rem; }
+  .kpi-card .kpi-body { margin-top: 0.75rem; }
+}
+
+/* ===========================
+   Book cover cards: auto-fill grid, contained cover on a blurred copy of itself
+=========================== */
+.book-grid {
+  display: grid;
+  gap: 12px;
+  /* two columns even on a 390px phone */
+  grid-template-columns: repeat(auto-fill, minmax(min(170px, calc(50% - 6px)), 1fr));
+}
+@media (min-width: 640px) {
+  .book-grid {
+    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+}
+
+/* Background layer: the same image, cropped to fill, blurred and darkened (decorative) */
+.cover-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.15);
+  filter: blur(24px) brightness(0.45);
+  pointer-events: none;
+}
+/* Foreground: whole cover, never cropped or stretched */
+.cover-contain {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.book-card__title { min-height: 2.75em; } /* 2 lines at leading-snug: equal heights across a row */
+.book-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.book-card__meta .genre-badge { min-width: 0; flex: 0 1 auto; }
+.book-card__availability {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+.book-card__availability--yes { color: #6EE7B7; }
+.book-card__availability--no { color: #FDA4AF; }

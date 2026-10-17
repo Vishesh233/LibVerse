@@ -208,8 +208,9 @@ export const BookDetails = () => {
         <Card variant="glass">
           <div className="grid gap-8 lg:grid-cols-[300px_minmax(0,1fr)]">
             <div className="mx-auto w-full max-w-[260px] sm:max-w-[300px]">
-              <div className="aspect-[2/3] overflow-hidden rounded-2xl border border-white/10 bg-input shadow-2xl">
-                <CoverImage book={book} src={book.imageUrl || book.coverImage} alt={`Cover of ${book.title}`} eager />
+              {/* Large cover: full image (contain) over a blurred copy of itself */}
+              <div className="relative aspect-[2/3] overflow-hidden rounded-2xl border border-white/10 bg-input shadow-2xl">
+                <CoverImage book={book} src={book.imageUrl || book.coverImage} alt={`Cover of ${book.title}`} eager size="L" backdrop />
               </div>
             </div>
 

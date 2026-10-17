@@ -161,9 +161,9 @@ export const Skeleton = ({ className = 'h-4 w-full', lines = 1, gap = 'space-y-3
 
 /** PageHeader - page title (display font), optional subtitle and right-aligned actions */
 export const PageHeader = ({ title, subtitle, actions, className = '' }) => (
-  <div className={`mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between ${className}`}>
+  <div className={`page-header mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between ${className}`}>
     <div className="min-w-0">
-      <h1 className="font-display text-3xl font-bold tracking-tight text-slate-50 sm:text-4xl">{title}</h1>
+      <h1 className="page-header__title font-display text-3xl font-bold tracking-tight text-slate-50 sm:text-4xl">{title}</h1>
       {subtitle && <p className="mt-1.5 text-sm text-slate-400">{subtitle}</p>}
     </div>
     {actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}

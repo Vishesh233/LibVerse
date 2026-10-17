@@ -10,8 +10,8 @@ const HeartIcon = ({ filled }) => (
 );
 
 /**
- * Catalogue card: cover on top, then title, author, genre and one action.
- * - showAvailability: availability badge over the cover (from availableCopies)
+ * Catalogue card: cover on top, then title, author, a genre + availability row and one action.
+ * - showAvailability: availability text next to the genre (from availableCopies)
  * - onWishlistClick: renders a heart toggle over the cover
  * - actionVariant: Button variant for the main action
  */
@@ -52,19 +52,16 @@ export const BookCard = ({
       className={`book-card ${onCardClick ? 'cursor-pointer' : ''}`}
     >
       <div className="book-card__frame">
+        {/* Whole cover (contain) over a blurred copy of itself, so nothing is cropped */}
         <CoverImage
           book={book}
           src={book?.imageUrl || book?.coverImage}
           alt={`Cover of ${title}`}
           className="book-card__cover"
+          size="M"
+          backdrop
         />
         <div className="book-card__scrim" />
-
-        {showAvailability && (
-          <span className={`glass-pill absolute left-2.5 top-2.5 ${available > 0 ? 'glass-pill--success' : 'glass-pill--danger'}`}>
-            {available > 0 ? `${available} available` : 'Not available'}
-          </span>
-        )}
 
         {onWishlistClick && (
           <button
@@ -92,12 +89,17 @@ export const BookCard = ({
         )}
       </div>
 
-      <div className="flex flex-1 flex-col p-3 sm:p-4">
-        <h3 className="text-sm font-semibold leading-snug text-slate-100 line-clamp-2 sm:text-base">{title}</h3>
-        <p className="mt-1 text-xs text-slate-400 line-clamp-1 sm:text-sm">{book?.author || 'Author unknown'}</p>
-        {book?.genre && (
-          <div className="mt-2">
-            <span className="genre-badge">{book.genre}</span>
+      <div className="flex flex-1 flex-col p-3">
+        <h3 className="book-card__title text-sm font-semibold leading-snug text-slate-100 line-clamp-2">{title}</h3>
+        <p className="mt-0.5 text-xs text-slate-400 line-clamp-1">{book?.author || 'Author unknown'}</p>
+        {(book?.genre || showAvailability) && (
+          <div className="book-card__meta mt-2">
+            {book?.genre && <span className="genre-badge">{book.genre}</span>}
+            {showAvailability && (
+              <span className={`book-card__availability ${available > 0 ? 'book-card__availability--yes' : 'book-card__availability--no'}`}>
+                {available > 0 ? `${available} available` : 'Not available'}
+              </span>
+            )}
           </div>
         )}
 
@@ -107,6 +109,7 @@ export const BookCard = ({
           <div className="mt-auto pt-3">
             <Button
               size="sm"
+              className="!min-h-[40px]"
               variant={actionVariant}
               loading={isLoading}
               disabled={actionDisabled}

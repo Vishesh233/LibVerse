@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { transactionsAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
-import { Card, Badge, Button, EmptyState } from '../components/UI';
+import { Card, Badge, Button, EmptyState, PageHeader } from '../components/UI';
 import { Loader } from '../components/Loader';
 import { useAuth } from '../hooks/useAuth';
 import { formatDate } from '../utils/dateUtils';
@@ -150,7 +150,7 @@ export const PendingRequests = () => {
       );
     }
     return (
-      <span className="space-x-2">
+      <span className="flex flex-wrap items-center gap-2">
         <span className="text-slate-100 font-semibold">₹{tx.fineAmount || 0}</span>
         <Badge variant={tx.hasScreenshot ? 'primary' : 'neutral'}>
           {tx.hasScreenshot ? 'Screenshot uploaded' : 'No screenshot'}
@@ -169,11 +169,9 @@ export const PendingRequests = () => {
 
   return (
     <MainLayout>
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">⏳ Requests</h1>
-          <p className="text-slate-400 mt-1">Review issue requests, returns and fine payments from students.</p>
-        </div>
+      {/* <main> already pads the page; no second padding layer here */}
+      <div className="max-w-7xl mx-auto">
+        <PageHeader title="Requests" subtitle="Review issue requests, returns and fine payments from students." />
 
         {/* Tabs with counts */}
         <div className="mb-6 flex flex-wrap items-center gap-1 rounded-xl border border-border bg-input p-1 w-fit">

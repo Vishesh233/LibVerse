@@ -140,11 +140,12 @@ export const Login = () => {
         />
       ))}
 
-      {/* Main Content */}
-      <div className="min-h-screen flex items-center justify-center px-4 py-8 relative z-10">
+      {/* Main Content: scrolls inside the fixed background, so a tall card is never clipped */}
+      <div className="auth-scroll">
+      <div className="auth-center">
         <motion.div
           ref={cardRef}
-          className="login-card w-full max-w-md px-8 pt-8 pb-5"
+          className="login-card auth-card"
           style={{
             transform: `perspective(1000px) rotateY(${mousePosition.x * 2}deg) rotateX(${-mousePosition.y * 2}deg)`
           }}
@@ -153,20 +154,22 @@ export const Login = () => {
           animate={isInView ? "visible" : "hidden"}
         >
           {/* Branding Section */}
-          <motion.div className="text-center mb-8" variants={itemVariants}>
-            <div className="mb-2 flex justify-center">
-              <LogoMark size="lg" />
+          <motion.div className="auth-brand text-center" variants={itemVariants}>
+            {/* lg on tall screens, md when the viewport is 860px or shorter (CSS picks one) */}
+            <div className="auth-logo">
+              <LogoMark size="lg" className="auth-logo-lg" />
+              <LogoMark size="md" className="auth-logo-md" />
             </div>
-            <h1 className="brand-wordmark text-3xl font-bold mb-2">
+            <h1 className="brand-wordmark auth-wordmark font-bold">
               Lib<span className="brand-wordmark-accent">Verse</span>
             </h1>
             <p className="text-sm text-slate-400 tracking-wide">Smart Library Management System</p>
-            <p className="text-xs text-muted mt-1 tracking-wider">Read • Borrow • Discover</p>
+            <p className="auth-tagline text-xs text-muted mt-1 tracking-wider">Read • Borrow • Discover</p>
           </motion.div>
 
           {/* Welcome Section */}
-          <motion.div className="mb-8" variants={itemVariants}>
-            <h2 className="font-display text-2xl font-bold text-white mb-2">Welcome back</h2>
+          <motion.div className="auth-welcome" variants={itemVariants}>
+            <h2 className="auth-heading font-display font-bold text-white">Welcome back</h2>
             <p className="text-sm text-slate-400">Sign in to continue to your portal</p>
           </motion.div>
 
@@ -183,7 +186,7 @@ export const Login = () => {
           )}
 
           {/* Login Form */}
-          <motion.form onSubmit={handleSubmit} noValidate className="space-y-5" variants={itemVariants}>
+          <motion.form onSubmit={handleSubmit} noValidate className="auth-form" variants={itemVariants}>
             {/* Email Input */}
             <motion.div variants={itemVariants}>
               <label htmlFor="email" className="field-label">Email address</label>
@@ -292,7 +295,7 @@ export const Login = () => {
             </motion.div>
 
             {/* Divider */}
-            <div className="auth-divider my-6" role="separator">or</div>
+            <div className="auth-divider" role="separator">or</div>
 
             {/* Sign Up Link */}
             <motion.p className="text-center text-sm text-slate-400" variants={itemVariants}>
@@ -304,15 +307,13 @@ export const Login = () => {
           </motion.form>
 
           {/* Footer */}
-          <motion.div 
-            className="mt-6"
-            variants={itemVariants}
-          >
+          <motion.div className="auth-footer" variants={itemVariants}>
             <p className="text-xs text-muted text-center">
               Version 1.0 • © 2026 LibVerse
             </p>
           </motion.div>
         </motion.div>
+      </div>
       </div>
     </div>
   );

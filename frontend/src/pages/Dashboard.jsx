@@ -357,18 +357,15 @@ export const Dashboard = () => {
                     else if (available <= 0) label = 'Unavailable';
 
                     return (
-                      <div key={book._id} style={genreAccentStyle(book.genre)} className="book-card !h-auto w-40 flex-shrink-0 snap-start sm:w-44">
+                      <div key={book._id} style={genreAccentStyle(book.genre)} className="book-card !h-auto w-[170px] flex-shrink-0 snap-start">
                         <button
                           type="button"
                           onClick={() => navigate(`/student/books/${book._id}`)}
                           aria-label={`${book.title || 'Book'} details`}
                           className="book-card__frame focus-visible:[outline-offset:-3px]"
                         >
-                          <CoverImage book={book} src={book.imageUrl || book.coverImage} alt="" className="book-card__cover" />
+                          <CoverImage book={book} src={book.imageUrl || book.coverImage} alt="" className="book-card__cover" size="M" backdrop />
                           <span className="book-card__scrim" />
-                          <span className={`glass-pill absolute left-2 top-2 ${available > 0 ? 'glass-pill--success' : 'glass-pill--danger'}`}>
-                            {available > 0 ? `${available} available` : 'Not available'}
-                          </span>
                           {toSafeNumber(book.rating, 0) > 0 && (
                             <span className="glass-pill glass-pill--rating absolute bottom-2 left-2">
                               <span aria-hidden="true">★</span>
@@ -378,17 +375,19 @@ export const Dashboard = () => {
                           )}
                         </button>
                         <div className="flex flex-1 flex-col p-3">
-                          <h3 className="text-sm font-semibold leading-snug text-slate-100 line-clamp-2">{book.title || 'Untitled'}</h3>
+                          <h3 className="book-card__title text-sm font-semibold leading-snug text-slate-100 line-clamp-2">{book.title || 'Untitled'}</h3>
                           <p className="mt-0.5 text-xs text-slate-400 line-clamp-1">{book.author || 'Unknown author'}</p>
-                          {book.genre && (
-                            <div className="mt-2">
-                              <span className="genre-badge">{book.genre}</span>
-                            </div>
-                          )}
+                          <div className="book-card__meta mt-2">
+                            {book.genre && <span className="genre-badge">{book.genre}</span>}
+                            <span className={`book-card__availability ${available > 0 ? 'book-card__availability--yes' : 'book-card__availability--no'}`}>
+                              {available > 0 ? `${available} available` : 'Not available'}
+                            </span>
+                          </div>
                           {reason && <p className="mt-1.5 text-[11px] leading-snug text-cyan-300/90 line-clamp-2">{reason}</p>}
                           <div className="mt-auto pt-3">
                             <Button
                               size="sm"
+                              className="!min-h-[40px]"
                               loading={requestingBookId === book._id}
                               disabled={requested || available <= 0}
                               onClick={() => handleRequestBook(book._id)}

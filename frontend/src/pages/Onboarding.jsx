@@ -89,7 +89,7 @@ export const Onboarding = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#020713] via-[#0a0f1e] to-[#1a1f3a] flex items-center justify-center p-4">
+    <div className="onb-page min-h-screen bg-gradient-to-br from-[#020713] via-[#0a0f1e] to-[#1a1f3a] flex items-center justify-center p-4">
       {/* Animated background particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(20)].map((_, i) => (
@@ -122,15 +122,15 @@ export const Onboarding = () => {
         className="relative z-10 w-full max-w-6xl"
       >
         {/* Header */}
-        <div className="text-center mb-10">
-          <div className="mb-6 flex justify-center">
+        <div className="onb-header text-center mb-10">
+          <div className="onb-logo mb-6 flex justify-center">
             <LogoMark size="md" />
           </div>
           <motion.h1
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="font-display text-4xl sm:text-5xl md:text-6xl font-bold mb-4 text-slate-50"
+            className="onb-title font-display text-4xl sm:text-5xl md:text-6xl font-bold mb-4 text-slate-50"
           >
             Welcome to <span className="brand-wordmark">Lib<span className="brand-wordmark-accent">Verse</span></span>
           </motion.h1>
@@ -138,7 +138,7 @@ export const Onboarding = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="text-lg sm:text-xl text-slate-300 mb-2"
+            className="onb-lead text-lg sm:text-xl text-slate-300 mb-2"
           >
             Let's personalize your library experience.
           </motion.p>
@@ -146,7 +146,7 @@ export const Onboarding = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="text-slate-400"
+            className="onb-sub text-slate-400"
           >
             Choose your favorite genres to receive better book recommendations.
           </motion.p>
@@ -157,9 +157,9 @@ export const Onboarding = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="mb-8"
+          className="onb-genres mb-8"
         >
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="onb-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             {GENRES.map((genre, index) => {
               const isSelected = selectedGenres.includes(genre.name);
               return (
@@ -174,7 +174,7 @@ export const Onboarding = () => {
                   onClick={() => toggleGenre(genre.name)}
                   aria-pressed={isSelected}
                   disabled={!isSelected && selectedGenres.length >= 5}
-                  className={`relative p-4 sm:p-6 rounded-2xl border transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50 ${
+                  className={`onb-tile relative p-4 sm:p-6 rounded-2xl border transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50 ${
                     isSelected
                       ? 'border-cyan-400/70 bg-indigo-500/15 shadow-glow-accent'
                       : 'border-border bg-surface/70 hover:border-indigo-500/40 hover:bg-surface-raised'
@@ -191,7 +191,7 @@ export const Onboarding = () => {
 
                   {/* Content */}
                   <div className="relative z-10">
-                    <div className="text-3xl sm:text-4xl mb-2 sm:mb-3" aria-hidden="true">{genre.icon}</div>
+                    <div className="onb-tile-icon text-3xl sm:text-4xl mb-2 sm:mb-3" aria-hidden="true">{genre.icon}</div>
                     <h3 className="text-sm font-semibold text-slate-200 mb-1">{genre.name}</h3>
 
                     {/* Checkmark for selected */}
@@ -243,7 +243,7 @@ export const Onboarding = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1 }}
-          className="flex flex-col items-center gap-4"
+          className="onb-actions flex flex-col items-center gap-4"
         >
           <p className="text-slate-400 text-sm" aria-live="polite">
             {selectedGenres.length === 0 && 'Select at least 2 genres'}
@@ -257,7 +257,7 @@ export const Onboarding = () => {
             whileTap={{ scale: 0.95 }}
             onClick={handleContinue}
             disabled={selectedGenres.length < 2 || loading}
-            className="btn-primary !min-h-[52px] !px-12 !text-base disabled:cursor-not-allowed"
+            className="onb-continue btn-primary !min-h-[52px] !px-12 !text-base disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center gap-2">

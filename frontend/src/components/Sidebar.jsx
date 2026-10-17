@@ -269,9 +269,9 @@ export const Sidebar = ({ onNavigate }) => {
   const navItems = isAdmin ? adminItems : isLibrarian ? librarianItems : studentItems;
 
   return (
-    <aside className="flex h-full w-64 flex-shrink-0 flex-col justify-between border-r border-border bg-sidebar px-4 py-6 text-slate-100">
+    <aside className="app-sidebar flex h-full w-64 flex-shrink-0 flex-col justify-between border-r border-border bg-sidebar px-4 py-6 text-slate-100">
       <div className="min-h-0 overflow-y-auto">
-        <div className="mb-8 px-3">
+        <div className="sidebar-brand mb-8 px-3">
           <button onClick={handleLogoClick} className="flex cursor-pointer items-center gap-3 rounded-lg text-left">
             <LogoMark size="md" />
             <span>

@@ -13,6 +13,20 @@ export const DEFAULT_BOOK_COVER =
 </svg>
 `);
 
+// covers.openlibrary.org/b/{isbn|id|olid}/<key>-S|M|L.jpg
+const OPEN_LIBRARY_COVER = /^(https?:\/\/covers\.openlibrary\.org\/b\/(?:isbn|id|olid)\/[^/?#]+?)-[SML](\.jpg)((?:[?#].*)?)$/i;
+
+/**
+ * Point an Open Library cover URL at the requested size: 'M' (~180px wide) for cards,
+ * 'L' (full size) for the book details page. Any other URL is returned unchanged.
+ * @param {string} url
+ * @param {'S'|'M'|'L'} size
+ */
+export const withCoverSize = (url, size = 'M') => {
+  if (typeof url !== 'string' || !/^[SML]$/.test(size)) return url;
+  return url.replace(OPEN_LIBRARY_COVER, `$1-${size}$2$3`);
+};
+
 /**
  * Get candidate cover URL list in priority order:
  * 1. imageUrl (reliable persisted source)
