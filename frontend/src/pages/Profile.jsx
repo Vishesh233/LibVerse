@@ -1,35 +1,35 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { toast } from 'react-toastify';
 import { authAPI, transactionsAPI, adminAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { MainLayout } from '../layouts/MainLayout';
-import { Card, Button, Input, Badge, Alert } from '../components/UI';
+import { Card, Button, Input, Badge, PageHeader } from '../components/UI';
 import Avatar from '../components/Avatar';
+import { GENRES as CATALOGUE_GENRES } from '../constants/genres';
 
-const GENRES = [
-  { name: 'Programming', icon: '💻' },
-  { name: 'Java', icon: '☕' },
-  { name: 'Python', icon: '🐍' },
-  { name: 'Web Development', icon: '🌐' },
-  { name: 'AI & Machine Learning', icon: '🤖' },
-  { name: 'Cyber Security', icon: '🔒' },
-  { name: 'Computer Science', icon: '🖥️' },
-  { name: 'Database', icon: '🗄️' },
-  { name: 'Networking', icon: '🔗' },
-  { name: 'Operating Systems', icon: '⚙️' },
-  { name: 'Algorithms', icon: '📊' },
-  { name: 'Technology', icon: '📱' },
-  { name: 'Science', icon: '🔬' },
-  { name: 'Business', icon: '💼' },
-  { name: 'Finance', icon: '💰' },
-  { name: 'Startup', icon: '🚀' },
-  { name: 'History', icon: '📚' },
-  { name: 'Biography', icon: '👤' },
-  { name: 'Psychology', icon: '🧠' },
-  { name: 'Motivation', icon: '⭐' },
-  { name: 'Self Help', icon: '🌱' },
-  { name: 'Fiction', icon: '📖' },
-  { name: 'Non Fiction', icon: '📕' },
-];
+// Same genres as the catalogue; the server rejects anything else
+const GENRE_ICONS = {
+  'Self-Help': '🌱',
+  Programming: '💻',
+  'Computer Science': '🖥️',
+  Finance: '💰',
+  Business: '💼',
+  Fiction: '📖',
+  'Non-Fiction': '📕',
+  History: '📚',
+  Biography: '👤',
+  Science: '🔬',
+  Technology: '📱',
+  Startup: '🚀',
+  Motivation: '⭐',
+  Psychology: '🧠',
+  Database: '🗄️',
+  Networking: '🔗',
+  'Cyber Security': '🔒',
+  'AI & Machine Learning': '🤖',
+};
+
+const GENRES = CATALOGUE_GENRES.map((name) => ({ name, icon: GENRE_ICONS[name] || '📘' }));
 
 const formatJoinedDate = (dateStr) => {
   if (!dateStr) return 'Recently Joined';
@@ -202,16 +202,20 @@ export const Profile = () => {
     }
   };
 
-  // Auto-clear alerts
+  // Show messages as toasts, then clear them so the same message can show again
   useEffect(() => {
-    if (error || success) {
-      const timer = setTimeout(() => {
-        setError(null);
-        setSuccess(null);
-      }, 4000);
-      return () => clearTimeout(timer);
+    if (error) {
+      toast.error(error);
+      setError(null);
     }
-  }, [error, success]);
+  }, [error]);
+
+  useEffect(() => {
+    if (success) {
+      toast.success(success);
+      setSuccess(null);
+    }
+  }, [success]);
 
   if (!isAuthenticated) {
     return (
@@ -241,7 +245,7 @@ export const Profile = () => {
 
       if (response.data.success) {
         updateUser(response.data.user);
-        setSuccess('✅ Profile updated successfully');
+        setSuccess('Profile updated');
         setIsEditingProfile(false);
       }
     } catch (err) {
@@ -276,7 +280,7 @@ export const Profile = () => {
         currentPassword: formData.currentPassword,
         newPassword: formData.newPassword,
       });
-      setSuccess('✅ Password changed successfully');
+      setSuccess('Password changed');
       setFormData((prev) => ({
         ...prev,
         currentPassword: '',
@@ -319,7 +323,7 @@ export const Profile = () => {
 
       if (response.data.success) {
         updateUser(response.data.user);
-        setSuccess('✅ Favorite genres updated successfully');
+        setSuccess('Favorite genres updated');
         setIsEditingGenres(false);
       }
     } catch (err) {
@@ -333,23 +337,11 @@ export const Profile = () => {
 
   return (
     <MainLayout>
-      <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="animate-fade-in-up text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">My Profile</h1>
-          <p className="text-slate-400 mt-1">Manage your account settings and preferences</p>
-        </div>
-
-        {/* Alerts */}
-        {error && (
-          <Alert type="error" message={error} onClose={() => setError(null)} />
-        )}
-        {success && (
-          <Alert type="success" message={success} onClose={() => setSuccess(null)} />
-        )}
+      <div className="max-w-4xl mx-auto space-y-6">
+        <PageHeader title="My profile" subtitle="Manage your account, password and reading preferences." className="!mb-2" />
 
         {/* Centered Profile Section */}
-        <Card className="text-center">
+        <Card variant="glass" className="text-center">
           <div className="flex flex-col items-center">
             {/* Large Avatar */}
             <div className="relative mb-5">
@@ -365,7 +357,9 @@ export const Profile = () => {
                 <button
                   type="button"
                   onClick={handleAvatarClick}
-                  className="absolute bottom-0 right-0 grid h-11 w-11 place-items-center rounded-full bg-card text-blue-300 shadow-lg ring-2 ring-border"
+                  disabled={uploadingAvatar}
+                  aria-label="Change profile photo"
+                  className="absolute bottom-0 right-0 grid h-11 w-11 place-items-center rounded-full bg-card text-cyan-300 shadow-lg ring-2 ring-border disabled:opacity-60"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
                     <path d="M12 5.25a.75.75 0 0 0-.75.75v1.5H9.75A2.25 2.25 0 0 0 7.5 10.5v7.5A2.25 2.25 0 0 0 9.75 20.25h4.5A2.25 2.25 0 0 0 16.5 18V10.5a2.25 2.25 0 0 0-2.25-2.25H12.75V6a.75.75 0 0 0-.75-.75zm-2.25 4.5h5.5a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-.75.75h-4.5a.75.75 0 0 1-.75-.75v-7.5a.75.75 0 0 1 .75-.75zm6.53-4.78l1.72 1.72a.75.75 0 0 1 .22.53v3.03a.75.75 0 0 1-1.5 0V6.97l-1.72-1.72a.75.75 0 0 1 1.06-1.06z" />
@@ -381,8 +375,8 @@ export const Profile = () => {
               />
             </div>
 
-            <h2 className="text-2xl font-bold text-slate-100">{user?.name}</h2>
-            <p className="text-slate-400 mt-1">{user?.email}</p>
+            <h2 className="font-display text-2xl font-bold text-slate-50 break-words">{user?.name}</h2>
+            <p className="text-slate-400 mt-1 break-all">{user?.email}</p>
 
             <div className="mt-3">
               <Badge
@@ -394,13 +388,29 @@ export const Profile = () => {
             </div>
 
             {uploadingAvatar && (
-              <p className="text-xs text-slate-400 mt-3">Uploading avatar...</p>
+              <p className="text-xs text-slate-400 mt-3" aria-live="polite">Uploading photo...</p>
             )}
           </div>
+
+          {user?.role === 'student' && (
+            <dl className="mt-6 grid grid-cols-2 gap-3 border-t border-border pt-6 sm:grid-cols-4">
+              {[
+                { label: 'Requests', value: transactionStats.totalRequests },
+                { label: 'Borrowed now', value: transactionStats.totalIssued },
+                { label: 'Returned', value: transactionStats.totalReturned },
+                { label: 'Fines (₹)', value: transactionStats.totalFines },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-2xl border border-border bg-input/60 p-3">
+                  <dt className="text-xs text-muted">{stat.label}</dt>
+                  <dd className="mt-1 font-display text-2xl font-bold text-slate-100">{stat.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </Card>
 
         {/* Personal Information */}
-        <Card>
+        <Card variant="glass">
           <h2 className="text-xl font-bold mb-6 text-slate-100">Personal Information</h2>
 
           {isEditingProfile ? (
@@ -416,12 +426,13 @@ export const Profile = () => {
               />
 
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">Email</label>
+                <label htmlFor="profile-email" className="field-label">Email</label>
                 <input
+                  id="profile-email"
                   type="email"
                   value={user?.email || ''}
                   disabled
-                  className="w-full px-4 py-3 border border-border rounded-xl bg-input text-slate-500 cursor-not-allowed"
+                  className="input-amo w-full cursor-not-allowed opacity-70"
                 />
               </div>
 
@@ -487,7 +498,7 @@ export const Profile = () => {
         </Card>
 
         {/* Security */}
-        <Card>
+        <Card variant="glass">
           {isEditingPassword ? (
             <>
               <h2 className="text-xl font-bold mb-6 text-slate-100">Security</h2>
@@ -573,7 +584,7 @@ export const Profile = () => {
                 🔒 Change Password
               </Button>
 
-              <p className="text-xs text-slate-500 mt-4">
+              <p className="text-xs text-muted mt-4">
                 💡 Password must be at least 6 characters long.
               </p>
             </>
@@ -581,14 +592,15 @@ export const Profile = () => {
         </Card>
 
         {/* Favorite Genres */}
-        <Card>
-          <div className="flex items-center justify-between mb-6">
+        <Card variant="glass">
+          <div className="flex items-center justify-between gap-3 mb-6">
             <h2 className="text-xl font-bold text-slate-100">Favorite Genres</h2>
             {!isEditingGenres && (
               <Button
                 onClick={() => setIsEditingGenres(true)}
                 variant="secondary"
-                className="px-4 py-2"
+                size="sm"
+                fullWidth={false}
               >
                 ✏️ Edit
               </Button>
@@ -608,14 +620,17 @@ export const Profile = () => {
                   return (
                     <button
                       key={genre.name}
+                      type="button"
                       onClick={() => toggleGenre(genre.name)}
-                      className={`p-3 rounded-xl border-2 transition-all duration-200 ${
+                      aria-pressed={isSelected}
+                      disabled={!isSelected && selectedGenres.length >= 5}
+                      className={`min-h-[72px] p-3 rounded-xl border transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
                         isSelected
-                          ? 'border-indigo-500 bg-indigo-500/20 shadow-lg'
-                          : 'border-border bg-input hover:border-slate-600'
+                          ? 'border-cyan-400/70 bg-indigo-500/15 shadow-glow-accent'
+                          : 'border-border bg-input hover:border-indigo-500/40'
                       }`}
                     >
-                      <div className="text-2xl mb-1">{genre.icon}</div>
+                      <div className="text-2xl mb-1" aria-hidden="true">{genre.icon}</div>
                       <p className="text-xs font-medium text-slate-200">{genre.name}</p>
                     </button>
                   );
@@ -660,13 +675,10 @@ export const Profile = () => {
                   {user.favoriteGenres.map((genre) => {
                     const genreInfo = GENRES.find((g) => g.name === genre);
                     return (
-                      <span
-                        key={genre}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm font-medium"
-                      >
-                        <span>{genreInfo?.icon || '📚'}</span>
+                      <Badge key={genre} variant="primary" size="md" className="!text-sm !font-medium">
+                        <span aria-hidden="true">{genreInfo?.icon || '📚'}</span>
                         {genre}
-                      </span>
+                      </Badge>
                     );
                   })}
                 </div>

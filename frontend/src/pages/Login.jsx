@@ -15,6 +15,8 @@ const PARTICLES = Array.from({ length: 50 }, (_, i) => ({
   opacity: 0.2 + Math.random() * 0.3
 }));
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -42,8 +44,8 @@ const itemVariants = {
 export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -68,13 +70,23 @@ export const Login = () => {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  const validate = () => {
+    const next = {};
+    if (!email.trim()) next.email = 'Enter your email address';
+    else if (!EMAIL_RE.test(email.trim())) next.email = 'Enter a valid email address';
+    if (!password) next.password = 'Enter your password';
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validate()) return;
     setLoading(true);
     setError('');
 
     try {
-      const response = await authAPI.login({ email, password });
+      const response = await authAPI.login({ email: email.trim(), password });
       const { token, user } = response.data;
       login(user, token);
       toast.success('Signed in successfully');
@@ -145,22 +157,23 @@ export const Login = () => {
             <div className="mb-2 flex justify-center">
               <LogoMark size="lg" />
             </div>
-            <h1 className="text-3xl font-extrabold text-white mb-2">
-              <span className="brand-verse">LibVerse</span>
+            <h1 className="brand-wordmark text-3xl font-bold mb-2">
+              Lib<span className="brand-wordmark-accent">Verse</span>
             </h1>
             <p className="text-sm text-slate-400 tracking-wide">Smart Library Management System</p>
-            <p className="text-xs text-slate-500 mt-1 tracking-wider">Read • Borrow • Discover</p>
+            <p className="text-xs text-muted mt-1 tracking-wider">Read • Borrow • Discover</p>
           </motion.div>
 
           {/* Welcome Section */}
           <motion.div className="mb-8" variants={itemVariants}>
-            <h2 className="text-2xl font-bold text-white mb-2">Welcome Back</h2>
+            <h2 className="font-display text-2xl font-bold text-white mb-2">Welcome back</h2>
             <p className="text-sm text-slate-400">Sign in to continue to your portal</p>
           </motion.div>
 
           {/* Error Message */}
           {error && (
             <motion.div
+              role="alert"
               className="mb-4 p-3 bg-rose-500/10 text-rose-200 rounded-xl border border-rose-500/20 text-sm"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -170,22 +183,27 @@ export const Login = () => {
           )}
 
           {/* Login Form */}
-          <motion.form onSubmit={handleSubmit} className="space-y-5" variants={itemVariants}>
+          <motion.form onSubmit={handleSubmit} noValidate className="space-y-5" variants={itemVariants}>
             {/* Email Input */}
-            <motion.div className="login-input-group" variants={itemVariants}>
+            <motion.div variants={itemVariants}>
+              <label htmlFor="email" className="field-label">Email address</label>
               <div className="relative">
                 <input
                   type="email"
                   id="email"
+                  name="email"
+                  autoComplete="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder=" "
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                  }}
+                  placeholder="you@example.com"
                   required
+                  aria-invalid={fieldErrors.email ? true : undefined}
+                  aria-describedby={fieldErrors.email ? 'email-error' : undefined}
                   className="login-input"
                 />
-                <label htmlFor="email" className="login-floating-label">
-                  Email Address
-                </label>
                 <div className="login-input-icon">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
@@ -193,23 +211,29 @@ export const Login = () => {
                   </svg>
                 </div>
               </div>
+              {fieldErrors.email && <p id="email-error" className="field-error">{fieldErrors.email}</p>}
             </motion.div>
 
             {/* Password Input */}
-            <motion.div className="login-input-group" variants={itemVariants}>
+            <motion.div variants={itemVariants}>
+              <label htmlFor="password" className="field-label">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   id="password"
+                  name="password"
+                  autoComplete="current-password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder=" "
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
+                  }}
+                  placeholder="Enter your password"
                   required
-                  className="login-input"
+                  aria-invalid={fieldErrors.password ? true : undefined}
+                  aria-describedby={fieldErrors.password ? 'password-error' : undefined}
+                  className="login-input !pr-11"
                 />
-                <label htmlFor="password" className="login-floating-label">
-                  Password
-                </label>
                 <div className="login-input-icon">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -235,28 +259,13 @@ export const Login = () => {
                   )}
                 </button>
               </div>
+              {fieldErrors.password && <p id="password-error" className="field-error">{fieldErrors.password}</p>}
             </motion.div>
 
-            {/* Remember Me & Forgot Password */}
-            <motion.div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" variants={itemVariants}>
-              <label className="flex items-center gap-2.5 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={() => setRememberMe((prev) => !prev)}
-                  className="login-checkbox"
-                />
-                <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
-                  Remember me
-                </span>
-              </label>
-              <Link 
-                to="/forgot-password" 
-                className="text-sm text-indigo-300 hover:text-white transition-colors"
-              >
-                Forgot password?
-              </Link>
-            </motion.div>
+            {/* There is no self-service reset: librarians and admins reset passwords */}
+            <motion.p className="text-sm text-slate-400" variants={itemVariants}>
+              Forgot your password? Ask your librarian or admin to reset it.
+            </motion.p>
 
             {/* Login Button */}
             <motion.div variants={itemVariants}>
@@ -283,12 +292,7 @@ export const Login = () => {
             </motion.div>
 
             {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute left-1/2 top-0 -translate-x-1/2 bg-[#0B1120] px-3 text-[10px] uppercase tracking-[0.25em] text-slate-500">
-                or
-              </div>
-              <div className="h-px bg-white/10"></div>
-            </div>
+            <div className="auth-divider my-6" role="separator">or</div>
 
             {/* Sign Up Link */}
             <motion.p className="text-center text-sm text-slate-400" variants={itemVariants}>
@@ -304,7 +308,7 @@ export const Login = () => {
             className="mt-6"
             variants={itemVariants}
           >
-            <p className="text-xs text-slate-500 text-center">
+            <p className="text-xs text-muted text-center">
               Version 1.0 • © 2026 LibVerse
             </p>
           </motion.div>

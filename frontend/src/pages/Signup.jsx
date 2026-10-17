@@ -1,10 +1,45 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { authAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
-import { Card, Button, Input } from '../components/UI';
+import { Card, Button } from '../components/UI';
 import { LogoMark } from '../components/LogoMark';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const validateField = (name, value) => {
+  switch (name) {
+    case 'name':
+      if (!value.trim()) return 'Enter your full name';
+      if (value.trim().length < 2) return 'Name must be at least 2 characters';
+      return '';
+    case 'email':
+      if (!value.trim()) return 'Enter your email address';
+      if (!EMAIL_RE.test(value.trim())) return 'Enter a valid email address';
+      return '';
+    case 'password':
+      if (!value) return 'Choose a password';
+      if (value.length < 6) return 'Password must be at least 6 characters';
+      return '';
+    default:
+      return '';
+  }
+};
+
+const REQUIRED_FIELDS = ['name', 'email', 'password'];
+
+const Field = ({ id, label, error, hint, children }) => (
+  <div>
+    <label htmlFor={id} className="field-label">{label}</label>
+    {children}
+    {error ? (
+      <p id={`${id}-error`} className="field-error">{error}</p>
+    ) : (
+      hint && <p className="mt-1.5 text-xs text-muted">{hint}</p>
+    )}
+  </div>
+);
 
 export const Signup = () => {
   const [formData, setFormData] = useState({
@@ -14,31 +49,58 @@ export const Signup = () => {
     phone: '',
     address: '',
   });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (touched[name]) {
+      setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    if (!REQUIRED_FIELDS.includes(name)) return;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const nextErrors = {};
+    REQUIRED_FIELDS.forEach((name) => {
+      const message = validateField(name, formData[name]);
+      if (message) nextErrors[name] = message;
+    });
+    setErrors(nextErrors);
+    setTouched({ name: true, email: true, password: true });
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error('Please fix the highlighted fields');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      const response = await authAPI.signup(formData);
+      const response = await authAPI.signup({
+        ...formData,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+      });
       const { token, user } = response.data;
       login(user, token);
-      toast.success('Account created successfully');
+      toast.success('Account created. Welcome to LibVerse!');
       navigate('/student/dashboard');
     } catch (err) {
-      const message = err.response?.data?.message || 'Signup failed';
+      const message = err.response?.data?.message || 'Signup failed. Please try again.';
       setError(message);
       toast.error(message);
     } finally {
@@ -46,96 +108,99 @@ export const Signup = () => {
     }
   };
 
+  const inputProps = (name) => ({
+    id: `signup-${name}`,
+    name,
+    value: formData[name],
+    onChange: handleChange,
+    onBlur: handleBlur,
+    'aria-invalid': errors[name] ? true : undefined,
+    'aria-describedby': errors[name] ? `signup-${name}-error` : undefined,
+    className: `input-amo w-full ${errors[name] ? '!border-rose-500/70' : ''}`,
+  });
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#02040f] via-[#040813] to-[#0b1534] px-4">
-      <Card className="w-full max-w-md bg-[radial-gradient(circle_at_top,_rgba(125,95,255,0.16),transparent_28%),linear-gradient(180deg,#050816_0%,#09112f_100%)] text-slate-100 border border-white/10 shadow-[0_50px_120px_rgba(8,12,34,0.55)]">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#02040f] via-[#040813] to-[#0b1534] px-4 py-10">
+      <Card variant="glass" className="w-full max-w-md text-slate-100 shadow-[0_50px_120px_rgba(8,12,34,0.55)]">
         <div className="pb-6 border-b border-white/10 mb-6 text-center">
-          <div className="inline-flex items-center justify-center gap-4 rounded-[30px] bg-gradient-to-r from-[#4b3cff] via-[#6d5cff] to-[#8f75ff] px-6 py-4 shadow-[0_36px_120px_rgba(110,79,255,0.18)] mb-6">
+          <div className="mb-5 inline-flex items-center gap-3">
             <LogoMark size="md" />
             <div className="text-left">
-              <p className="text-xl font-extrabold text-white">
-                Lib<span className="brand-verse">Verse</span>
+              <p className="brand-wordmark text-2xl font-bold leading-none">
+                Lib<span className="brand-wordmark-accent">Verse</span>
               </p>
-              <p className="text-[11px] uppercase tracking-[0.28em] text-slate-200/80">Library Management System</p>
+              <p className="mt-1 text-[11px] uppercase tracking-[0.24em] text-slate-400">Library Management System</p>
             </div>
           </div>
-          <h1 className="text-3xl font-extrabold text-white">Create Account</h1>
+          <h1 className="font-display text-3xl font-bold text-white">Create account</h1>
           <p className="text-sm text-slate-400 mt-2">Join the library and start exploring.</p>
         </div>
 
         {error && (
-          <div className="mb-4 p-4 bg-rose-500/10 text-rose-300 rounded-xl border border-rose-500/30">
+          <div role="alert" className="mb-5 p-3 bg-rose-500/10 text-rose-200 rounded-xl border border-rose-500/30 text-sm">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Full Name"
-            value={formData.name}
-            onChange={handleChange}
-            name="name"
-            placeholder="Enter your full name"
-            required
-          />
-          <Input
-            label="Email Address"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            name="email"
-            placeholder="you@example.com"
-            required
-          />
-          <Input
-            label="Password"
-            type="password"
-            value={formData.password}
-            onChange={handleChange}
-            name="password"
-            placeholder="••••••••"
-            required
-          />
-          <Input
-            label="Phone (Optional)"
-            value={formData.phone}
-            onChange={handleChange}
-            name="phone"
-            placeholder="+91 98765 43210"
-          />
-          <Input
-            label="Address (Optional)"
-            value={formData.address}
-            onChange={handleChange}
-            name="address"
-            placeholder="Enter your address"
-          />
+        <form onSubmit={handleSubmit} noValidate className="space-y-5">
+          <Field id="signup-name" label="Full name" error={errors.name}>
+            <input {...inputProps('name')} type="text" autoComplete="name" placeholder="Enter your full name" required />
+          </Field>
 
-          <Button
-            type="submit"
-            disabled={loading}
-            variant="primary"
-            className="w-full text-sm rounded-xl py-4"
-          >
-            {loading ? 'Creating Account...' : (
-              <span className="flex items-center justify-center gap-2">
-                Sign Up <span className="text-lg">→</span>
-              </span>
-            )}
+          <Field id="signup-email" label="Email address" error={errors.email}>
+            <input {...inputProps('email')} type="email" autoComplete="email" placeholder="you@example.com" required />
+          </Field>
+
+          <Field id="signup-password" label="Password" error={errors.password} hint="At least 6 characters.">
+            <div className="relative">
+              <input
+                {...inputProps('password')}
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                placeholder="Choose a password"
+                required
+                className={`${inputProps('password').className} !pr-12`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute right-1 top-1/2 -translate-y-1/2 grid h-10 w-10 place-items-center rounded-lg text-slate-400 hover:text-slate-100"
+              >
+                {showPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </Field>
+
+          <Field id="signup-phone" label="Phone (optional)">
+            <input {...inputProps('phone')} type="tel" autoComplete="tel" placeholder="+91 98765 43210" />
+          </Field>
+
+          <Field id="signup-address" label="Address (optional)">
+            <input {...inputProps('address')} type="text" autoComplete="street-address" placeholder="Enter your address" />
+          </Field>
+
+          <Button type="submit" loading={loading} variant="primary" size="lg">
+            {loading ? 'Creating account...' : 'Create account'}
           </Button>
 
-          <div className="relative mt-2">
-            <div className="absolute left-1/2 top-0 -translate-x-1/2 bg-[#09112f] px-3 text-[10px] uppercase tracking-[0.28em] text-slate-500">
-              or
-            </div>
-            <div className="h-px bg-white/10 mt-3"></div>
-          </div>
+          <div className="auth-divider" role="separator">or</div>
 
           <p className="text-center text-sm text-slate-400">
             Already have an account?{' '}
-            <a href="/login" className="text-indigo-300 hover:text-white font-medium">
-              Sign In
-            </a>
+            <Link to="/login" className="text-indigo-300 hover:text-white font-medium">
+              Sign in
+            </Link>
           </p>
         </form>
       </Card>

@@ -798,6 +798,158 @@ textarea:focus-visible {
 .glow-primary { box-shadow: var(--shadow-glow); }
 .glow-accent { box-shadow: var(--shadow-glow-accent); }
 
+/* ---------------------------
+   Book cards: 1px genre-accent gradient border + soft glow, glass pills on the cover.
+   --genre-accent is an "r g b" triplet set inline via genreAccentStyle() (constants/genres.js).
+---------------------------- */
+.book-card {
+  --genre-accent: 99 102 241;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 0 22px -8px rgb(var(--genre-accent) / 0.22), 0 18px 48px rgba(0, 0, 0, 0.3);
+  transition: transform 250ms ease, box-shadow 250ms ease;
+}
+/* Gradient border: masked to a 1px ring so the glass fill stays transparent. 0.8 x 0.56 = ~45% at the top-left corner */
+.book-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(160deg, rgb(var(--genre-accent) / 0.8), rgb(var(--genre-accent) / 0.2) 45%, transparent 80%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.56;
+  pointer-events: none;
+  transition: opacity 250ms ease;
+}
+.book-card:hover,
+.book-card:focus-within {
+  transform: translateY(-4px);
+  box-shadow: 0 0 34px -6px rgb(var(--genre-accent) / 0.42), 0 24px 56px rgba(0, 0, 0, 0.38);
+}
+.book-card:hover::before,
+.book-card:focus-within::before {
+  opacity: 1;
+}
+.book-card:focus-visible {
+  outline: 2px solid rgb(var(--genre-accent));
+  outline-offset: 3px;
+}
+
+.book-card__frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  background: var(--input);
+}
+.book-card__cover {
+  transition: transform 500ms ease;
+}
+.book-card:hover .book-card__cover,
+.book-card:focus-within .book-card__cover {
+  transform: scale(1.03);
+}
+/* Bottom scrim so the rating pill stays readable on light covers */
+.book-card__scrim {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 45%;
+  background: linear-gradient(to top, rgba(2, 6, 23, 0.75), rgba(2, 6, 23, 0.25) 55%, transparent);
+  pointer-events: none;
+}
+
+/* Dark glass pill: text >= 5.7:1 even over a pure white cover */
+.glass-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  background: rgb(2 6 23 / 0.78);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.glass-pill--success { color: #6EE7B7; }
+.glass-pill--danger { color: #FDA4AF; }
+.glass-pill--rating { color: #FCD34D; }
+
+.glass-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  color: #F1F5F9;
+  background: rgb(2 6 23 / 0.78);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: color 200ms ease, border-color 200ms ease;
+}
+.glass-icon-btn:hover,
+.glass-icon-btn[aria-pressed='true'] {
+  color: #FDA4AF;
+}
+.glass-icon-btn[aria-pressed='true'] {
+  border-color: rgb(253 164 175 / 0.45);
+}
+.glass-icon-btn:focus-visible {
+  outline: 2px solid #FDA4AF;
+  outline-offset: 2px;
+}
+.glass-icon-btn:disabled {
+  opacity: 0.6;
+}
+
+/* Genre badge tinted with the genre accent: text is the accent lightened 20% (>= 6.1:1 on the tint) */
+.genre-badge {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  color: rgb(var(--genre-accent));
+  color: color-mix(in srgb, rgb(var(--genre-accent)) 80%, white);
+  background: rgb(var(--genre-accent) / 0.14);
+  border: 1px solid rgb(var(--genre-accent) / 0.35);
+}
+
+/* Reduced motion: no lift or zoom, keep the border / glow colour change */
+@media (prefers-reduced-motion: reduce) {
+  .book-card {
+    transition: box-shadow 250ms ease;
+  }
+  .book-card:hover,
+  .book-card:focus-within,
+  .book-card:hover .book-card__cover,
+  .book-card:focus-within .book-card__cover {
+    transform: none;
+  }
+}
+
 /* Display font for page titles and big numbers */
 .font-display {
   font-family: var(--font-display);
@@ -1425,4 +1577,78 @@ body.modal-open {
   animation: particleRise var(--particle-duration, 9s) linear infinite;
   animation-delay: var(--particle-delay, 0s);
   pointer-events: none;
+}
+/* ---------------------------
+   Auth + forms (UI Phase 2A)
+---------------------------- */
+/* Chrome autofill: keep the dark input look instead of the pale yellow/blue fill */
+.input-amo:-webkit-autofill,
+.input-amo:-webkit-autofill:hover,
+.input-amo:-webkit-autofill:focus,
+.login-input:-webkit-autofill,
+.login-input:-webkit-autofill:hover,
+.login-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--text-primary);
+  -webkit-box-shadow: 0 0 0 1000px var(--input) inset;
+  box-shadow: 0 0 0 1000px var(--input) inset;
+  transition: background-color 9999s ease-out 0s;
+}
+.input-amo:-webkit-autofill:focus,
+.login-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--input) inset, 0 0 0 3px rgba(34, 211, 238, 0.35);
+  box-shadow: 0 0 0 1000px var(--input) inset, 0 0 0 3px rgba(34, 211, 238, 0.35);
+}
+.input-amo,
+.login-input {
+  caret-color: var(--accent);
+}
+.login-input:focus-visible {
+  border-color: rgba(34, 211, 238, 0.6);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35);
+}
+.login-input[aria-invalid="true"] {
+  border-color: rgba(244, 63, 94, 0.7);
+}
+
+/* Label above the field (replaces the floating label that overlapped the border) */
+.field-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #E2E8F0;
+}
+.field-error {
+  margin-top: 0.4rem;
+  font-size: 0.8125rem;
+  color: #FDA4AF;
+}
+
+/* "OR" divider: lines on both sides, so the label never needs a background */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Wordmark: solid light text with a cyan accent that matches the logo mark */
+.brand-wordmark {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+.brand-wordmark-accent {
+  color: #67E8F9;
 }

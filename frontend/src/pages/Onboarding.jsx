@@ -95,7 +95,7 @@ export const Onboarding = () => {
         {[...Array(20)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-2 h-2 bg-purple-500/20 rounded-full"
+            className="absolute w-2 h-2 bg-indigo-400/20 rounded-full"
             initial={{
               x: Math.random() * 100 + '%',
               y: Math.random() * 100 + '%',
@@ -122,7 +122,7 @@ export const Onboarding = () => {
         className="relative z-10 w-full max-w-6xl"
       >
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <div className="mb-6 flex justify-center">
             <LogoMark size="md" />
           </div>
@@ -130,15 +130,15 @@ export const Onboarding = () => {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent"
+            className="font-display text-4xl sm:text-5xl md:text-6xl font-bold mb-4 text-slate-50"
           >
-            Welcome to LibVerse 👋
+            Welcome to <span className="brand-wordmark">Lib<span className="brand-wordmark-accent">Verse</span></span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="text-xl text-slate-300 mb-2"
+            className="text-lg sm:text-xl text-slate-300 mb-2"
           >
             Let's personalize your library experience.
           </motion.p>
@@ -159,7 +159,7 @@ export const Onboarding = () => {
           transition={{ delay: 0.6 }}
           className="mb-8"
         >
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             {GENRES.map((genre, index) => {
               const isSelected = selectedGenres.includes(genre.name);
               return (
@@ -170,25 +170,28 @@ export const Onboarding = () => {
                   transition={{ delay: 0.7 + index * 0.03 }}
                   whileHover={{ scale: 1.05, y: -5 }}
                   whileTap={{ scale: 0.95 }}
+                  type="button"
                   onClick={() => toggleGenre(genre.name)}
-                  className={`relative p-6 rounded-2xl border-2 transition-all duration-300 ${
+                  aria-pressed={isSelected}
+                  disabled={!isSelected && selectedGenres.length >= 5}
+                  className={`relative p-4 sm:p-6 rounded-2xl border transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50 ${
                     isSelected
-                      ? 'border-purple-500 bg-gradient-to-br from-purple-500/20 to-pink-500/20 shadow-lg shadow-purple-500/50'
-                      : 'border-slate-700 bg-slate-800/50 hover:border-slate-600 hover:bg-slate-800/80'
+                      ? 'border-cyan-400/70 bg-indigo-500/15 shadow-glow-accent'
+                      : 'border-border bg-surface/70 hover:border-indigo-500/40 hover:bg-surface-raised'
                   }`}
                 >
                   {/* Glow effect for selected */}
                   {isSelected && (
                     <motion.div
                       layoutId="glow"
-                      className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl blur-xl"
+                      className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-cyan-400/10 rounded-2xl blur-xl"
                       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     />
                   )}
 
                   {/* Content */}
                   <div className="relative z-10">
-                    <div className="text-4xl mb-3">{genre.icon}</div>
+                    <div className="text-3xl sm:text-4xl mb-2 sm:mb-3" aria-hidden="true">{genre.icon}</div>
                     <h3 className="text-sm font-semibold text-slate-200 mb-1">{genre.name}</h3>
 
                     {/* Checkmark for selected */}
@@ -198,7 +201,7 @@ export const Onboarding = () => {
                           initial={{ scale: 0, rotate: -180 }}
                           animate={{ scale: 1, rotate: 0 }}
                           exit={{ scale: 0, rotate: 180 }}
-                          className="absolute top-2 right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center"
+                          className="absolute top-2 right-2 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center"
                         >
                           <svg
                             className="w-4 h-4 text-white"
@@ -228,7 +231,8 @@ export const Onboarding = () => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-center"
+            role="alert"
+            className="mb-6 p-4 bg-rose-500/10 border border-rose-500/40 rounded-xl text-rose-200 text-center"
           >
             {error}
           </motion.div>
@@ -241,7 +245,7 @@ export const Onboarding = () => {
           transition={{ delay: 1 }}
           className="flex flex-col items-center gap-4"
         >
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-400 text-sm" aria-live="polite">
             {selectedGenres.length === 0 && 'Select at least 2 genres'}
             {selectedGenres.length === 1 && 'Select 1 more genre'}
             {selectedGenres.length >= 2 && selectedGenres.length < 5 && `${selectedGenres.length} genres selected`}
@@ -253,11 +257,7 @@ export const Onboarding = () => {
             whileTap={{ scale: 0.95 }}
             onClick={handleContinue}
             disabled={selectedGenres.length < 2 || loading}
-            className={`px-12 py-4 rounded-xl font-semibold text-lg transition-all duration-300 ${
-              selectedGenres.length >= 2
-                ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/50 cursor-pointer'
-                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
-            }`}
+            className="btn-primary !min-h-[52px] !px-12 !text-base disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center gap-2">

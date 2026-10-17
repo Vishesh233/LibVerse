@@ -41,15 +41,12 @@ export const useWishlist = () => {
   const addToWishlist = useCallback(
     async (book) => {
       if (!isAuthenticated || !user) return;
-      try {
-        await wishlistAPI.addToWishlist(book._id);
-        setWishlist((current) => {
-          if (current.some((item) => item._id === book._id)) return current;
-          return [...current, book];
-        });
-      } catch (err) {
-        // ignore
-      }
+      // Errors propagate so the page can show the server's message
+      await wishlistAPI.addToWishlist(book._id);
+      setWishlist((current) => {
+        if (current.some((item) => item._id === book._id)) return current;
+        return [...current, book];
+      });
     },
     [isAuthenticated, user]
   );
@@ -57,25 +54,23 @@ export const useWishlist = () => {
   const removeFromWishlist = useCallback(
     async (bookId) => {
       if (!isAuthenticated || !user) return;
-      try {
-        await wishlistAPI.removeFromWishlist(bookId);
-        setWishlist((current) => current.filter((item) => item._id !== bookId));
-      } catch (err) {
-        // ignore
-      }
+      await wishlistAPI.removeFromWishlist(bookId);
+      setWishlist((current) => current.filter((item) => item._id !== bookId));
     },
     [isAuthenticated, user]
   );
 
+  // Resolves to 'added' or 'removed'; rejects with the API error
   const toggleWishlist = useCallback(
     async (book) => {
-      if (!isAuthenticated || !user) return;
+      if (!isAuthenticated || !user) return null;
       const isCurrentlyWishlisted = wishlist.some((item) => item._id === book._id);
       if (isCurrentlyWishlisted) {
         await removeFromWishlist(book._id);
-      } else {
-        await addToWishlist(book);
+        return 'removed';
       }
+      await addToWishlist(book);
+      return 'added';
     },
     [isAuthenticated, user, wishlist, addToWishlist, removeFromWishlist]
   );

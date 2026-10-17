@@ -1,27 +1,53 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { booksAPI, transactionsAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
 import { BookCard } from '../components/BookCard';
-import { EmptyState } from '../components/UI';
-import { Alert } from '../components/Alert';
-import { Loader, SkeletonCard } from '../components/Loader';
+import { Button, Card, EmptyState, PageHeader, Skeleton } from '../components/UI';
 import { Pagination } from '../components/Pagination';
 import { useAuth } from '../hooks/useAuth';
 import { useDebounce } from '../hooks/useDebounce';
 import { useWishlist } from '../hooks/useWishlist';
+import { useActiveBookIds } from '../hooks/useActiveBookIds';
 import { GENRES } from '../constants/genres';
+
+const PAGE_SIZE = 12;
+
+const GridSkeleton = ({ count = PAGE_SIZE }) => (
+  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5" aria-busy="true" aria-label="Loading books">
+    {Array.from({ length: count }).map((_, i) => (
+      <div key={i} className="card-glass !p-0 overflow-hidden">
+        <Skeleton className="aspect-[2/3] w-full !rounded-none" />
+        <div className="space-y-2 p-3 sm:p-4">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-3 w-2/3" />
+          <Skeleton className="h-9 w-full" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const FilterField = ({ id, label, children, className = '' }) => (
+  <div className={`min-w-0 ${className}`}>
+    <label htmlFor={id} className="field-label !mb-1.5 !text-xs !text-slate-400">{label}</label>
+    {children}
+  </div>
+);
 
 export const Books = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const [books, setBooks] = useState([]);
+  const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [issuingId, setIssuingId] = useState(null);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const [wishlistBusyId, setWishlistBusyId] = useState(null);
+  const [loadError, setLoadError] = useState(null);
 
   const [searchTitle, setSearchTitle] = useState('');
   const [searchAuthor, setSearchAuthor] = useState('');
@@ -47,24 +73,19 @@ export const Books = () => {
     }
   }, [searchTitle, searchAuthor, genre, rating, availability, page, navigate, location.pathname]);
 
-  // Tracks whether the first load has completed. After that, we keep the
-  // existing content visible while refetching (no skeleton flash on filters).
+  // After the first load, keep the current grid visible while refetching (no skeleton flash).
   const hasLoadedRef = useRef(false);
 
   const debouncedTitle = useDebounce(searchTitle, 300);
   const debouncedAuthor = useDebounce(searchAuthor, 300);
 
-  const { isStudent, isAdmin, isLibrarian } = useAuth();
+  const { isStudent } = useAuth();
   const { toggleWishlist, isWishlisted } = useWishlist();
-  const manageBooksPath = isAdmin ? '/admin/books' : isLibrarian ? '/librarian/books' : null;
+  const { hasActive, markRequested } = useActiveBookIds();
 
   const fetchBooks = useCallback(async () => {
-    // Only show the skeleton loader on the initial load. Subsequent fetches
-    // (filters, search, pagination, re-issue) keep the existing grid visible
-    // to avoid flickering.
-    if (!hasLoadedRef.current) {
-      setLoading(true);
-    }
+    if (!hasLoadedRef.current) setLoading(true);
+    else setRefreshing(true);
     try {
       const res = await booksAPI.getBooks({
         title: debouncedTitle,
@@ -73,16 +94,21 @@ export const Books = () => {
         rating,
         availability,
         page,
-        limit: 12
+        limit: PAGE_SIZE,
       });
 
       setBooks(res.data.books || []);
+      setTotal(res.data.total ?? (res.data.books || []).length);
       setTotalPages(res.data.pages || 1);
+      setLoadError(null);
       hasLoadedRef.current = true;
     } catch (err) {
-      setError('Failed to load books');
+      const message = err.response?.data?.message || 'Failed to load books';
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [debouncedTitle, debouncedAuthor, genre, rating, availability, page]);
 
@@ -93,37 +119,48 @@ export const Books = () => {
   // Restore filters from URL search params when they change (e.g. back button).
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const g = params.get('genre') || '';
-    const r = params.get('rating') || '';
-    const a = params.get('availability') || '';
-    const p = params.get('page') || '1';
-    const t = params.get('title') || '';
-    const au = params.get('author') || '';
-    setGenre(g);
-    setRating(r);
-    setAvailability(a);
-    setPage(Number(p));
-    setSearchTitle(t);
-    setSearchAuthor(au);
+    setGenre(params.get('genre') || '');
+    setRating(params.get('rating') || '');
+    setAvailability(params.get('availability') || '');
+    setPage(Math.max(1, Number(params.get('page')) || 1));
+    setSearchTitle(params.get('title') || '');
+    setSearchAuthor(params.get('author') || '');
   }, [location.search]);
+
+  // Any filter change goes back to page 1
+  const updateFilter = (setter) => (e) => {
+    setter(e.target.value);
+    setPage(1);
+  };
 
   const handleIssueBook = useCallback(async (bookId) => {
     setIssuingId(bookId);
     try {
       await transactionsAPI.requestIssueBook({ bookId });
-      setSuccess('Book request submitted!');
+      markRequested(bookId);
+      toast.success('Request sent. A librarian will review it shortly.');
       fetchBooks();
-    } catch {
-      setError('Request failed');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Request failed');
     } finally {
       setIssuingId(null);
     }
-  }, [fetchBooks]);
+  }, [fetchBooks, markRequested]);
 
-  const handleWishlistToggle = useCallback((book) => {
-    toggleWishlist(book);
-    setSuccess(isWishlisted(book._id) ? 'Removed from wishlist' : 'Added to wishlist');
-  }, [toggleWishlist, isWishlisted]);
+  const handleWishlistToggle = useCallback(async (book) => {
+    setWishlistBusyId(book._id);
+    try {
+      const result = await toggleWishlist(book);
+      if (result === 'added') toast.success('Added to your wishlist');
+      if (result === 'removed') toast.info('Removed from your wishlist');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not update your wishlist');
+    } finally {
+      setWishlistBusyId(null);
+    }
+  }, [toggleWishlist]);
+
+  const hasFilters = !!(searchTitle || searchAuthor || genre || rating || availability);
 
   const handleClearFilters = useCallback(() => {
     setSearchTitle('');
@@ -134,162 +171,120 @@ export const Books = () => {
     setPage(1);
   }, []);
 
+  const actionFor = (book) => {
+    if (issuingId === book._id) return { label: 'Requesting...', disabled: true };
+    if (hasActive(book._id)) return { label: 'Already requested', disabled: true };
+    if ((Number(book.availableCopies) || 0) <= 0) return { label: 'Not available', disabled: true };
+    return { label: 'Request book', disabled: !isStudent };
+  };
+
   return (
     <MainLayout>
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">📖 Browse Books</h1>
-          <p className="mt-1 text-sm text-slate-400">Discover your next great read from our collection</p>
-        </div>
+      <div className="mx-auto max-w-7xl">
+        <PageHeader
+          title="Browse books"
+          subtitle={loading ? 'Loading the catalogue...' : `${total} book${total === 1 ? '' : 's'} ${hasFilters ? 'match your filters' : 'in the collection'}`}
+        />
 
-        {error && <Alert type="error" message={error} />}
-        {success && <Alert type="success" message={success} />}
-
-        {/* Filter Section */}
-        <div className="card p-4 sm:p-5 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Search by Title
-              </label>
+        {/* Filters: wrap on small screens */}
+        <Card variant="glass" className="mb-6 !p-4 sm:!p-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)_repeat(3,minmax(0,1fr))_auto] lg:items-end">
+            <FilterField id="filter-title" label="Title">
               <input
-                type="text"
+                id="filter-title"
+                type="search"
                 value={searchTitle}
-                onChange={(e) => setSearchTitle(e.target.value)}
-                placeholder="Book title..."
-                className="w-full input-amo"
+                onChange={updateFilter(setSearchTitle)}
+                placeholder="Search by title"
+                className="input-amo w-full"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Search by Author
-              </label>
+            </FilterField>
+            <FilterField id="filter-author" label="Author">
               <input
-                type="text"
+                id="filter-author"
+                type="search"
                 value={searchAuthor}
-                onChange={(e) => setSearchAuthor(e.target.value)}
-                placeholder="Author name..."
-                className="w-full input-amo"
+                onChange={updateFilter(setSearchAuthor)}
+                placeholder="Search by author"
+                className="input-amo w-full"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Filter by Genre
-              </label>
-              <select
-                value={genre}
-                onChange={(e) => setGenre(e.target.value)}
-                className="w-full input-amo"
-              >
-                <option value="">All Genres</option>
+            </FilterField>
+            <FilterField id="filter-genre" label="Genre">
+              <select id="filter-genre" value={genre} onChange={updateFilter(setGenre)} className="input-amo w-full">
+                <option value="">All genres</option>
                 {GENRES.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
+                  <option key={g} value={g}>{g}</option>
                 ))}
               </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Minimum Rating
-              </label>
-              <select
-                value={rating}
-                onChange={(e) => setRating(e.target.value)}
-                className="w-full input-amo"
-              >
-                <option value="">Any Rating</option>
-                <option value="4">⭐ 4+</option>
-                <option value="3">⭐ 3+</option>
-                <option value="2">⭐ 2+</option>
-                <option value="1">⭐ 1+</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Availability
-              </label>
-              <select
-                value={availability}
-                onChange={(e) => setAvailability(e.target.value)}
-                className="w-full input-amo"
-              >
+            </FilterField>
+            <FilterField id="filter-availability" label="Availability">
+              <select id="filter-availability" value={availability} onChange={updateFilter(setAvailability)} className="input-amo w-full">
                 <option value="">All</option>
-                <option value="available">Available</option>
+                <option value="available">Available now</option>
                 <option value="unavailable">Unavailable</option>
               </select>
-            </div>
-
-            <div>
-              <button
-                onClick={handleClearFilters}
-                className="mt-7 w-full btn-warning"
-              >
-                Clear Filters
-              </button>
-            </div>
+            </FilterField>
+            <FilterField id="filter-rating" label="Rating">
+              <select id="filter-rating" value={rating} onChange={updateFilter(setRating)} className="input-amo w-full">
+                <option value="">Any rating</option>
+                <option value="4">4★ and up</option>
+                <option value="3">3★ and up</option>
+                <option value="2">2★ and up</option>
+                <option value="1">1★ and up</option>
+              </select>
+            </FilterField>
+            <Button variant="ghost" fullWidth={false} onClick={handleClearFilters} disabled={!hasFilters} className="w-full lg:w-auto">
+              Clear
+            </Button>
           </div>
-        </div>
+        </Card>
 
-        {/* Show skeleton only on the very first load. When books already exist
-            (filter/search/pagination changes), keep the current grid stable. */}
         {loading && books.length === 0 ? (
-          <SkeletonCard count={12} />
+          <GridSkeleton />
+        ) : loadError && books.length === 0 ? (
+          <EmptyState
+            icon="⚠️"
+            title="Couldn't load the catalogue"
+            message={loadError}
+            action={<Button fullWidth={false} onClick={fetchBooks}>Try again</Button>}
+          />
         ) : books.length === 0 ? (
-          <div className="py-16">
-            <EmptyState
-              title="No Books Found"
-              message="No books match your current search or filters. Try adjusting them."
-            />
-          </div>
+          <EmptyState
+            icon="🔍"
+            title="No books found"
+            message={hasFilters ? 'No books match these filters. Try a broader search.' : 'The catalogue is empty right now.'}
+            action={hasFilters ? <Button fullWidth={false} variant="secondary" onClick={handleClearFilters}>Clear filters</Button> : null}
+          />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {books.map((book) => (
-              <BookCard
-                key={book._id}
-                book={book}
-                onCardClick={() =>
-                  navigate(`/student/books/${book._id}`, {
-                    state: { genre, searchTitle, searchAuthor, rating, availability, page },
-                  })
-                }
-                onActionClick={() => handleIssueBook(book._id)}
-                onWishlistClick={handleWishlistToggle}
-                isWishlisted={isWishlisted(book._id)}
-                isLoading={issuingId === book._id}
-                actionLabel={
-                  issuingId === book._id
-                    ? 'Requesting...'
-                    : book.availableCopies > 0
-                    ? 'Request Book'
-                    : 'Unavailable'
-                }
-                actionDisabled={!isStudent || book.availableCopies === 0}
-              />
-            ))}
+          <div
+            className={`grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5 transition-opacity ${refreshing ? 'opacity-60' : ''}`}
+            aria-busy={refreshing || undefined}
+          >
+            {books.map((book) => {
+              const action = actionFor(book);
+              return (
+                <BookCard
+                  key={book._id}
+                  book={book}
+                  onCardClick={() =>
+                    navigate(`/student/books/${book._id}`, {
+                      state: { genre, searchTitle, searchAuthor, rating, availability, page },
+                    })
+                  }
+                  onActionClick={() => handleIssueBook(book._id)}
+                  onWishlistClick={isStudent ? handleWishlistToggle : undefined}
+                  isWishlisted={isWishlisted(book._id)}
+                  wishlistBusy={wishlistBusyId === book._id}
+                  isLoading={issuingId === book._id}
+                  actionLabel={action.label}
+                  actionDisabled={action.disabled}
+                />
+              );
+            })}
           </div>
         )}
 
-        {manageBooksPath && (
-          <div className="flex justify-center mt-8">
-            <button
-              onClick={() => navigate(manageBooksPath)}
-              className="px-5 py-2.5 rounded-full bg-gradient-to-r from-violet-500 to-blue-500 text-white font-semibold shadow-lg hover:shadow-xl transition hover:opacity-95"
-            >
-              Show All Books
-            </button>
-          </div>
-        )}
-
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-        />
+        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
     </MainLayout>
   );
