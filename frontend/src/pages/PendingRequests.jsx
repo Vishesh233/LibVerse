@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import { useSearchParams } from 'react-router-dom';
 import { transactionsAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
 import { Card, Badge, Button, EmptyState, PageHeader } from '../components/UI';
@@ -15,7 +16,13 @@ const TABS = [
 ];
 
 export const PendingRequests = () => {
-  const [activeTab, setActiveTab] = useState('issue');
+  // ?tab=issue|return|payment (notification links open the matching tab)
+  const [searchParams] = useSearchParams();
+  const linkedTab = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(() => (TABS.some((t) => t.key === linkedTab) ? linkedTab : 'issue'));
+  useEffect(() => {
+    if (TABS.some((t) => t.key === linkedTab)) setActiveTab(linkedTab);
+  }, [linkedTab]);
   const [lists, setLists] = useState({ issue: [], return: [], payment: [] });
   const [loading, setLoading] = useState(true);
   const [actioningId, setActioningId] = useState(null);

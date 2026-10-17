@@ -1,8 +1,8 @@
 const User = require('../models/User');
 const Book = require('../models/Book');
 const Transaction = require('../models/Transaction');
-const Notification = require('../models/Notification');
-const { createNotification } = require('./notificationController');
+const { getUserNotifications, notifyStudent } = require('./notificationController');
+const { runReminders } = require('../jobs/reminders');
 const { calculateFine, getDaysOverdue, startOfDay } = require('../utils/fineCalculator');
 const { takeBookCopy, returnBookCopy } = require('../utils/bookStock');
 const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
@@ -567,37 +567,19 @@ exports.createUser = async (req, res, next) => {
  */
 exports.sendOverdueReminders = async (req, res, next) => {
   try {
-    const now = new Date();
-    const overdueTxs = await Transaction.find({
-      status: 'issued',
-      dueDate: { $lt: startOfDay(now) },
-    }).populate('userId bookId');
-
-    let count = 0;
-    for (const tx of overdueTxs) {
-      if (tx.userId && tx.bookId && tx.userId._id) {
-        const overdueDays = getDaysOverdue(tx.dueDate, now);
-        const fine = calculateFine(tx.dueDate, now);
-
-        try {
-          await createNotification(
-            tx.userId._id,
-            'student',
-            'BOOK_OVERDUE',
-            'Overdue Book Reminder',
-            `Your book "${tx.bookId.title}" is ${overdueDays} day(s) overdue. Current estimated fine: ₹${fine}. Please return it at the library.`
-          );
-          count++;
-        } catch (notifError) {
-          console.error(`Failed to create notification for user ${tx.userId._id}:`, notifError);
-        }
-      }
-    }
+    // Same logic as the hourly job, minus the once-per-day lock. Each loan is still only reminded
+    // when it is due (due soon once, overdue at most every 7 days), so repeated clicks send nothing new.
+    const result = await runReminders({ force: true });
+    const count = result.dueSoon + result.overdue;
 
     res.status(200).json({
       success: true,
-      message: `Overdue reminder notifications sent successfully to ${count} student(s)!`,
+      message: count
+        ? `Sent ${count} reminder${count === 1 ? '' : 's'} (${result.dueSoon} due soon, ${result.overdue} overdue).`
+        : 'No reminders due right now. Every loan has already been reminded.',
       count,
+      dueSoon: result.dueSoon,
+      overdue: result.overdue,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -680,14 +662,13 @@ exports.adminIssueBook = async (req, res, next) => {
 
     // Create notification for the student (non-fatal - never fails the main operation)
     try {
-      await createNotification(
-        user._id,
-        'student',
-        'BOOK_ISSUED',
-        'Book Issued',
-        `The book "${book.title}" has been issued to you by the librarian. Due date: ${dueDate.toLocaleDateString()}.`
-      );
-    } catch (notifError) {
+      await notifyStudent(user._id, {
+        type: 'BOOK_ISSUED',
+        title: 'Book issued',
+        message: `"${book.title}" has been issued to you at the library. Due date: ${dueDate.toLocaleDateString()}.`,
+        link: '/student/my-books?tab=issued',
+        meta: { transactionId: transaction._id, bookId: book._id },
+      });    } catch (notifError) {
       console.error('Notification creation failed (non-fatal):', notifError.message);
     }
 
@@ -779,6 +760,14 @@ exports.adminReturnBook = async (req, res, next) => {
 
     const book = await returnBookCopy(returned.bookId);
 
+    await notifyStudent(returned.userId, {
+      type: 'BOOK_RETURNED',
+      title: 'Book returned',
+      message: `"${book ? book.title : 'Your book'}" was returned at the library.${fine > 0 ? ` A fine of ₹${fine} was recorded.` : ''}`,
+      link: fine > 0 ? '/student/fines' : '/student/my-books?tab=returned',
+      meta: { transactionId: returned._id, bookId: returned.bookId },
+    });
+
     res.status(200).json({
       success: true,
       message: `Book "${book ? book.title : 'Book'}" returned successfully! ${fine > 0 ? `Fine incurred: ₹${fine}` : 'No fine.'}`,
@@ -795,24 +784,8 @@ exports.adminReturnBook = async (req, res, next) => {
  * @desc Get admin notifications
  * @access Private/Admin
  */
-exports.getNotifications = async (req, res, next) => {
-  try {
-    const notifications = await Notification.find({ 
-      userId: req.user.id,
-      role: req.user.role 
-    }).sort({ createdAt: -1 });
-    
-    const unreadCount = await Notification.countDocuments({
-      userId: req.user.id,
-      role: req.user.role,
-      isRead: false,
-    });
-    
-    res.status(200).json({ success: true, notifications, unreadCount });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+// Same paginated, own-notifications-only listing as GET /api/notifications (kept for existing clients)
+exports.getNotifications = (req, res, next) => getUserNotifications(req, res, next);
 
 /**
  * @route GET /api/admin/users

@@ -4,7 +4,7 @@ const Book = require('../models/Book');
 // Favourite genres must be real catalogue genres (the Book.genre enum)
 const VALID_GENRES = Book.schema.path('genre').enumValues;
 const invalidGenres = (genres) => genres.filter((g) => !VALID_GENRES.includes(g));
-const { createNotification } = require('./notificationController');
+const { createNotification, notifyStaff } = require('./notificationController');
 const jwt = require('jsonwebtoken');
 
 /**
@@ -259,18 +259,13 @@ exports.updateProfile = async (req, res, next) => {
     await user.save();
 
     if (user.role === 'student' && name && oldName !== name) {
-      // Non-fatal - never fails the main operation
-      try {
-        await createNotification(
-          user._id,
-          'admin',
-          'NAME_CHANGE',
-          'Student Name Change',
-          `Student ${user.libraryId} changed name from "${oldName}" to "${name}"`
-        );
-      } catch (notifError) {
-        console.error('Notification creation failed (non-fatal):', notifError.message);
-      }
+      // Staff-facing, one per active librarian/admin (non-fatal: notifyStaff never throws)
+      await notifyStaff({
+        type: 'NAME_CHANGE',
+        title: 'Student name change',
+        message: `${user.libraryId ? `Student ${user.libraryId}` : 'A student'} changed their name from "${oldName}" to "${name}".`,
+        path: '/users',
+      });
     }
 
     res.status(200).json({

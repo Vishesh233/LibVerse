@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useNotification } from '../hooks/useNotification';
 import { transactionsAPI } from '../services/api';
 import { LogoMark } from './LogoMark';
 
@@ -44,6 +45,7 @@ export const Sidebar = ({ onNavigate }) => {
   const { user, isAdmin, isLibrarian, logout } = useAuth();
   const navigate = useNavigate();
   const requestCount = useRequestCount(isAdmin || isLibrarian);
+  const { unreadCount } = useNotification();
 
   const handleLogoClick = () => {
     if (user?.role === 'student') {
@@ -99,6 +101,15 @@ export const Sidebar = ({ onNavigate }) => {
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 8v2m0-6c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Notifications',
+      to: '/student/notifications',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
       ),
     },
@@ -179,6 +190,15 @@ export const Sidebar = ({ onNavigate }) => {
       ),
     },
     {
+      label: 'Notifications',
+      to: '/librarian/notifications',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+      ),
+    },
+    {
       label: 'Settings',
       to: '/librarian/profile',
       icon: (
@@ -255,6 +275,15 @@ export const Sidebar = ({ onNavigate }) => {
       ),
     },
     {
+      label: 'Notifications',
+      to: '/admin/notifications',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+      ),
+    },
+    {
       label: 'Settings',
       to: '/admin/profile',
       icon: (
@@ -287,8 +316,8 @@ export const Sidebar = ({ onNavigate }) => {
 
         <nav className="space-y-1" aria-label="Main">
           {navItems.map((item) => {
-            const isRequests = item.to.endsWith('/pending');
-            const showCount = isRequests && requestCount > 0;
+            const badge = item.to.endsWith('/pending') ? requestCount : item.to.endsWith('/notifications') ? unreadCount : 0;
+            const showCount = badge > 0;
             return (
               <NavLink
                 key={item.to}
@@ -311,9 +340,9 @@ export const Sidebar = ({ onNavigate }) => {
                     {showCount && (
                       <span
                         className="min-w-[1.5rem] rounded-full border border-cyan-400/30 bg-cyan-400/15 px-2 py-0.5 text-center text-xs font-bold text-cyan-200"
-                        aria-label={`${requestCount} waiting`}
+                        aria-label={item.to.endsWith('/notifications') ? `${badge} unread` : `${badge} waiting`}
                       >
-                        {requestCount > 99 ? '99+' : requestCount}
+                        {badge > 99 ? '99+' : badge}
                       </span>
                     )}
                   </>

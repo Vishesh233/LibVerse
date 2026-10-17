@@ -57,4 +57,19 @@ const isOverdue = (dueDate) => getDaysOverdue(dueDate) > 0;
  */
 const getDaysRemaining = (dueDate) => calendarDaysBetween(new Date(), dueDate);
 
-module.exports = { calculateFine, getDaysOverdue, isOverdue, getDaysRemaining, startOfDay, FINE_PER_DAY };
+/**
+ * Calendar days late for a transaction, frozen when the fine was fixed: an issued loan is measured
+ * to today; a return request, pending payment or completed return to the day it was requested (or returned).
+ * @param {Object} t - transaction ({ status, dueDate, returnRequestedAt, returnDate })
+ * @returns {Number}
+ */
+const getDaysLateOf = (t) => {
+  if (!t) return 0;
+  if (t.status === 'issued') return getDaysOverdue(t.dueDate);
+  if (['return_requested', 'payment_pending', 'returned'].includes(t.status)) {
+    return getDaysOverdue(t.dueDate, t.returnRequestedAt || t.returnDate || new Date());
+  }
+  return 0;
+};
+
+module.exports = { calculateFine, getDaysOverdue, getDaysLateOf, isOverdue, getDaysRemaining, startOfDay, calendarDaysBetween, FINE_PER_DAY };

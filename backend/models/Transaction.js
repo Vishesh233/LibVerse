@@ -70,6 +70,11 @@ const transactionSchema = new mongoose.Schema(
       ref: 'User',
     },
     paymentApprovedAt: Date,
+    // Automatic reminders (jobs/reminders.js): when each kind was last sent for this loan
+    remindersSent: {
+      dueSoon: Date,
+      overdue: Date,
+    },
     createdAt: {
       type: Date,
       default: Date.now,

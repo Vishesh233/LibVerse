@@ -1,12 +1,13 @@
 const Transaction = require('../models/Transaction');
 const Book = require('../models/Book');
 const User = require('../models/User');
-const { createNotification } = require('./notificationController');
-const { calculateFine, getDaysRemaining, isOverdue } = require('../utils/fineCalculator');
+const { notifyStudent, notifyStaff } = require('./notificationController');
+const { calculateFine, getDaysLateOf, getDaysRemaining, isOverdue } = require('../utils/fineCalculator');
 const { takeBookCopy, returnBookCopy } = require('../utils/bookStock');
 const { toQueryString, toPagination } = require('../utils/escapeRegex');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
 const LOAN_DAYS = 14;
 const RENEWAL_DAYS = 7;
 
@@ -68,34 +69,23 @@ exports.requestIssueBook = async (req, res, next) => {
       status: 'pending',
     });
 
-    // Notification for student
-    try {
-      await createNotification(
-        userId,
-        'student',
-        'ISSUE_REQUEST',
-        'Issue Request Submitted',
-        `Your request to issue "${book.title}" has been submitted and is pending approval.`
-      );
-    } catch (notifError) {
-      console.error('Notification creation failed (non-fatal):', notifError.message);
-    }
+    // Student: confirmation of their own request
+    await notifyStudent(userId, {
+      type: 'ISSUE_REQUEST',
+      title: 'Request sent',
+      message: `Your request for "${book.title}" was sent to the library and is waiting for approval.`,
+      link: '/student/my-books?tab=pending',
+      meta: { transactionId: transaction._id, bookId: book._id },
+    });
 
-    // Notify librarians/admins about new request
-    try {
-      const librarians = await User.find({ role: { $in: ['librarian', 'admin'] }, isActive: true });
-      for (const lib of librarians) {
-        await createNotification(
-          lib._id,
-          lib.role,
-          'PENDING_APPROVAL',
-          'New Book Request',
-          `${req.user.name || 'A student'} has requested "${book.title}". Please review and approve.`
-        );
-      }
-    } catch (notifError) {
-      console.error('Librarian notification failed (non-fatal):', notifError.message);
-    }
+    // Staff: one notification per active librarian/admin
+    await notifyStaff({
+      type: 'PENDING_APPROVAL',
+      title: 'New issue request',
+      message: `${req.user.name || 'A student'} requested "${book.title}".`,
+      path: '/pending?tab=issue',
+      meta: { transactionId: transaction._id, bookId: book._id },
+    });
 
     res.status(201).json({
       success: true,
@@ -145,36 +135,26 @@ exports.returnBook = async (req, res, next) => {
 
     const bookTitle = transaction.bookId?.title || 'Book';
 
-    // Notify student
-    try {
-      await createNotification(
-        transaction.userId,
-        'student',
-        'RETURN_REQUESTED',
-        'Return Request Submitted',
-        fine > 0
-          ? `Your return request for "${bookTitle}" has been submitted. You have a fine of ₹${fine}. Please pay the fine to complete the return.`
-          : `Your return request for "${bookTitle}" has been submitted. Waiting for librarian approval.`
-      );
-    } catch (notifError) {
-      console.error('Notification creation failed (non-fatal):', notifError.message);
-    }
+    // Student: confirmation of their own return request
+    await notifyStudent(transaction.userId, {
+      type: 'RETURN_REQUESTED',
+      title: 'Return request sent',
+      message: fine > 0
+        ? `Your return request for "${bookTitle}" was sent. A fine of ₹${fine} is due; pay it so the library can complete the return.`
+        : `Your return request for "${bookTitle}" was sent. Hand the book in at the library to complete the return.`,
+      link: fine > 0 ? `/student/pay-fine/${transaction._id}` : '/student/my-books?tab=return_requested',
+      meta: { transactionId: transaction._id, bookId: transaction.bookId },
+    });
 
-    // Notify librarians
-    try {
-      const librarians = await User.find({ role: { $in: ['librarian', 'admin'] }, isActive: true });
-      for (const lib of librarians) {
-        await createNotification(
-          lib._id,
-          lib.role,
-          'RETURN_REQUEST',
-          'Book Return Request',
-          `${req.user.name || 'A student'} wants to return "${bookTitle}".${fine > 0 ? ` Fine: ₹${fine}` : ' No fine.'}`
-        );
-      }
-    } catch (notifError) {
-      console.error('Librarian notification failed (non-fatal):', notifError.message);
-    }
+    // Staff: one notification per active librarian/admin (named after the borrower, even when staff filed it)
+    const borrower = isOwner ? req.user : await User.findById(transaction.userId).select('name').catch(() => null);
+    await notifyStaff({
+      type: 'RETURN_REQUEST',
+      title: 'New return request',
+      message: `${borrower?.name || 'A student'} wants to return "${bookTitle}".${fine > 0 ? ` Fine: ₹${fine}.` : ' No fine.'}`,
+      path: '/pending?tab=return',
+      meta: { transactionId: transaction._id, bookId: transaction.bookId },
+    });
 
     res.status(200).json({
       success: true,
@@ -241,18 +221,14 @@ exports.approveReturn = async (req, res, next) => {
 
     const bookTitle = returned.bookId?.title || book?.title || 'Book';
 
-    // Notify student
-    try {
-      await createNotification(
-        returned.userId,
-        'student',
-        'RETURN_APPROVED',
-        'Book Return Approved',
-        `Your return for "${bookTitle}" has been approved. Thank you!`
-      );
-    } catch (notifError) {
-      console.error('Notification creation failed (non-fatal):', notifError.message);
-    }
+    // Student: return completed
+    await notifyStudent(returned.userId, {
+      type: 'RETURN_APPROVED',
+      title: 'Return approved',
+      message: `Your return of "${bookTitle}" has been approved. Thank you!`,
+      link: '/student/my-books?tab=returned',
+      meta: { transactionId: returned._id, bookId: returned.bookId },
+    });
 
     res.status(200).json({
       success: true,
@@ -315,34 +291,23 @@ exports.submitPayment = async (req, res, next) => {
 
     const bookTitle = transaction.bookId?.title || 'Book';
 
-    // Notify student
-    try {
-      await createNotification(
-        transaction.userId,
-        'student',
-        'PAYMENT_PENDING',
-        'Payment Submitted',
-        `Your payment of ₹${transaction.fineAmount} for "${bookTitle}" has been submitted. Waiting for librarian verification.`
-      );
-    } catch (notifError) {
-      console.error('Notification creation failed (non-fatal):', notifError.message);
-    }
+    // Student: confirmation of their own payment
+    await notifyStudent(transaction.userId, {
+      type: 'PAYMENT_PENDING',
+      title: 'Payment submitted',
+      message: `Your payment of ₹${transaction.fineAmount} for "${bookTitle}" was submitted and is waiting for verification.`,
+      link: '/student/my-books?tab=payment_pending',
+      meta: { transactionId: transaction._id, bookId: transaction.bookId },
+    });
 
-    // Notify librarians
-    try {
-      const librarians = await User.find({ role: { $in: ['librarian', 'admin'] }, isActive: true });
-      for (const lib of librarians) {
-        await createNotification(
-          lib._id,
-          lib.role,
-          'PAYMENT_PENDING',
-          'Payment Verification Required',
-          `${req.user.name || 'A student'} has submitted payment of ₹${transaction.fineAmount} for "${bookTitle}". Please verify and approve.`
-        );
-      }
-    } catch (notifError) {
-      console.error('Librarian notification failed (non-fatal):', notifError.message);
-    }
+    // Staff: one notification per active librarian/admin
+    await notifyStaff({
+      type: 'PAYMENT_PENDING',
+      title: 'New payment to verify',
+      message: `${req.user.name || 'A student'} paid ₹${transaction.fineAmount} for "${bookTitle}". Please verify the payment.`,
+      path: '/pending?tab=payment',
+      meta: { transactionId: transaction._id, bookId: transaction.bookId },
+    });
 
     res.status(200).json({
       success: true,
@@ -410,18 +375,14 @@ exports.approvePayment = async (req, res, next) => {
 
     const bookTitle = returned.bookId?.title || book?.title || 'Book';
 
-    // Notify student
-    try {
-      await createNotification(
-        returned.userId,
-        'student',
-        'PAYMENT_APPROVED',
-        'Payment Approved & Book Returned',
-        `Your payment of ₹${returned.fineAmount} for "${bookTitle}" has been verified. Your book has been returned successfully!`
-      );
-    } catch (notifError) {
-      console.error('Notification creation failed (non-fatal):', notifError.message);
-    }
+    // Student: payment verified and return completed
+    await notifyStudent(returned.userId, {
+      type: 'PAYMENT_APPROVED',
+      title: 'Payment approved',
+      message: `Your payment of ₹${returned.fineAmount} for "${bookTitle}" was verified and the book is returned.`,
+      link: '/student/fines',
+      meta: { transactionId: returned._id, bookId: returned.bookId },
+    });
 
     res.status(200).json({
       success: true,
@@ -449,10 +410,9 @@ exports.getUserTransactions = async (req, res, next) => {
     // Add fine calculation and days remaining
     const transactionsWithDetails = transactions.map((t) => {
       const daysRemaining = getDaysRemaining(t.dueDate);
-      const fine = (t.status === 'issued' || t.status === 'return_requested' || t.status === 'payment_pending')
-        ? calculateFine(t.dueDate)
-        : t.fineAmount;
-      const daysLate = daysRemaining < 0 ? Math.abs(daysRemaining) : 0;
+      // Only an issued loan's fine still grows; once a return is requested the stored fine is frozen
+      const fine = t.status === 'issued' ? calculateFine(t.dueDate) : t.fineAmount;
+      const daysLate = getDaysLateOf(t);
 
       return {
         ...t.toObject(),
@@ -604,18 +564,14 @@ exports.approveIssueRequest = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Book is not available to approve' });
     }
 
-    // Notify student
-    try {
-      await createNotification(
-        issued.userId,
-        'student',
-        'BOOK_ISSUED',
-        'Book Issued Successfully',
-        `Your request for "${book.title}" has been approved. Please collect the book from the library. Due date: ${new Date(issued.dueDate).toLocaleDateString()}`
-      );
-    } catch (notifError) {
-      console.error('Notification creation failed (non-fatal):', notifError.message);
-    }
+    // Student: request approved
+    await notifyStudent(issued.userId, {
+      type: 'BOOK_ISSUED',
+      title: 'Request approved',
+      message: `Your request for "${book.title}" was approved. Collect it from the library. Due date: ${new Date(issued.dueDate).toLocaleDateString()}.`,
+      link: '/student/my-books?tab=issued',
+      meta: { transactionId: issued._id, bookId: book._id },
+    });
 
     res.status(200).json({
       success: true,
@@ -648,19 +604,15 @@ exports.rejectIssueRequest = async (req, res, next) => {
     transaction.returnDate = new Date();
     await transaction.save();
 
-    // Notify student
-    try {
-      const rejectedBook = await Book.findById(transaction.bookId);
-      await createNotification(
-        transaction.userId,
-        'student',
-        'RETURN_REQUEST',
-        'Issue Request Rejected',
-        `Your request for "${rejectedBook?.title || 'the book'}" has been rejected. Please contact the library for more information.`
-      );
-    } catch (notifError) {
-      console.error('Notification creation failed (non-fatal):', notifError.message);
-    }
+    // Student: request rejected
+    const rejectedBook = await Book.findById(transaction.bookId).select('title').catch(() => null);
+    await notifyStudent(transaction.userId, {
+      type: 'ISSUE_REJECTED',
+      title: 'Request rejected',
+      message: `Your request for "${rejectedBook?.title || 'the book'}" was rejected. Please contact the library for details.`,
+      link: '/student/my-books?tab=rejected',
+      meta: { transactionId: transaction._id, bookId: transaction.bookId },
+    });
 
     res.status(200).json({ success: true, message: 'Request rejected', transaction });
   } catch (error) {
@@ -707,22 +659,20 @@ exports.renewBook = async (req, res, next) => {
     // Extend due date by 7 days. Assign a new Date: in-place setDate() is not detected by Mongoose and was never saved.
     transaction.dueDate = new Date(transaction.dueDate.getTime() + RENEWAL_DAYS * DAY_MS);
     transaction.renewalCount += 1;
+    // New due date: the "due soon" reminder may fire again for it
+    if (transaction.remindersSent) transaction.remindersSent.dueSoon = undefined;
 
     await transaction.save();
 
-    // Notify student
-    try {
-      const renewedBook = await Book.findById(transaction.bookId);
-      await createNotification(
-        transaction.userId,
-        'student',
-        'BOOK_ISSUED',
-        'Book Renewed Successfully',
-        `"${renewedBook?.title || 'Book'}" has been renewed. New due date: ${new Date(transaction.dueDate).toLocaleDateString()}`
-      );
-    } catch (notifError) {
-      console.error('Notification creation failed (non-fatal):', notifError.message);
-    }
+    // Student: renewal confirmed
+    const renewedBook = await Book.findById(transaction.bookId).select('title').catch(() => null);
+    await notifyStudent(transaction.userId, {
+      type: 'BOOK_RENEWED',
+      title: 'Book renewed',
+      message: `"${renewedBook?.title || 'Book'}" has been renewed. New due date: ${new Date(transaction.dueDate).toLocaleDateString()}.`,
+      link: '/student/my-books?tab=issued',
+      meta: { transactionId: transaction._id, bookId: transaction.bookId },
+    });
 
     res.status(200).json({
       success: true,

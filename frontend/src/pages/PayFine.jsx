@@ -7,8 +7,6 @@ import { Card, Button, Alert, Badge, EmptyState, PageHeader, Skeleton } from '..
 import { fineAPI, transactionsAPI } from '../services/api';
 import { formatDate } from '../utils/dateUtils';
 
-const FINE_PER_DAY = 5;
-
 const Stat = ({ label, children }) => (
   <div className="rounded-2xl border border-border bg-input/60 p-4">
     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">{label}</p>
@@ -117,11 +115,8 @@ export const PayFine = () => {
     if (screenshotInputRef.current) screenshotInputRef.current.value = '';
   };
 
-  // The server only reports days late while the book is still issued; after a return
-  // request the fine is fixed, so derive the days from it (₹5 per calendar day).
-  const daysLate = fineData
-    ? fineData.daysLate || Math.round((Number(fineData.fineAmount) || 0) / FINE_PER_DAY)
-    : 0;
+  // Server value: days late up to the return request (when the fine was frozen)
+  const daysLate = Number(fineData?.daysLate) || 0;
 
   return (
     <MainLayout>

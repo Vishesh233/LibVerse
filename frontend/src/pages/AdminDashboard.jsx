@@ -260,7 +260,9 @@ export const AdminDashboard = () => {
     setSendingReminders(true);
     try {
       const res = await adminAPI.sendReminders();
-      toast.success(res.data?.message || 'Overdue reminders sent successfully!');
+      const count = Number(res.data?.count) || 0;
+      if (count > 0) toast.success(res.data?.message || `Sent ${count} reminder${count === 1 ? '' : 's'}`);
+      else toast.info(res.data?.message || 'No reminders due right now');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send reminders');
     } finally {
@@ -374,7 +376,14 @@ export const AdminDashboard = () => {
         <PageHeader
           title={pageTitle}
           subtitle="Welcome back! Here's what's happening today."
-          actions={<span className="text-xs font-medium text-slate-400">{formattedCurrentDate}</span>}
+          actions={
+            <>
+              <span className="text-xs font-medium text-slate-400">{formattedCurrentDate}</span>
+              <Button variant="secondary" size="sm" fullWidth={false} loading={sendingReminders} onClick={handleSendReminders}>
+                {sendingReminders ? 'Sending...' : 'Send reminders'}
+              </Button>
+            </>
+          }
           className="!mb-2"
         />
 

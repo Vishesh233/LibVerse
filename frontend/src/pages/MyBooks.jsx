@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { transactionsAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
-import { useNotification } from '../hooks/useNotification';
 import { formatDate } from '../utils/dateUtils';
 import { getDaysUntilDue } from '../utils/fineCalculator';
 import { CoverImage } from '../components/CoverImage';
@@ -60,7 +59,6 @@ const ListSkeleton = () => (
 export const MyBooks = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { addNotification } = useNotification();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -87,32 +85,6 @@ export const MyBooks = () => {
   useEffect(() => {
     load();
   }, [load]);
-
-  // Local reminder for anything due tomorrow
-  useEffect(() => {
-    if (loading || transactions.length === 0) return;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    transactions.forEach((transaction) => {
-      if (transaction.status !== 'issued') return;
-      const due = transaction.dueDate ? new Date(transaction.dueDate) : null;
-      if (!due || isNaN(due)) return;
-
-      const dueDateOnly = new Date(due.getFullYear(), due.getMonth(), due.getDate());
-      if (dueDateOnly.getTime() !== tomorrow.getTime()) return;
-
-      addNotification({
-        id: `due-tomorrow-${transaction._id}`,
-        title: 'Return due tomorrow',
-        message: `${transaction.bookId?.title || 'A borrowed book'} is due tomorrow (${formatDate(transaction.dueDate)}).`,
-        read: false,
-      });
-    });
-  }, [transactions, loading, addNotification]);
 
   const counts = useMemo(() => {
     const c = { all: transactions.length };

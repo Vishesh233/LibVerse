@@ -4,7 +4,8 @@ import { useAuth } from '../hooks/useAuth';
 import { LogoMark } from './LogoMark';
 import { useDebounce } from '../hooks/useDebounce';
 import { useNotification } from '../hooks/useNotification';
-import { adminAPI, notificationAPI } from '../services/api';
+import { adminAPI } from '../services/api';
+import { NotificationItem, notificationsPath } from './NotificationItem';
 import Avatar from './Avatar';
 
 export const Navbar = ({ isFullscreen, onToggleFullscreen, onOpenMenu }) => {
@@ -19,7 +20,8 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen, onOpenMenu }) => {
   const [searchLoading, setSearchLoading] = useState(false);
   const avatarSrc = !imageError && user?.profileImage ? user.profileImage : undefined;
   const debouncedSearch = useDebounce(searchTerm, 300);
-  const { notifications, unreadCount, markAllRead, addNotification } = useNotification();
+  const { notifications, unreadCount, markAsRead, markAllRead, refreshNotifications } = useNotification();
+  const [panelTab, setPanelTab] = useState('all');
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
   const searchRef = useRef(null);
@@ -84,37 +86,6 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen, onOpenMenu }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load notifications for all user types
-  useEffect(() => {
-    const loadNotifications = async () => {
-      if (!user) return;
-
-      try {
-        // Use appropriate API based on user role
-        const response = await (user.role === 'admin' || user.role === 'librarian'
-          ? adminAPI.getNotifications()
-          : notificationAPI.getNotifications());
-        
-        const backendNotifications = response?.data?.notifications || [];
-        backendNotifications.forEach((notification) => {
-          addNotification({
-            id: notification._id,
-            _id: notification._id,
-            title: notification.title,
-            message: notification.message,
-            type: notification.type,
-            createdAt: notification.createdAt,
-            read: notification.isRead ?? false,
-            isRead: notification.isRead ?? false,
-          });
-        });
-      } catch (error) {
-        console.error('Error loading notifications:', error);
-      }
-    };
-
-    loadNotifications();
-  }, [user, addNotification]);
 
   const profilePath = React.useMemo(() => {
     if (user?.role === 'admin') return '/admin/profile';
@@ -138,54 +109,30 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen, onOpenMenu }) => {
     setSearchTerm('');
   };
 
-  // Get notification icon based on type
-  const getNotificationIcon = (type) => {
-    const iconMap = {
-      BOOK_ISSUED: '📚',
-      BOOK_RETURNED: '✅',
-      DUE_DATE_REMINDER: '⏰',
-      BOOK_OVERDUE: '⚠️',
-      WISHLIST_AVAILABLE: '💝',
-      FINE_GENERATED: '💰',
-      PROFILE_UPDATED: '👤',
-      PASSWORD_CHANGED: '🔒',
-      NEW_RECOMMENDATIONS: '🎯',
-      ISSUE_REQUEST: '📋',
-      RETURN_REQUEST: '📦',
-      PENDING_APPROVAL: '⏳',
-      NEW_MEMBER: '👋',
-      LOW_STOCK: '📉',
-      FINE_PAID: '💵',
-      INVENTORY_UPDATE: '🔄',
-      NEW_LIBRARIAN: '👨‍💼',
-      SYSTEM_ACTIVITY: '⚙️',
-      USER_MANAGEMENT: '👥',
-      REPORT_GENERATED: '📊',
-      CRITICAL_ALERT: '🚨',
-      DATABASE_NOTIFICATION: '🗄️',
-      NAME_CHANGE: '✏️',
-    };
-    return iconMap[type] || '🔔';
-  };
-
-  // Format relative time
-  const getRelativeTime = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
-
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
-
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
-  const notificationList = useMemo(
-    () => notifications.slice(0, 6),
-    [notifications]
+  const panelItems = useMemo(
+    () => (panelTab === 'unread' ? notifications.filter((n) => !n.isRead) : notifications),
+    [notifications, panelTab]
   );
+
+  const toggleNotifications = () => {
+    if (!showNotifications) refreshNotifications(); // opening only refreshes; nothing is marked read
+    setShowNotifications(!showNotifications);
+  };
+
+  const handleNotificationSelect = (notification) => {
+    if (!notification.isRead) {
+      markAsRead(notification._id).catch((err) => console.error('Failed to mark notification as read:', err));
+    }
+    if (notification.link) {
+      setShowNotifications(false);
+      navigate(notification.link);
+    }
+  };
+
+  const openAllNotifications = () => {
+    setShowNotifications(false);
+    navigate(notificationsPath(user?.role));
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border bg-navbar/95 px-4 text-slate-100 backdrop-blur-md sm:gap-4 sm:px-6">
@@ -362,78 +309,92 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen, onOpenMenu }) => {
         {/* Notifications */}
         <div ref={notificationRef} className="relative">
           <button
-            onClick={() => {
-              setShowNotifications((prev) => !prev);
-              if (!showNotifications) markAllRead();
-            }}
+            type="button"
+            onClick={toggleNotifications}
             className="relative grid h-11 w-11 place-items-center rounded-xl text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
-            aria-label="Notifications"
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+            aria-expanded={showNotifications}
+            aria-haspopup="dialog"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
             {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-navbar" />
+              <span className="absolute right-1 top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-navbar" aria-hidden="true">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
             )}
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-3 w-[min(24rem,calc(100vw-2rem))] rounded-2xl card text-slate-100 shadow-xl border z-50 overflow-hidden" style={{ borderColor: 'var(--border)' }}>
-              <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-                <div>
-                  <h3 className="font-semibold text-sm">Notifications</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{unreadCount} unread</p>
+            <div
+              role="dialog"
+              aria-label="Notifications"
+              className="fixed inset-x-3 top-[4.5rem] z-50 overflow-hidden rounded-2xl border border-border bg-surface text-slate-100 shadow-[0_24px_60px_rgba(0,0,0,0.5)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-3 sm:w-[24rem]"
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h3 className="text-sm font-semibold">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <span className="rounded-full border border-cyan-400/30 bg-cyan-400/15 px-2 py-0.5 text-[11px] font-bold text-cyan-200">
+                      {unreadCount} unread
+                    </span>
+                  )}
                 </div>
-                {unreadCount > 0 && (
-                  <button
-                    onClick={markAllRead}
-                    className="text-xs text-indigo-300 hover:text-white transition-colors"
-                  >
-                    Mark all read
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => markAllRead().catch((err) => console.error('Failed to mark all as read:', err))}
+                  disabled={unreadCount === 0}
+                  className="min-h-[36px] rounded-lg px-2 text-xs font-semibold text-indigo-300 transition-colors hover:text-white disabled:cursor-not-allowed disabled:text-slate-500"
+                >
+                  Mark all as read
+                </button>
               </div>
-              <div className="max-h-96 overflow-y-auto">
-                {notificationList.length === 0 ? (
-                  <div className="p-8 text-xs text-slate-400 text-center">No notifications yet.</div>
+
+              <div className="flex gap-1 border-b border-border px-3 py-2" role="tablist" aria-label="Filter notifications">
+                {[
+                  { key: 'all', label: 'All' },
+                  { key: 'unread', label: 'Unread' },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={panelTab === tab.key}
+                    onClick={() => setPanelTab(tab.key)}
+                    className={`min-h-[32px] rounded-lg px-3 text-xs font-semibold transition-colors ${
+                      panelTab === tab.key ? 'bg-indigo-500/15 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="max-h-[min(24rem,60vh)] divide-y divide-border overflow-y-auto">
+                {panelItems.length === 0 ? (
+                  <div className="px-6 py-10 text-center">
+                    <p className="text-sm font-semibold text-slate-200">{panelTab === 'unread' ? "You're all caught up" : 'No notifications yet'}</p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {panelTab === 'unread' ? 'Nothing unread right now.' : 'Updates about your requests and loans will appear here.'}
+                    </p>
+                  </div>
                 ) : (
-                  notificationList.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`p-3.5 hover:bg-slate-800/40 transition-colors cursor-pointer border-b ${
-                        notification.isRead ? 'opacity-50' : 'bg-slate-800/20'
-                      }`}
-                      style={{ borderColor: 'var(--border)' }}
-                      onClick={() => {
-                        if (!notification.isRead) {
-                          // Mark as read logic would go here
-                        }
-                      }}
-                    >
-                      <div className="flex gap-3">
-                        <div className="text-2xl flex-shrink-0">
-                          {getNotificationIcon(notification.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-slate-100">{notification.title}</p>
-                          <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{notification.message}</p>
-                          <p className="text-[10px] text-slate-400 mt-1">{getRelativeTime(notification.createdAt)}</p>
-                        </div>
-                        {!notification.isRead && (
-                          <div className="w-2 h-2 bg-indigo-500 rounded-full flex-shrink-0 mt-1" />
-                        )}
-                      </div>
-                    </div>
+                  panelItems.map((notification) => (
+                    <NotificationItem key={notification._id} notification={notification} onSelect={handleNotificationSelect} />
                   ))
                 )}
               </div>
-              {notifications.length > 6 && (
-                <div className="p-3 border-t text-center" style={{ borderColor: 'var(--border)' }}>
-                  <button className="text-xs text-indigo-300 hover:text-white transition-colors">
-                    View all notifications
-                  </button>
-                </div>
-              )}
+
+              <div className="border-t border-border p-2">
+                <button
+                  type="button"
+                  onClick={openAllNotifications}
+                  className="min-h-[40px] w-full rounded-lg text-xs font-semibold text-indigo-300 transition-colors hover:bg-white/5 hover:text-white"
+                >
+                  View all notifications
+                </button>
+              </div>
             </div>
           )}
         </div>

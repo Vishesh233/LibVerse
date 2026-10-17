@@ -4,11 +4,7 @@ import { toast } from 'react-toastify';
 import { MainLayout } from '../layouts/MainLayout';
 import { Card, Button, Badge, EmptyState, PageHeader, Skeleton } from '../components/UI';
 import { transactionsAPI } from '../services/api';
-import { calculateFine, getDaysOverdue } from '../utils/fineCalculator';
 import { formatDate } from '../utils/dateUtils';
-
-// Calendar days late, measured to the return date if returned, otherwise to today
-const getDaysLate = (transaction) => getDaysOverdue(transaction.dueDate, transaction.returnDate || new Date());
 
 // What the student can do next. Payment is only accepted once a return is requested.
 const fineState = (fine) => {
@@ -51,17 +47,12 @@ export const Fines = () => {
     try {
       const response = await transactionsAPI.getUserTransactions();
       const finesList = (response.data.transactions || [])
-        .map((transaction) => {
-          const fineAmount = transaction.status === 'issued'
-            ? calculateFine(transaction.dueDate)
-            : transaction.fineAmount;
-
-          return {
-            ...transaction,
-            fineAmount,
-            daysLate: getDaysLate(transaction),
-          };
-        })
+        // Server values: live fine only while issued, the frozen fine once a return is requested
+        .map((transaction) => ({
+          ...transaction,
+          fineAmount: Number(transaction.fine ?? transaction.fineAmount) || 0,
+          daysLate: Number(transaction.daysLate) || 0,
+        }))
         .filter((transaction) => transaction.fineAmount > 0);
 
       setFines(finesList);

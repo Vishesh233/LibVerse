@@ -121,7 +121,8 @@ export const wishlistAPI = {
 
 // Notification endpoints
 export const notificationAPI = {
-  getNotifications: () => apiClient.get('/notifications'),
+  // params: page, limit, unread ('true'), category
+  getNotifications: (params) => apiClient.get('/notifications', { params }),
   markAsRead: (id) => apiClient.put(`/notifications/read/${id}`),
   markAllAsRead: () => apiClient.put('/notifications/read-all'),
 };

@@ -28,6 +28,7 @@ import { Fines } from './pages/Fines';
 import { IssueReturn } from './pages/IssueReturn';
 import { Reports } from './pages/Reports';
 import { Onboarding } from './pages/Onboarding';
+import { Notifications } from './pages/Notifications';
 
 // Splash shows once per browser session (a refresh in the same tab session skips it)
 const SPLASH_KEY = 'libverse:splash-shown';
@@ -60,8 +61,8 @@ function App() {
   return (
     <div className="dark min-h-screen bg-[#020713] text-slate-100">
       <Router>
-        <NotificationProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <NotificationProvider>
             <Routes>
 
           {/* Public Routes */}
@@ -130,6 +131,14 @@ function App() {
             element={
               <ProtectedRoute requiredRole="student">
                 <PayFine />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/notifications"
+            element={
+              <ProtectedRoute requiredRole="student">
+                <Notifications />
               </ProtectedRoute>
             }
           />
@@ -232,6 +241,14 @@ function App() {
             }
           />
           <Route
+            path="/librarian/notifications"
+            element={
+              <ProtectedRoute requiredRole="librarian">
+                <Notifications />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/librarian/profile"
             element={
               <ProtectedRoute requiredRole="librarian">
@@ -330,6 +347,14 @@ function App() {
             }
           />
           <Route
+            path="/admin/notifications"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Notifications />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/profile"
             element={
               <ProtectedRoute requiredRole="admin">
@@ -352,8 +377,8 @@ function App() {
 
         </Routes>
         <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="dark" />
-      </AuthProvider>
       </NotificationProvider>
+      </AuthProvider>
     </Router>
   </div>
   );

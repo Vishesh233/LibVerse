@@ -1,5 +1,5 @@
 const User = require('../models/User');
-const { createNotification } = require('./notificationController');
+const { notifyStaff } = require('./notificationController');
 
 exports.updateProfile = async (req, res, next) => {
   try {
@@ -18,18 +18,13 @@ exports.updateProfile = async (req, res, next) => {
     await user.save();
 
     if (user.role === 'student' && oldName !== name) {
-      // Non-fatal - never fails the main operation
-      try {
-        await createNotification(
-          req.user.id,
-          'admin',
-          'NAME_CHANGE',
-          'Student Name Change',
-          `Student ${user.libraryId} changed name from "${oldName}" to "${name}"`
-        );
-      } catch (notifError) {
-        console.error('Notification creation failed (non-fatal):', notifError.message);
-      }
+      // Staff-facing, one per active librarian/admin (non-fatal: notifyStaff never throws)
+      await notifyStaff({
+        type: 'NAME_CHANGE',
+        title: 'Student name change',
+        message: `${user.libraryId ? `Student ${user.libraryId}` : 'A student'} changed their name from "${oldName}" to "${name}".`,
+        path: '/users',
+      });
     }
 
     return res.status(200).json({ success: true, user });

@@ -80,3 +80,6 @@ const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
+// Automatic due-soon / overdue reminders: on start, then hourly (at most one run per day)
+require('./jobs/reminders').startReminderJob();

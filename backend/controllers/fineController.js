@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const Transaction = require('../models/Transaction');
-const { calculateFine, getDaysOverdue } = require('../utils/fineCalculator');
+const { calculateFine, getDaysLateOf } = require('../utils/fineCalculator');
 
 exports.initiatePayment = async (req, res, next) => {
   try {
@@ -24,7 +24,8 @@ exports.initiatePayment = async (req, res, next) => {
     }
 
     const paymentReference = `PAY-${crypto.randomUUID().split('-')[0].toUpperCase()}`;
-    const daysLate = transaction.status === 'issued' ? getDaysOverdue(transaction.dueDate) : 0;
+    // Measured to the day the fine was frozen (return request), not to today
+    const daysLate = getDaysLateOf(transaction);
 
     return res.status(200).json({
       success: true,
