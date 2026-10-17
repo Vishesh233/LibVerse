@@ -37,6 +37,7 @@ export const SearchableDropdown = ({
   showDropdown: controlledShow,
   onToggleDropdown,
   maxResults = 8,
+  id, // optional: lets a <label htmlFor> point at the search input
 }) => {
   const [internalInput, setInternalInput] = useState('');
   const [internalShow, setInternalShow] = useState(false);
@@ -190,6 +191,7 @@ export const SearchableDropdown = ({
       <div className="relative">
         <input
           ref={inputRef}
+          id={id}
           type="text"
           value={inputValue}
           onChange={handleInputChange}

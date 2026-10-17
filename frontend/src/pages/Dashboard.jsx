@@ -1,81 +1,59 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MainLayout } from '../layouts/MainLayout';
 import { useAuth } from '../hooks/useAuth';
-import { transactionsAPI, booksAPI } from '../services/api';
+import { transactionsAPI, booksAPI, wishlistAPI } from '../services/api';
+import { BookCard } from '../components/BookCard';
 import { CoverImage } from '../components/CoverImage';
-import { Badge, Button, Card, EmptyState, PageHeader, Skeleton } from '../components/UI';
-import { getDaysUntilDue } from '../utils/fineCalculator';
+import { Badge, EmptyState, Skeleton } from '../components/UI';
+import { DashboardHero } from '../components/dashboard/DashboardHero';
+import {
+  AmountStat, DASH_ICONS, DashTabs, KpiLink, QuickTile, SectionCard, SectionLink, formatRupees,
+} from '../components/dashboard/DashboardKit';
 import { formatDate } from '../utils/dateUtils';
 import { ACTIVE_LOAN_STATUSES } from '../hooks/useActiveBookIds';
-import { genreAccentStyle } from '../constants/genres';
+import { GENRES } from '../constants/genres';
 
-const MAX_RENEWALS = 3;
 const DUE_SOON_DAYS = 3;
-// Statuses where the book is still with the student
-const ON_LOAN = ['issued', 'return_requested', 'payment_pending'];
+const WEEK_DAYS = 7;
+// Loans (not requests): the book was handed out at some point
+const LOAN_STATUSES = ['issued', 'return_requested', 'payment_pending', 'returned'];
+const FIXED_FINE_STATUSES = ['return_requested', 'payment_pending', 'returned'];
+const DISCOVER_TABS = [
+  { key: 'picked', label: 'Picked for you' },
+  { key: 'new', label: 'New arrivals' },
+  { key: 'popular', label: 'Popular' },
+];
 
-const toSafeNumber = (value, fallback = 0) => {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-};
-
-const daysLeftOf = (t) => {
-  const due = t?.dueDate ? new Date(t.dueDate) : null;
-  if (!due || Number.isNaN(due.getTime())) return null;
-  return getDaysUntilDue(due);
-};
-
-// Still issued: fine grows daily. After a return request: the fixed amount to pay.
-const fineOf = (t) => toSafeNumber(t?.status === 'issued' ? t.fine : t.fineAmount, 0);
-
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const bookOf = (t) => (t?.bookId && typeof t.bookId === 'object' ? t.bookId : {});
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-const DaysBadge = ({ days }) => {
-  if (days === null) return null;
-  if (days < 0) return <Badge variant="danger">{Math.abs(days)} day{Math.abs(days) === 1 ? '' : 's'} overdue</Badge>;
-  if (days === 0) return <Badge variant="warning">Due today</Badge>;
-  if (days <= DUE_SOON_DAYS) return <Badge variant="warning">{days} day{days === 1 ? '' : 's'} left</Badge>;
-  return <Badge variant="success">{days} days left</Badge>;
+/** Status badge for a loan, from server values (status, daysRemaining) */
+const LoanBadge = ({ t }) => {
+  if (t.status === 'return_requested') return <Badge variant="info">Return requested</Badge>;
+  if (t.status === 'payment_pending') return <Badge variant="warning">Payment pending</Badge>;
+  if (t.status === 'returned') return <Badge variant="success">Returned</Badge>;
+  const d = num(t.daysRemaining);
+  if (d < 0) return <Badge variant="danger">Overdue · {plural(-d, 'day')}</Badge>;
+  if (d === 0) return <Badge variant="warning">Due today</Badge>;
+  if (d <= DUE_SOON_DAYS) return <Badge variant="warning">Due in {plural(d, 'day')}</Badge>;
+  return <Badge variant="primary">Issued</Badge>;
 };
 
-const KpiCard = ({ label, value, hint, tone, icon, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`card-glass flex w-full items-center gap-4 !p-5 text-left transition-all duration-250 hover:-translate-y-0.5 hover:shadow-glow motion-reduce:hover:translate-y-0 ${tone.ring}`}
-  >
-    <div className={`grid h-12 w-12 flex-shrink-0 place-items-center rounded-2xl border ${tone.icon}`} aria-hidden="true">{icon}</div>
-    <div className="min-w-0">
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="font-display text-2xl font-bold leading-tight text-slate-50">{value}</p>
-      {hint && <p className="mt-0.5 truncate text-xs text-muted">{hint}</p>}
-    </div>
-  </button>
-);
-
-const ICONS = {
-  book: (
-    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-  ),
-  clock: (
-    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-  ),
-  alert: (
-    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-  ),
-};
-
-const DashboardSkeleton = () => (
-  <div className="space-y-8" aria-busy="true" aria-label="Loading dashboard">
-    <div className="grid gap-4 sm:grid-cols-3">
-      {[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 w-full" />)}
-    </div>
-    <Skeleton className="h-56 w-full" />
-    <div className="flex gap-4 overflow-hidden">
-      {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="aspect-[2/3] w-40 flex-shrink-0" />)}
-    </div>
+const BookRowSkeleton = () => (
+  <div className="dash-book-row" aria-hidden="true">
+    {[0, 1, 2, 3].map((i) => (
+      <div key={i} className="card-glass !p-0 overflow-hidden">
+        <Skeleton className="aspect-[2/3] w-full !rounded-none" />
+        <div className="space-y-2 p-3">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-3 w-2/3" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </div>
+    ))}
   </div>
 );
 
@@ -83,115 +61,110 @@ export const Dashboard = () => {
   const navigate = useNavigate();
   const { user, isAdmin, isLibrarian } = useAuth();
   const [transactions, setTransactions] = useState([]);
+  const [txError, setTxError] = useState(null);
   const [recommended, setRecommended] = useState([]);
   const [favoriteGenres, setFavoriteGenres] = useState([]);
+  const [wishlistCount, setWishlistCount] = useState(null);
+  const [heroCovers, setHeroCovers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [renewingId, setRenewingId] = useState(null);
   const [requestingBookId, setRequestingBookId] = useState(null);
-  const [error, setError] = useState(null);
+  const [discoverTab, setDiscoverTab] = useState('picked');
+  const [genre, setGenre] = useState('');
+  const [lists, setLists] = useState({}); // "<tab>|<genre>" -> { loading, books, error }
 
   const loadData = useCallback(async () => {
-    setError(null);
-    try {
-      const [txResponse, recResponse] = await Promise.all([
-        transactionsAPI.getUserTransactions(),
-        booksAPI.getRecommendations(),
-      ]);
-
-      setTransactions(Array.isArray(txResponse.data?.transactions) ? txResponse.data.transactions : []);
-
-      const recData = recResponse.data;
-      if (recData?.success && Array.isArray(recData.recommendations)) {
-        setRecommended(recData.recommendations);
-        setFavoriteGenres(recData.favoriteGenres || []);
-      } else {
-        setRecommended([]);
-        setFavoriteGenres([]);
-      }
-    } catch (err) {
-      const message = err.response?.data?.message || 'Failed to load dashboard data. Please try again.';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
+    const [tx, rec, wish, top] = await Promise.allSettled([
+      transactionsAPI.getUserTransactions(),
+      booksAPI.getRecommendations(),
+      wishlistAPI.getWishlist(),
+      booksAPI.getBooks({ sort: 'rating', limit: 8 }),
+    ]);
+    if (tx.status === 'fulfilled') {
+      setTransactions(Array.isArray(tx.value.data?.transactions) ? tx.value.data.transactions : []);
+      setTxError(null);
+    } else {
+      setTxError(tx.reason?.response?.data?.message || 'Failed to load your loans');
     }
+    if (rec.status === 'fulfilled') {
+      setRecommended(rec.value.data?.recommendations || []);
+      setFavoriteGenres(rec.value.data?.favoriteGenres || []);
+    }
+    if (wish.status === 'fulfilled') setWishlistCount((wish.value.data?.wishlist || []).length);
+    if (top.status === 'fulfilled') setHeroCovers(top.value.data?.books || []);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const onLoan = useMemo(
-    () => transactions
-      .filter((t) => ON_LOAN.includes(t?.status))
-      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)),
-    [transactions]
-  );
-  const pendingCount = useMemo(() => transactions.filter((t) => t?.status === 'pending').length, [transactions]);
+  // New arrivals / Popular: fetched per tab + genre and kept for the session
+  const listKey = `${discoverTab}|${genre}`;
+  useEffect(() => {
+    if (discoverTab === 'picked' || lists[listKey]) return;
+    setLists((prev) => ({ ...prev, [listKey]: { loading: true, books: [] } }));
+    const params = { limit: 12, ...(genre ? { genre } : {}) };
+    const request = discoverTab === 'new'
+      ? booksAPI.getBooks({ ...params, sort: 'newest' })
+      : booksAPI.getPopular({ ...params, limit: 10 });
+    request
+      .then((res) => setLists((prev) => ({ ...prev, [listKey]: { loading: false, books: res.data?.books || [] } })))
+      .catch((err) => setLists((prev) => ({ ...prev, [listKey]: { loading: false, books: [], error: err.response?.data?.message || 'Failed to load books' } })));
+  }, [discoverTab, genre, listKey, lists]);
+
   const activeBookIds = useMemo(
     () => new Set(transactions.filter((t) => ACTIVE_LOAN_STATUSES.includes(t?.status)).map((t) => String(bookOf(t)._id || t.bookId))),
     [transactions]
   );
 
-  const stats = useMemo(() => {
-    const issued = onLoan.filter((t) => t.status === 'issued');
-    const dueSoon = issued.filter((t) => {
-      const d = daysLeftOf(t);
-      return d !== null && d >= 0 && d <= DUE_SOON_DAYS;
-    });
-    const overdue = onLoan.filter((t) => {
-      const d = daysLeftOf(t);
-      return d !== null && d < 0;
-    });
-    // Server-calculated fine on books still out (and not yet paid)
-    const fineTotal = onLoan.reduce((sum, t) => (t.finePaid ? sum : sum + fineOf(t)), 0);
-    const nextDue = issued.map(daysLeftOf).filter((d) => d !== null && d >= 0).sort((a, b) => a - b)[0];
-    return { borrowed: onLoan.length, dueSoon: dueSoon.length, overdue: overdue.length, fineTotal, nextDue };
-  }, [onLoan]);
+  // Every figure below is derived from GET /transactions/user/me (server-calculated fine, daysRemaining)
+  const s = useMemo(() => {
+    const issued = transactions.filter((t) => t.status === 'issued');
+    const overdue = issued.filter((t) => num(t.daysRemaining) < 0);
+    const dueWeek = issued.filter((t) => num(t.daysRemaining) >= 0 && num(t.daysRemaining) <= WEEK_DAYS)
+      .sort((x, y) => num(x.daysRemaining) - num(y.daysRemaining));
+    const dueSoon = dueWeek.filter((t) => num(t.daysRemaining) <= DUE_SOON_DAYS);
+    const paid = transactions.filter((t) => t.finePaid).reduce((sum, t) => sum + num(t.fineAmount), 0);
+    const fixedUnpaid = transactions
+      .filter((t) => !t.finePaid && FIXED_FINE_STATUSES.includes(t.status))
+      .reduce((sum, t) => sum + num(t.fineAmount), 0);
+    const accruing = issued.reduce((sum, t) => sum + num(t.fine), 0);
+    const verifying = transactions.filter((t) => t.status === 'payment_pending').reduce((sum, t) => sum + num(t.fineAmount), 0);
+    const payable = transactions.find((t) => t.status === 'return_requested' && num(t.fineAmount) > 0 && !t.finePaid);
+    const loans = transactions
+      .filter((t) => LOAN_STATUSES.includes(t.status))
+      .sort((x, y) => new Date(y.issueDate || y.createdAt) - new Date(x.issueDate || x.createdAt))
+      .slice(0, 5);
+    return {
+      issued: issued.length,
+      pendingRequests: transactions.filter((t) => t.status === 'pending').length,
+      overdue,
+      overdueFine: overdue.reduce((sum, t) => sum + num(t.fine), 0),
+      dueWeek,
+      dueSoon: dueSoon.length,
+      paid,
+      pending: fixedUnpaid + accruing,
+      accruing,
+      verifying,
+      payable,
+      loans,
+    };
+  }, [transactions]);
 
-  // If user is librarian or admin, redirect directly to their dashboard
-  // NOTE: Placed after all hooks to respect the Rules of Hooks
-  if (isAdmin) {
-    return <Navigate to="/admin" replace />;
-  }
-
-  if (isLibrarian) {
-    return <Navigate to="/librarian" replace />;
-  }
-
-  // Onboarding should ONLY appear for brand-new users who have NOT completed onboarding.
-  // Existing users (isOnboardingCompleted === true) must NEVER be redirected to onboarding,
-  // even if favoriteGenres is empty. This preserves existing accounts.
+  // Redirects after all hooks (Rules of Hooks)
+  if (isAdmin) return <Navigate to="/admin" replace />;
+  if (isLibrarian) return <Navigate to="/librarian" replace />;
   if (!loading && user?.role === 'student' && user?.isOnboardingCompleted === false) {
     return <Navigate to="/student/onboarding" replace />;
   }
 
-  const handleRenew = async (txId) => {
-    if (!txId) {
-      toast.error('Unable to renew this book');
-      return;
-    }
-    setRenewingId(txId);
-    try {
-      await transactionsAPI.renewBook(txId);
-      toast.success('Renewed. Your due date moved 7 days later.');
-      await loadData();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to renew book');
-    } finally {
-      setRenewingId(null);
-    }
-  };
-
   const handleRequestBook = async (bookId) => {
-    if (!bookId) {
-      toast.error('Unable to request this book');
-      return;
-    }
+    if (!bookId) return;
     setRequestingBookId(bookId);
     try {
       await transactionsAPI.requestIssueBook({ bookId });
       toast.success('Request sent. A librarian will review it shortly.');
+      setLists({}); // availability may have changed
       await loadData();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to request book');
@@ -200,210 +173,208 @@ export const Dashboard = () => {
     }
   };
 
-  // Helper to get recommendation reason for a book
-  const getRecommendationReason = (book) => {
-    if (!book || !favoriteGenres || favoriteGenres.length === 0) return null;
-    if (book.genre && favoriteGenres.includes(book.genre)) return `Because you like ${book.genre}`;
-    return `Based on your interest in ${favoriteGenres[0]}`;
+  const actionFor = (book) => {
+    if (requestingBookId === book._id) return { label: 'Requesting...', disabled: true };
+    if (activeBookIds.has(String(book._id))) return { label: 'Requested', disabled: true };
+    if (num(book.availableCopies) <= 0) return { label: 'Unavailable', disabled: true };
+    return { label: 'Request book', disabled: false };
   };
 
   const firstName = (user?.name || '').trim().split(/\s+/)[0];
+  const genrePills = ['', ...favoriteGenres, ...GENRES.filter((g) => !favoriteGenres.includes(g))];
+  const pickedBooks = genre ? recommended.filter((b) => b.genre === genre) : recommended;
+  const current = discoverTab === 'picked' ? { loading, books: pickedBooks } : (lists[listKey] || { loading: true, books: [] });
+  const nextDue = s.dueWeek[0];
 
   return (
     <MainLayout>
-      <div className="mx-auto max-w-7xl">
-        <PageHeader
-          title={firstName ? `Hi, ${firstName}` : 'My library'}
-          subtitle="Your loans, due dates and books picked for you."
-          actions={<Button fullWidth={false} onClick={() => navigate('/student/books')}>Browse books</Button>}
-        />
-
-        {loading ? (
-          <DashboardSkeleton />
-        ) : error && transactions.length === 0 && recommended.length === 0 ? (
-          <EmptyState
-            icon="⚠️"
-            title="Unable to load your dashboard"
-            message={error}
-            action={<Button fullWidth={false} onClick={() => { setLoading(true); loadData(); }}>Try again</Button>}
-          />
-        ) : (
-          <div className="space-y-8">
-            {/* KPI cards */}
-            <div className="grid gap-4 sm:grid-cols-3">
-              <KpiCard
-                label="Currently borrowed"
-                value={stats.borrowed}
-                hint={pendingCount > 0 ? `${pendingCount} request${pendingCount === 1 ? '' : 's'} awaiting approval` : 'Books with you right now'}
-                tone={{ icon: 'border-indigo-500/25 bg-indigo-500/10 text-indigo-300', ring: '' }}
-                icon={ICONS.book}
-                onClick={() => navigate('/student/my-books')}
-              />
-              <KpiCard
-                label="Due soon"
-                value={stats.dueSoon}
-                hint={stats.nextDue === undefined ? 'Nothing due soon' : stats.nextDue === 0 ? 'Next one is due today' : `Next due in ${stats.nextDue} day${stats.nextDue === 1 ? '' : 's'}`}
-                tone={{ icon: 'border-amber-500/25 bg-amber-500/10 text-amber-300', ring: stats.dueSoon > 0 ? '!border-amber-500/30' : '' }}
-                icon={ICONS.clock}
-                onClick={() => navigate('/student/my-books?tab=issued')}
-              />
-              <KpiCard
-                label="Overdue + fine"
-                value={`${stats.overdue} · ₹${stats.fineTotal}`}
-                hint={stats.overdue > 0 ? '₹5 per day until returned' : 'No overdue books'}
-                tone={{ icon: 'border-rose-500/25 bg-rose-500/10 text-rose-300', ring: stats.overdue > 0 ? '!border-rose-500/40' : '' }}
-                icon={ICONS.alert}
-                onClick={() => navigate('/student/fines')}
-              />
+      <div className="mx-auto max-w-7xl space-y-5 pb-10">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+          {/* Hero */}
+          <DashboardHero className="xl:col-span-8" covers={heroCovers} titleId="student-hero-title">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">Your library</p>
+            <h1 id="student-hero-title" className="mt-2 font-display text-3xl font-bold tracking-tight text-slate-50 sm:text-4xl">
+              Welcome back{firstName ? `, ${firstName}` : ''}
+            </h1>
+            <p className="mt-2 text-sm text-slate-300 sm:text-base">Find your next read and keep track of due dates and fines.</p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link to="/student/books" className="btn-primary">{DASH_ICONS.search}Browse books</Link>
+              <Link to="/student/my-books" className="btn-secondary">{DASH_ICONS.book}My books</Link>
             </div>
+          </DashboardHero>
 
-            {/* Currently borrowed */}
-            <section aria-labelledby="borrowed-heading">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 id="borrowed-heading" className="text-lg font-semibold text-slate-100">Currently borrowed</h2>
-                {onLoan.length > 0 && (
-                  <Button size="sm" variant="ghost" fullWidth={false} onClick={() => navigate('/student/my-books')}>View all</Button>
+          {/* Today */}
+          <SectionCard id="today" className="xl:col-span-4" title="Today" action={<SectionLink to="/student/my-books?tab=issued">My books</SectionLink>}>
+            {loading ? (
+              <Skeleton lines={3} className="h-5 w-full" />
+            ) : txError ? (
+              <EmptyState bare icon="⚠️" title="Couldn't load your loans" message={txError} />
+            ) : (
+              <div className="space-y-3">
+                {s.overdue.length > 0 && (
+                  <div className="flex items-start gap-3 rounded-2xl border border-rose-400/30 bg-rose-500/10 p-3" role="alert">
+                    <span className="mt-0.5 text-rose-300">{DASH_ICONS.alert}</span>
+                    <p className="text-sm text-rose-100">
+                      <span className="font-semibold">{plural(s.overdue.length, 'book')} overdue.</span>{' '}
+                      Fine so far {formatRupees(s.overdueFine)}, growing daily until you return {s.overdue.length === 1 ? 'it' : 'them'}.
+                    </p>
+                  </div>
+                )}
+                {s.dueWeek.length > 0 ? (
+                  <div>
+                    <p className="font-display text-3xl font-bold text-slate-50">{s.dueWeek.length}</p>
+                    <p className="text-sm text-slate-300">{s.dueWeek.length === 1 ? 'book is' : 'books are'} due in the next 7 days</p>
+                    {nextDue && (
+                      <p className="mt-2 text-xs text-slate-400">
+                        Next: <span className="font-semibold text-slate-200">{bookOf(nextDue).title || 'A book'}</span> · {formatDate(nextDue.dueDate)}
+                        {' '}({num(nextDue.daysRemaining) === 0 ? 'today' : `in ${plural(num(nextDue.daysRemaining), 'day')}`})
+                      </p>
+                    )}
+                  </div>
+                ) : s.overdue.length === 0 ? (
+                  <div className="flex items-center gap-3">
+                    <span className="text-emerald-300">{DASH_ICONS.check}</span>
+                    <p className="text-sm text-slate-200">All clear — nothing due this week.</p>
+                  </div>
+                ) : null}
+                {s.pendingRequests > 0 && (
+                  <p className="text-xs text-slate-400">{plural(s.pendingRequests, 'request')} waiting for a librarian.</p>
                 )}
               </div>
+            )}
+          </SectionCard>
+        </div>
 
-              {onLoan.length === 0 ? (
+        {/* KPI row */}
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-busy={loading || undefined}>
+          <KpiLink to="/student/my-books?tab=issued" label="Borrowed" value={s.issued} hint={s.pendingRequests ? `${s.pendingRequests} awaiting approval` : 'books with you'} icon={DASH_ICONS.book} tone="indigo" loading={loading} />
+          <KpiLink to="/student/my-books?tab=issued" label="Due soon" value={s.dueSoon} hint={`within ${DUE_SOON_DAYS} days`} icon={DASH_ICONS.clock} tone="amber" alert={s.overdue.length > 0} loading={loading} />
+          <KpiLink to="/student/fines" label="Fine pending" value={formatRupees(s.pending)} hint={s.accruing ? `${formatRupees(s.accruing)} still growing` : 'unpaid fines'} icon={DASH_ICONS.card} tone="rose" loading={loading} />
+          <KpiLink to="/student/wishlist" label="Wishlist" value={wishlistCount ?? 0} hint="saved books" icon={DASH_ICONS.heart} tone="violet" loading={loading && wishlistCount === null} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+          {/* Discover */}
+          <SectionCard id="discover" className="xl:col-span-8" title="Discover" action={<SectionLink to="/student/books">All books</SectionLink>}>
+            <DashTabs tabs={DISCOVER_TABS} active={discoverTab} onChange={setDiscoverTab} label="Discover" idPrefix="discover" />
+            <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Filter by genre">
+              {genrePills.map((g) => (
+                <button
+                  key={g || 'all'}
+                  type="button"
+                  aria-pressed={genre === g}
+                  onClick={() => setGenre(g)}
+                  className={`min-h-[32px] flex-shrink-0 rounded-full border px-3 text-xs font-semibold transition-colors ${
+                    genre === g ? 'border-indigo-400/40 bg-indigo-500/15 text-white' : 'border-border text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                  }`}
+                >
+                  {g || 'All genres'}
+                </button>
+              ))}
+            </div>
+            <div id="discover-panel" role="tabpanel" aria-labelledby={`discover-tab-${discoverTab}`} className="mt-3">
+              {current.loading ? (
+                <BookRowSkeleton />
+              ) : current.error ? (
+                <EmptyState bare icon="⚠️" title="Couldn't load books" message={current.error} />
+              ) : current.books.length === 0 ? (
                 <EmptyState
-                  icon="📚"
-                  title="Nothing borrowed right now"
-                  message={pendingCount > 0 ? `You have ${pendingCount} request${pendingCount === 1 ? '' : 's'} waiting for a librarian.` : 'Pick a book from the catalogue and request it.'}
-                  action={<Button fullWidth={false} variant="secondary" onClick={() => navigate(pendingCount > 0 ? '/student/my-books?tab=pending' : '/student/books')}>{pendingCount > 0 ? 'View requests' : 'Browse books'}</Button>}
+                  bare
+                  icon={discoverTab === 'popular' ? '📈' : '✨'}
+                  title={genre ? `Nothing here for ${genre}` : 'Nothing to show yet'}
+                  message={discoverTab === 'picked'
+                    ? 'Add favourite genres in Settings to get picks.'
+                    : discoverTab === 'popular' ? 'Popular books appear once books are borrowed.' : 'Try another genre.'}
                 />
               ) : (
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {onLoan.map((t) => {
-                    const book = bookOf(t);
-                    const days = daysLeftOf(t);
-                    const isOverdue = days !== null && days < 0;
-                    const renewals = toSafeNumber(t.renewalCount, 0);
-                    const canRenew = t.status === 'issued' && !isOverdue && renewals < MAX_RENEWALS;
-                    const fine = fineOf(t);
-
+                <div className="dash-book-row">
+                  {current.books.map((book) => {
+                    const action = actionFor(book);
                     return (
-                      <Card key={t._id} variant="glass" className={`!p-4 ${isOverdue ? '!border-rose-500/30' : ''}`}>
-                        <div className="flex gap-4">
-                          <button
-                            type="button"
-                            onClick={() => book._id && navigate(`/student/books/${book._id}`)}
-                            aria-label={`${book.title || 'Book'} details`}
-                            className="h-28 w-20 flex-shrink-0 overflow-hidden rounded-xl border border-white/10 bg-input"
-                          >
-                            <CoverImage book={book} src={book.imageUrl || book.coverImage} alt="" />
-                          </button>
-                          <div className="min-w-0 flex-1">
-                            <h3 className="font-semibold leading-snug text-slate-100 line-clamp-2">{book.title || 'Unknown title'}</h3>
-                            <p className="mt-0.5 text-sm text-slate-400 line-clamp-1">{book.author || 'Unknown author'}</p>
-                            <p className="mt-2 text-xs text-muted">Due {formatDate(t.dueDate)}</p>
-                            <div className="mt-1.5 flex flex-wrap gap-1.5">
-                              <DaysBadge days={days} />
-                              {fine > 0 && !t.finePaid && <Badge variant="danger">Fine ₹{fine}</Badge>}
-                              {t.status === 'return_requested' && <Badge variant="info">Return requested</Badge>}
-                              {t.status === 'payment_pending' && <Badge variant="warning">Payment pending</Badge>}
-                            </div>
-                          </div>
-                        </div>
-                        {t.status === 'issued' && (
-                          <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
-                            <span className="text-xs text-muted">
-                              {isOverdue ? 'Overdue books cannot be renewed' : `Renewed ${renewals}/${MAX_RENEWALS}`}
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              fullWidth={false}
-                              loading={renewingId === t._id}
-                              disabled={!canRenew}
-                              onClick={() => handleRenew(t._id)}
-                            >
-                              {renewingId === t._id ? 'Renewing...' : 'Renew'}
-                            </Button>
-                          </div>
-                        )}
-                      </Card>
+                      <BookCard
+                        key={book._id}
+                        book={book}
+                        onCardClick={() => navigate(`/student/books/${book._id}`)}
+                        onActionClick={() => handleRequestBook(book._id)}
+                        isLoading={requestingBookId === book._id}
+                        actionLabel={action.label}
+                        actionDisabled={action.disabled}
+                      />
                     );
                   })}
                 </div>
               )}
-            </section>
+            </div>
+          </SectionCard>
 
-            {/* Recommendations */}
-            <section aria-labelledby="recs-heading">
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-                <h2 id="recs-heading" className="text-lg font-semibold text-slate-100">Picked for you</h2>
-                <span className="text-xs text-slate-400">Based on your favorite genres</span>
+          {/* My loans */}
+          <SectionCard id="my-loans" className="xl:col-span-4" title="My loans" subtitle="Latest 5" action={<SectionLink to="/student/my-books">View all</SectionLink>}>
+            {loading ? (
+              <Skeleton lines={4} className="h-14 w-full" />
+            ) : s.loans.length === 0 ? (
+              <EmptyState bare icon="📚" title="No loans yet" message="Request a book and it shows up here." />
+            ) : (
+              <ul className="divide-y divide-border">
+                {s.loans.map((t) => {
+                  const book = bookOf(t);
+                  return (
+                    <li key={t._id}>
+                      <Link to={book._id ? `/student/books/${book._id}` : '/student/my-books'} className="flex items-center gap-3 rounded-xl py-2.5 transition-colors hover:bg-white/[0.03]">
+                        <span className="h-14 w-10 flex-shrink-0 overflow-hidden rounded-lg border border-white/10 bg-input">
+                          <CoverImage book={book} src={book.imageUrl || book.coverImage} alt="" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-slate-100">{book.title || 'Unknown title'}</span>
+                          <span className="block truncate text-[11px] text-slate-400">
+                            {t.status === 'returned' ? `Returned ${formatDate(t.returnDate)}` : `Due ${formatDate(t.dueDate)}`}
+                          </span>
+                        </span>
+                        <span className="flex-shrink-0"><LoanBadge t={t} /></span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </SectionCard>
+
+          {/* Fines */}
+          <SectionCard id="fine-summary" className="xl:col-span-6" title="Fines" subtitle="₹5 per day late" action={<SectionLink to="/student/fines">Details</SectionLink>}>
+            {loading ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <AmountStat label="Total charged" value={formatRupees(s.paid + s.pending)} hint="paid + pending" />
+                <AmountStat label="Paid" value={formatRupees(s.paid)} tone="text-emerald-300" hint="verified by the library" />
+                <AmountStat
+                  label="Pending"
+                  value={formatRupees(s.pending)}
+                  tone={s.pending > 0 ? 'text-rose-300' : 'text-slate-50'}
+                  hint={s.verifying ? `${formatRupees(s.verifying)} being verified` : s.accruing ? `${formatRupees(s.accruing)} still growing` : 'nothing owed'}
+                />
               </div>
+            )}
+          </SectionCard>
 
-              {recommended.length === 0 ? (
-                <EmptyState
-                  icon="✨"
-                  title="No recommendations yet"
-                  message="Add favorite genres to your profile to get better picks."
-                  action={<Button fullWidth={false} variant="secondary" onClick={() => navigate('/student/profile')}>Edit favorite genres</Button>}
-                />
-              ) : (
-                <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-                  {recommended.slice(0, 8).map((book) => {
-                    if (!book || typeof book !== 'object' || !book._id) return null;
-                    const available = toSafeNumber(book.availableCopies, 0);
-                    const requested = activeBookIds.has(String(book._id));
-                    const reason = getRecommendationReason(book);
-                    let label = 'Request';
-                    if (requestingBookId === book._id) label = 'Requesting...';
-                    else if (requested) label = 'Requested';
-                    else if (available <= 0) label = 'Unavailable';
-
-                    return (
-                      <div key={book._id} style={genreAccentStyle(book.genre)} className="book-card !h-auto w-[170px] flex-shrink-0 snap-start">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/student/books/${book._id}`)}
-                          aria-label={`${book.title || 'Book'} details`}
-                          className="book-card__frame focus-visible:[outline-offset:-3px]"
-                        >
-                          <CoverImage book={book} src={book.imageUrl || book.coverImage} alt="" className="book-card__cover" size="M" backdrop />
-                          <span className="book-card__scrim" />
-                          {toSafeNumber(book.rating, 0) > 0 && (
-                            <span className="glass-pill glass-pill--rating absolute bottom-2 left-2">
-                              <span aria-hidden="true">★</span>
-                              <span className="sr-only">Rating</span>
-                              {toSafeNumber(book.rating, 0).toFixed(1)}
-                            </span>
-                          )}
-                        </button>
-                        <div className="flex flex-1 flex-col p-3">
-                          <h3 className="book-card__title text-sm font-semibold leading-snug text-slate-100 line-clamp-2">{book.title || 'Untitled'}</h3>
-                          <p className="mt-0.5 text-xs text-slate-400 line-clamp-1">{book.author || 'Unknown author'}</p>
-                          <div className="book-card__meta mt-2">
-                            {book.genre && <span className="genre-badge">{book.genre}</span>}
-                            <span className={`book-card__availability ${available > 0 ? 'book-card__availability--yes' : 'book-card__availability--no'}`}>
-                              {available > 0 ? `${available} available` : 'Not available'}
-                            </span>
-                          </div>
-                          {reason && <p className="mt-1.5 text-[11px] leading-snug text-cyan-300/90 line-clamp-2">{reason}</p>}
-                          <div className="mt-auto pt-3">
-                            <Button
-                              size="sm"
-                              className="!min-h-[40px]"
-                              loading={requestingBookId === book._id}
-                              disabled={requested || available <= 0}
-                              onClick={() => handleRequestBook(book._id)}
-                            >
-                              {label}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          </div>
-        )}
+          {/* Quick actions */}
+          <SectionCard id="student-quick-actions" className="xl:col-span-6" title="Quick actions">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <QuickTile icon={DASH_ICONS.search} label="Browse books" hint="Search the catalogue" to="/student/books" tone="indigo" />
+              <QuickTile icon={DASH_ICONS.book} label="My books" hint="Loans, renewals, returns" to="/student/my-books" tone="cyan" />
+              <QuickTile
+                icon={DASH_ICONS.card}
+                label="Pay fine"
+                tone="rose"
+                to={s.payable ? `/student/pay-fine/${s.payable._id}` : undefined}
+                disabled={!s.payable}
+                hint={s.payable
+                  ? `${formatRupees(s.payable.fineAmount)} for ${bookOf(s.payable).title || 'a returned book'}`
+                  : s.accruing ? 'Request a return first, then pay' : 'Nothing to pay right now'}
+              />
+              <QuickTile icon={DASH_ICONS.bell} label="Notifications" hint="Requests, reminders, fines" to="/student/notifications" tone="amber" />
+            </div>
+          </SectionCard>
+        </div>
       </div>
     </MainLayout>
   );

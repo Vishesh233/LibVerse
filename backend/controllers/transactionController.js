@@ -404,7 +404,7 @@ exports.initiatePayment = require('./fineController').initiatePayment;
 exports.getUserTransactions = async (req, res, next) => {
   try {
     const transactions = await Transaction.find({ userId: req.user.id })
-      .populate('bookId', 'title author coverImage publisher publicationYear genre rating isbn description totalCopies availableCopies issuedCopies')
+      .populate('bookId', 'title author coverImage imageUrl publisher publicationYear genre rating isbn description totalCopies availableCopies issuedCopies')
       .sort('-createdAt');
 
     // Add fine calculation and days remaining

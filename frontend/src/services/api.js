@@ -51,6 +51,8 @@ export const authAPI = {
   signup: (data) => apiClient.post('/auth/signup', data),
   login: (data) => apiClient.post('/auth/login', data),
   getCurrentUser: () => apiClient.get('/auth/me'),
+  getMyStats: () => apiClient.get('/auth/me/stats'),
+  getMyActivity: () => apiClient.get('/auth/me/activity'),
   updateProfile: (data) => apiClient.put('/auth/update-profile', data),
   completeOnboarding: (data) => apiClient.put('/auth/complete-onboarding', data),
   updateFavoriteGenres: (data) => apiClient.put('/auth/update-favorite-genres', data),
@@ -70,6 +72,8 @@ export const booksAPI = {
   deleteBook: (id) => apiClient.delete(`/books/${id}`),
   addReview: (bookId, data) => apiClient.post(`/books/${bookId}/review`, data),
   getRecommendations: () => apiClient.get('/books/recommendations'),
+  // Most borrowed books; params: limit (max 20), genre
+  getPopular: (params, config = {}) => apiClient.get('/books/popular', { params, ...config }),
   uploadCover: (formData) =>
     apiClient.post('/books/upload-cover', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

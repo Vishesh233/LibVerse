@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { booksAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
@@ -8,6 +8,10 @@ import { useDebounce } from '../hooks/useDebounce';
 import { DeleteBookModal } from '../components/DeleteBookModal';
 import { CoverImage } from '../components/CoverImage';
 import { GENRES } from '../constants/genres';
+import { Pagination } from '../components/Pagination';
+
+const PAGE_SIZE = 24;
+const pageFrom = (value) => Math.max(1, parseInt(value, 10) || 1);
 
 export const ManageBooks = () => {
   const navigate = useNavigate();
@@ -17,12 +21,19 @@ export const ManageBooks = () => {
   const editPath = (id) => (isAdmin ? `/admin/books/${id}/edit` : `/librarian/books/${id}/edit`);
   const detailsPath = (id) => (isAdmin ? `/admin/books/${id}` : `/librarian/books/${id}`);
 
+  // Page, search and genre live in the URL (?page=&q=&genre=) so reload and back keep the view
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = pageFrom(searchParams.get('page'));
+  const q = searchParams.get('q') || '';
+  const genre = searchParams.get('genre') || '';
+
   const [books, setBooks] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [search, setSearch] = useState('');
-  const [genre, setGenre] = useState('');
+  const [search, setSearch] = useState(q);
   const [viewMode, setViewMode] = useState('grid');
 
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -30,23 +41,60 @@ export const ManageBooks = () => {
 
   const debouncedSearch = useDebounce(search, 300);
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    fetchBooks();
-  }, []);
+  /** Update URL params; page 1 and empty values are left out of the URL */
+  const updateParams = useCallback((changes) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      Object.entries(changes).forEach(([key, value]) => {
+        if (value === '' || value === null || value === undefined || (key === 'page' && Number(value) <= 1)) next.delete(key);
+        else next.set(key, String(value));
+      });
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
-  const fetchBooks = async () => {
+  // Debounced search box -> ?q= and back to page 1
+  useEffect(() => {
+    const value = debouncedSearch.trim();
+    if (value !== q) updateParams({ q: value, page: 1 });
+  }, [debouncedSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Back/forward or a pasted URL: keep the input in sync with ?q=
+  useEffect(() => {
+    if (q !== debouncedSearch.trim()) setSearch(q);
+  }, [q]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fetchBooks = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await booksAPI.getBooks({ limit: 100 });
+      const params = { page, limit: PAGE_SIZE };
+      if (q) params.q = q;
+      if (genre) params.genre = genre;
+      const res = await booksAPI.getBooks(params);
+      const serverPages = Math.max(1, res.data.pages || 1);
+      // Past the last page (e.g. after deleting the only book on it): go to the last page
+      if (page > serverPages && (res.data.total || 0) > 0) {
+        updateParams({ page: serverPages });
+        return;
+      }
       setBooks(res.data.books || []);
+      setTotal(res.data.total || 0);
+      setPages(serverPages);
       setError(null);
     } catch (err) {
       setError('Failed to load books');
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, q, genre, updateParams]);
+
+  useEffect(() => {
+    fetchBooks();
+  }, [fetchBooks]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [page]);
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
@@ -54,8 +102,8 @@ export const ManageBooks = () => {
     try {
       await booksAPI.deleteBook(confirmDelete._id);
       toast.success('Book deleted successfully!');
-      setBooks((prev) => prev.filter((b) => b._id !== confirmDelete._id));
       setConfirmDelete(null);
+      await fetchBooks(); // the server total and page contents change
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to delete book';
       toast.error(message);
@@ -74,14 +122,9 @@ export const ManageBooks = () => {
     );
   }
 
-  const filteredBooks = books.filter((book) => {
-    const matchesSearch =
-      !debouncedSearch ||
-      book.title?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      book.author?.toLowerCase().includes(debouncedSearch.toLowerCase());
-    const matchesGenre = !genre || book.genre === genre;
-    return matchesSearch && matchesGenre;
-  });
+  const filteredBooks = books; // already filtered and paginated by the server
+  const filtered = Boolean(q || genre);
+  const copiesLabel = (book) => `${book.availableCopies ?? 0} of ${book.totalCopies ?? 0} available`;
 
   return (
     <MainLayout>
@@ -90,8 +133,10 @@ export const ManageBooks = () => {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">📚 Book Collection</h1>
-            <p className="mt-1 text-sm text-slate-400">
-              {filteredBooks.length} {filteredBooks.length === 1 ? 'book' : 'books'} available
+            <p className="mt-1 text-sm text-slate-400" aria-live="polite">
+              {loading && total === 0
+                ? 'Loading books...'
+                : `${total.toLocaleString()} ${total === 1 ? 'book' : 'books'}${filtered ? ' match your filters' : ' in the collection'}${pages > 1 ? ` · page ${page} of ${pages}` : ''}`}
             </p>
           </div>
           <button
@@ -130,6 +175,7 @@ export const ManageBooks = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by title or author..."
+                aria-label="Search books by title or author"
                 className="w-full input-amo input-search"
               />
             </div>
@@ -138,7 +184,8 @@ export const ManageBooks = () => {
             <div className="md:w-64">
               <select
                 value={genre}
-                onChange={(e) => setGenre(e.target.value)}
+                onChange={(e) => updateParams({ genre: e.target.value, page: 1 })}
+                aria-label="Filter by category"
                 className="w-full input-amo"
               >
                 <option value="">All Categories</option>
@@ -229,9 +276,9 @@ export const ManageBooks = () => {
 
                 <div className="mt-4 pt-4 border-t border-border">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Available Copies</span>
-                    <span className="text-sm font-bold text-emerald-400">
-                      {book.availableCopies ?? book.copiesAvailable ?? 0}
+                    <span className="text-xs text-slate-500">Availability</span>
+                    <span className={`text-sm font-bold ${(book.availableCopies ?? 0) > 0 ? 'text-emerald-400' : 'text-rose-300'}`}>
+                      {copiesLabel(book)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between mt-2">
@@ -242,7 +289,7 @@ export const ManageBooks = () => {
                     <span className="text-xs text-slate-500">Issued Copies</span>
                     <span className="text-sm font-bold text-amber-400">{book.issuedCopies ?? 0}</span>
                   </div>
-                  {book.rating && (
+                  {book.rating > 0 && (
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-xs text-slate-500">Rating</span>
                       <span className="text-sm font-bold text-amber-400">⭐ {book.rating.toFixed(1)}</span>
@@ -293,8 +340,8 @@ export const ManageBooks = () => {
                         {book.genre}
                       </span>
                     )}
-                    <span className="text-[11px] text-slate-500">
-                      {book.availableCopies ?? book.copiesAvailable ?? 0} copies available
+                    <span className={`text-[11px] font-semibold ${(book.availableCopies ?? 0) > 0 ? 'text-emerald-400' : 'text-rose-300'}`}>
+                      {copiesLabel(book)}
                     </span>
                   </div>
                 </div>
@@ -322,6 +369,8 @@ export const ManageBooks = () => {
             ))}
           </div>
         )}
+
+        {!loading && <Pagination currentPage={page} totalPages={pages} onPageChange={(next) => updateParams({ page: next })} />}
       </div>
 
       {/* Delete Confirmation Modal */}

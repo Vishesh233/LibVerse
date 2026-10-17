@@ -308,10 +308,12 @@ exports.getDashboard = async (req, res, next) => {
       };
     });
 
-    // 5. Top Books (Most Issued Books) - use real ratings from Book collection
+    // 5. Top Books (most borrowed): real loans only - requests and rejections are not borrows.
+    //    Nothing borrowed yet -> empty list (no placeholder books).
     const topIssuedAgg = await Transaction.aggregate([
+      { $match: { status: { $in: ['issued', 'return_requested', 'payment_pending', 'returned'] } } },
       { $group: { _id: '$bookId', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
+      { $sort: { count: -1, _id: 1 } }, // stable order for ties
       { $limit: 5 },
     ]);
 
@@ -343,46 +345,16 @@ exports.getDashboard = async (req, res, next) => {
       })
       .filter(Boolean);
 
-    if (topBooks.length === 0) {
-      const defaultBooks = await Book.find().limit(5);
-      defaultBooks.forEach((b) => {
-        topBooks.push({
-          _id: b._id,
-          title: b.title,
-          author: b.author,
-          category: b.category || b.genre || 'General',
-          count: b.issuedCopies || 1,
-          rating: b.rating || 0,
-          publisher: b.publisher || '',
-          publishedYear: b.publicationYear || '',
-          pages: b.pages || '',
-          language: b.language || '',
-          isbn: b.isbn || '',
-          description: b.description || '',
-          availableCopies: b.availableCopies || 0,
-          issuedCopies: b.issuedCopies || 0,
-          genre: b.genre || '',
-          coverImage: b.coverImage || null,
-        });
-      });
-    }
 
-    // 6. Books by Category/Genre Distribution
-    const categoryAgg = await Book.aggregate([
+    // 6. Active books per genre: every genre of the catalogue (Book.genre enum), 0 when empty
+    const genreAgg = await Book.aggregate([
       { $match: { isActive: true } },
-      {
-        $group: {
-          _id: { $ifNull: ['$category', '$genre'] },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { count: -1 } },
+      { $group: { _id: '$genre', count: { $sum: 1 } } },
     ]);
-
-    const booksByCategory = categoryAgg.map((item) => ({
-      category: item._id || 'General',
-      count: item.count,
-    }));
+    const genreCounts = Object.fromEntries(genreAgg.map((g) => [g._id, g.count]));
+    const booksByGenre = Book.schema.path('genre').enumValues
+      .map((genre) => ({ genre, count: genreCounts[genre] || 0 }))
+      .sort((x, y) => y.count - x.count || x.genre.localeCompare(y.genre));
 
     // 7. 7-Day Issue vs Return Weekly Stats
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -410,9 +382,32 @@ exports.getDashboard = async (req, res, next) => {
       });
     }
 
+    // 8. Fines summary (server values): paid fines, fines fixed at a return request but unpaid,
+    //    and fines still growing on issued overdue loans
+    const [fineAgg] = await Transaction.aggregate([
+      { $match: { fineAmount: { $gt: 0 } } },
+      {
+        $group: {
+          _id: null,
+          collected: { $sum: { $cond: ['$finePaid', '$fineAmount', 0] } },
+          outstandingFixed: { $sum: { $cond: ['$finePaid', 0, '$fineAmount'] } },
+          loansWithFixedFines: { $sum: 1 },
+        },
+      },
+    ]);
+    const accruing = overdueList.reduce((sum, item) => sum + (item.rawFineAmount || 0), 0);
+    const fineSummary = {
+      collected: fineAgg?.collected || 0,
+      outstandingFixed: fineAgg?.outstandingFixed || 0,
+      accruing,
+      outstanding: (fineAgg?.outstandingFixed || 0) + accruing,
+      loansWithFines: (fineAgg?.loansWithFixedFines || 0) + overdueList.length,
+    };
+
     res.status(200).json({
       success: true,
       analytics: {
+        fineSummary,
         totalUsers,
         totalBooks,
         issuedBooks,
@@ -427,7 +422,7 @@ exports.getDashboard = async (req, res, next) => {
         paymentPending,
         recentActivities,
         topBooks,
-        booksByCategory,
+        booksByGenre,
         weeklyData,
       },
     });

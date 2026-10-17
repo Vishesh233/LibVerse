@@ -7,6 +7,7 @@ const {
   deleteBook,
   createReview,
   getRecommendations,
+  getPopularBooks,
 } = require('../controllers/bookController');
 const { uploadBookCover } = require('../controllers/bookCoverUploadController');
 const { protect, isStaff } = require('../middleware/authMiddleware');
@@ -15,6 +16,7 @@ const router = express.Router();
 
 // Public routes
 router.get('/', getBooks);
+router.get('/popular', getPopularBooks); // before /:id
 
 // Protected routes
 router.get('/recommendations', protect, getRecommendations);

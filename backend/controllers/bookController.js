@@ -4,6 +4,14 @@ const Review = require('../models/Review');
 const { generateQRCode } = require('../utils/qrGenerator');
 const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
 
+// ?sort= values for GET /api/books (anything else keeps the default order)
+const BOOK_SORTS = {
+  newest: { createdAt: -1, _id: -1 },
+  rating: { rating: -1, title: 1 },
+};
+// Loans that count as a borrow for "popular" (requests and rejections do not)
+const BORROWED_STATUSES = ['issued', 'return_requested', 'payment_pending', 'returned'];
+
 /**
  * @route GET /api/books
  * @desc Get all books with filters
@@ -18,9 +26,16 @@ exports.getBooks = async (req, res, next) => {
     const rating = toQueryString(req.query.rating);
     const availability = toQueryString(req.query.availability);
     const { page, limit, skip } = toPagination(req.query.page, req.query.limit, 10);
+    const sort = BOOK_SORTS[toQueryString(req.query.sort)];
 
     let filter = { isActive: true };
 
+    // ?q= one search box: title OR author (escaped, case-insensitive)
+    const q = toQueryString(req.query.q); // already trimmed; undefined when absent or not a string
+    if (q) {
+      const rx = { $regex: escapeRegex(q), $options: 'i' };
+      filter.$or = [{ title: rx }, { author: rx }];
+    }
     if (title) {
       filter.title = { $regex: escapeRegex(title), $options: 'i' };
     }
@@ -42,10 +57,9 @@ exports.getBooks = async (req, res, next) => {
       filter.availableCopies = { $lte: 0 };
     }
 
-    const books = await Book.find(filter)
-      .limit(limit)
-      .skip(skip)
-      .exec();
+    let query = Book.find(filter);
+    if (sort) query = query.sort(sort);
+    const books = await query.limit(limit).skip(skip).exec();
 
     const total = await Book.countDocuments(filter);
 
@@ -56,6 +70,34 @@ exports.getBooks = async (req, res, next) => {
       pages: Math.ceil(total / limit),
       books,
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @route GET /api/books/popular
+ * @desc Most borrowed active books (count of issued/returned loans), optional ?genre=, ?limit= (max 20)
+ * @access Public
+ */
+exports.getPopularBooks = async (req, res, next) => {
+  try {
+    const genre = toQueryString(req.query.genre);
+    const { limit } = toPagination(1, req.query.limit, 10, 20);
+    const Transaction = require('../models/Transaction');
+
+    const rows = await Transaction.aggregate([
+      { $match: { status: { $in: BORROWED_STATUSES } } },
+      { $group: { _id: '$bookId', borrowCount: { $sum: 1 } } },
+      { $lookup: { from: Book.collection.name, localField: '_id', foreignField: '_id', as: 'book' } },
+      { $unwind: '$book' },
+      { $match: { 'book.isActive': true, ...(genre ? { 'book.genre': genre } : {}) } },
+      { $sort: { borrowCount: -1, 'book.rating': -1, 'book.title': 1 } },
+      { $limit: limit },
+    ]);
+
+    const books = rows.map((r) => ({ ...r.book, borrowCount: r.borrowCount }));
+    res.status(200).json({ success: true, count: books.length, books });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

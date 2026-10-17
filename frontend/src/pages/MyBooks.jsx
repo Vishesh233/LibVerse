@@ -28,6 +28,16 @@ const TABS = [
   { key: 'rejected', label: 'Rejected' },
 ];
 
+// Server rule (PUT /transactions/:id/renew): at most 3 renewals, never once overdue
+const MAX_RENEWALS = 3;
+
+/** Why an issued loan cannot be renewed right now, or null if it can (server daysRemaining: calendar days) */
+const renewBlockReason = (t) => {
+  if (Number(t.daysRemaining) < 0) return 'Overdue — return and pay the fine';
+  if ((Number(t.renewalCount) || 0) >= MAX_RENEWALS) return 'Renewal limit reached';
+  return null;
+};
+
 // Loans that are still out with the student, so the due date matters
 const ON_LOAN = ['issued', 'return_requested', 'payment_pending', 'overdue'];
 
@@ -63,6 +73,7 @@ export const MyBooks = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [actioningId, setActioningId] = useState(null);
+  const [renewingId, setRenewingId] = useState(null);
 
   const requestedTab = searchParams.get('tab');
   const activeTab = TABS.some((t) => t.key === requestedTab) ? requestedTab : 'all';
@@ -113,6 +124,21 @@ export const MyBooks = () => {
       toast.error(err.response?.data?.message || 'Could not request the return');
     } finally {
       setActioningId(null);
+    }
+  };
+
+  const handleRenew = async (id) => {
+    setRenewingId(id);
+    try {
+      const res = await transactionsAPI.renewBook(id);
+      const message = (res.data?.message || 'Book renewed').replace(/\.$/, '');
+      const newDue = res.data?.newDueDate ? ` New due date: ${formatDate(res.data.newDueDate)}.` : '';
+      toast.success(`${message}.${newDue}`);
+      await load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not renew the book');
+    } finally {
+      setRenewingId(null);
     }
   };
 
@@ -218,6 +244,9 @@ export const MyBooks = () => {
 
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         {onLoan && <DueBadge dueDate={t.dueDate} />}
+                        {t.status === 'issued' && (
+                          <span className="text-xs text-muted">Renewed {Number(t.renewalCount) || 0}/{MAX_RENEWALS}</span>
+                        )}
                         {fine > 0 && (
                           <Badge variant={t.finePaid ? 'success' : 'danger'}>
                             Fine ₹{fine}{t.finePaid ? ' · paid' : ''}
@@ -233,9 +262,24 @@ export const MyBooks = () => {
                               fullWidth={false}
                               variant="secondary"
                               loading={actioningId === t._id}
+                              disabled={renewingId === t._id}
                               onClick={() => handleReturn(t._id)}
                             >
                               {actioningId === t._id ? 'Requesting...' : 'Return book'}
+                            </Button>
+                          )}
+                          {t.status === 'issued' && (
+                            <Button
+                              size="sm"
+                              fullWidth={false}
+                              variant="ghost"
+                              loading={renewingId === t._id}
+                              disabled={!!renewBlockReason(t) || actioningId === t._id}
+                              title={renewBlockReason(t) || 'Extend the due date by 7 days'}
+                              aria-describedby={renewBlockReason(t) ? `renew-why-${t._id}` : undefined}
+                              onClick={() => handleRenew(t._id)}
+                            >
+                              {renewingId === t._id ? 'Renewing...' : 'Renew'}
                             </Button>
                           )}
                           {canPay && (
@@ -244,6 +288,9 @@ export const MyBooks = () => {
                             </Button>
                           )}
                         </div>
+                      )}
+                      {t.status === 'issued' && renewBlockReason(t) && (
+                        <p id={`renew-why-${t._id}`} className="mt-2 text-xs text-slate-400">Can't renew: {renewBlockReason(t)}</p>
                       )}
                       {t.status === 'payment_pending' && (
                         <p className="mt-3 text-xs text-slate-400">Payment submitted. A librarian will verify it and complete the return.</p>

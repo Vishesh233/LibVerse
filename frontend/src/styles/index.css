@@ -1864,3 +1864,82 @@ body.modal-open {
 }
 .book-card__availability--yes { color: #6EE7B7; }
 .book-card__availability--no { color: #FDA4AF; }
+
+/* ===========================
+   Dashboards (Phase 2C): hero with cover collage, compact layout blocks
+=========================== */
+.dash-hero { min-height: 200px; }
+.dash-hero--compact { min-height: 0; }
+.dash-hero__content {
+  position: relative;
+  padding: 1.5rem;
+  max-width: 34rem;
+}
+@media (min-width: 640px) {
+  .dash-hero__content { padding: 1.75rem 2rem; }
+}
+.dash-hero--compact .dash-hero__content { max-width: none; padding: 1.25rem 1.5rem; }
+
+/* Tilted grid of real covers on the right; decorative only */
+.dash-hero__collage {
+  position: absolute;
+  top: -38%;
+  right: -4%;
+  width: 60%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  transform: rotate(-12deg);
+}
+.dash-hero__collage img {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+.dash-hero__collage img:nth-child(even) { transform: translateY(28%); }
+
+/* Shade: near-opaque page background where the text is, lighter towards the covers */
+.dash-hero__shade {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(99, 102, 241, 0.22), transparent 45%),
+    linear-gradient(90deg, rgba(5, 8, 22, 0.97) 0%, rgba(5, 8, 22, 0.92) 45%, rgba(5, 8, 22, 0.78) 70%, rgba(5, 8, 22, 0.45) 100%);
+}
+.dash-hero--compact .dash-hero__shade {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(99, 102, 241, 0.22), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(34, 211, 238, 0.12), transparent 45%),
+    linear-gradient(180deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.95));
+}
+/* Phones: covers fill the whole banner behind the text, so the shade is uniform */
+@media (max-width: 639px) {
+  .dash-hero__collage { top: -20%; right: -35%; width: 130%; opacity: 0.7; }
+  .dash-hero__shade {
+    background:
+      radial-gradient(circle at 12% 0%, rgba(99, 102, 241, 0.2), transparent 50%),
+      linear-gradient(180deg, rgba(5, 8, 22, 0.86), rgba(5, 8, 22, 0.93));
+  }
+}
+
+/* Horizontal book rows on dashboards */
+.dash-book-row {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: 6px;
+  overscroll-behavior-x: contain;
+}
+.dash-book-row > * { width: 170px; flex-shrink: 0; scroll-snap-align: start; }
+
+/* Short laptop screens: slightly tighter dashboard blocks */
+@media (max-height: 860px) {
+  .dash-hero { min-height: 184px; }
+  .dash-section.dash-section { padding: 1rem 1.125rem !important; }
+}
+/* The compact (staff) hero sizes to its content at any height */
+.dash-hero.dash-hero--compact { min-height: 0; }

@@ -172,8 +172,8 @@ export const Analytics = () => {
               ) : (
                 <EmptyState
                   icon="📚"
-                  title="No Data"
-                  message="No book issue data available yet"
+                  title="No books borrowed yet"
+                  message="The most borrowed books appear here once loans are approved."
                 />
               )}
             </Card>
