@@ -310,8 +310,9 @@ exports.getDashboard = async (req, res, next) => {
 
     // 5. Top Books (most borrowed): real loans only - requests and rejections are not borrows.
     //    Nothing borrowed yet -> empty list (no placeholder books).
+    const LOAN_STATUSES = ['issued', 'return_requested', 'payment_pending', 'returned'];
     const topIssuedAgg = await Transaction.aggregate([
-      { $match: { status: { $in: ['issued', 'return_requested', 'payment_pending', 'returned'] } } },
+      { $match: { status: { $in: LOAN_STATUSES } } },
       { $group: { _id: '$bookId', count: { $sum: 1 } } },
       { $sort: { count: -1, _id: 1 } }, // stable order for ties
       { $limit: 5 },
@@ -354,6 +355,19 @@ exports.getDashboard = async (req, res, next) => {
     const genreCounts = Object.fromEntries(genreAgg.map((g) => [g._id, g.count]));
     const booksByGenre = Book.schema.path('genre').enumValues
       .map((genre) => ({ genre, count: genreCounts[genre] || 0 }))
+      .sort((x, y) => y.count - x.count || x.genre.localeCompare(y.genre));
+
+    // 6b. Real loans per genre (same loan rule as top books), every genre of the enum, 0 when none.
+    //     Loans of books that no longer exist are skipped.
+    const borrowedAgg = await Transaction.aggregate([
+      { $match: { status: { $in: LOAN_STATUSES } } },
+      { $lookup: { from: Book.collection.name, localField: 'bookId', foreignField: '_id', as: 'book' } },
+      { $unwind: '$book' },
+      { $group: { _id: '$book.genre', count: { $sum: 1 } } },
+    ]);
+    const borrowedCounts = Object.fromEntries(borrowedAgg.map((g) => [g._id, g.count]));
+    const borrowedByGenre = Book.schema.path('genre').enumValues
+      .map((genre) => ({ genre, count: borrowedCounts[genre] || 0 }))
       .sort((x, y) => y.count - x.count || x.genre.localeCompare(y.genre));
 
     // 7. 7-Day Issue vs Return Weekly Stats
@@ -423,6 +437,7 @@ exports.getDashboard = async (req, res, next) => {
         recentActivities,
         topBooks,
         booksByGenre,
+        borrowedByGenre,
         weeklyData,
       },
     });

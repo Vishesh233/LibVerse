@@ -282,7 +282,7 @@ export const StaffDashboard = ({ role }) => {
                 id="books-by-genre"
                 className="xl:col-span-7"
                 title="Books by genre"
-                subtitle="Active titles · select a genre to manage it"
+                subtitle="Active titles or real loans · select a genre to manage it"
                 action={<SectionLink to={`${base}/books`}>All books</SectionLink>}
               >
                 {isLoading ? (
@@ -293,7 +293,7 @@ export const StaffDashboard = ({ role }) => {
                 ) : (a.booksByGenre || []).every((g) => !g.count) ? (
                   <EmptyState bare icon="📚" title="No books yet" message="Add books to see the genre mix." />
                 ) : (
-                  <GenreDoughnut data={a.booksByGenre} onSelect={(g) => navigate(`${base}/books?genre=${encodeURIComponent(g)}`)} />
+                  <GenreDoughnut catalogue={a.booksByGenre} borrowed={a.borrowedByGenre} onSelect={(g) => navigate(`${base}/books?genre=${encodeURIComponent(g)}`)} />
                 )}
               </SectionCard>
 
