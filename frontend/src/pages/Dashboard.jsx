@@ -363,6 +363,8 @@ export const Dashboard = () => {
                         note={action.note}
                         noteTone={action.noteTone}
                         secondaryAction={action.secondary}
+                        reason={discoverTab === 'picked' ? book.recommendationReason : undefined}
+                        aiPick={discoverTab === 'picked' && book.recommendationSource === 'ai'}
                       />
                     );
                   })}

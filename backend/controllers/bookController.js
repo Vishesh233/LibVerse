@@ -1,8 +1,11 @@
+const mongoose = require('mongoose');
 const Book = require('../models/Book');
 const User = require('../models/User');
 const Review = require('../models/Review');
 const Reservation = require('../models/Reservation');
+const Transaction = require('../models/Transaction');
 const { afterCopyFreed, cancelBookReservations } = require('../services/reservationService');
+const recommendationService = require('../services/recommendationService');
 const { armRestockAlert } = require('../utils/bookStock');
 const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
 const { audit } = require('../utils/audit');
@@ -14,6 +17,10 @@ const BOOK_SORTS = {
 };
 // Loans that count as a borrow for "popular" (requests and rejections do not)
 const BORROWED_STATUSES = ['issued', 'return_requested', 'payment_pending', 'returned'];
+// "Picked for you": how many, which loans count as read, and which books never to suggest
+const RECOMMENDATION_LIMIT = 6;
+const RECOMMEND_READ_STATUSES = BORROWED_STATUSES;
+const RECOMMEND_EXCLUDE_STATUSES = ['pending', ...BORROWED_STATUSES];
 
 /**
  * @route GET /api/books
@@ -94,7 +101,6 @@ exports.getPopularBooks = async (req, res, next) => {
   try {
     const genre = toQueryString(req.query.genre);
     const { limit } = toPagination(1, req.query.limit, 10, 20);
-    const Transaction = require('../models/Transaction');
 
     const rows = await Transaction.aggregate([
       { $match: { status: { $in: BORROWED_STATUSES } } },
@@ -267,6 +273,7 @@ exports.createBook = async (req, res, next) => {
     await audit(req, 'book.create', { type: 'Book', id: book._id },
       `Added "${book.title}" by ${book.author} (${book.totalCopies} cop${book.totalCopies === 1 ? 'y' : 'ies'})`,
       { genre: book.genre, totalCopies: book.totalCopies });
+    recommendationService.scheduleRetrain();
 
     res.status(201).json({
       success: true,
@@ -377,6 +384,7 @@ exports.updateBook = async (req, res, next) => {
     await audit(req, 'book.update', { type: 'Book', id: book._id },
       `Edited "${book.title}"${fields.length ? `: ${fields.join(', ')}` : ''}`,
       { fields, ...(copiesChanged ? { totalCopies: book.totalCopies, availableCopies: book.availableCopies } : {}) });
+    recommendationService.scheduleRetrain();
 
     res.status(200).json({
       success: true,
@@ -408,6 +416,7 @@ exports.deleteBook = async (req, res, next) => {
     await cancelBookReservations(book._id, req.user);
 
     await audit(req, 'book.delete', { type: 'Book', id: book._id }, `Removed "${book.title}" by ${book.author} from the catalogue`);
+    recommendationService.scheduleRetrain();
 
     res.status(200).json({
       success: true,
@@ -420,7 +429,11 @@ exports.deleteBook = async (req, res, next) => {
 
 /**
  * @route GET /api/books/recommendations
- * @desc Get personalized book recommendations based on user's favorite genres
+ * @desc "Picked for you": up to 6 books, each with a reason. Ranked by the AI service
+ *       (content similarity to books the student read, then favourite genres) when it answers
+ *       within 1.5 s; otherwise, or to fill remaining slots, the MongoDB genre logic.
+ *       Response: { recommendations: [book + { recommendationReason, recommendationSource }],
+ *                   source: 'ai' | 'fallback', favoriteGenres }
  * @access Private
  */
 exports.getRecommendations = async (req, res, next) => {
@@ -431,73 +444,90 @@ exports.getRecommendations = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
+    const favoriteGenres = user.favoriteGenres || [];
 
-    // If user has no favorite genres, return empty array
-    if (!user.favoriteGenres || user.favoriteGenres.length === 0) {
+    const [userTransactions, activeReservations] = await Promise.all([
+      Transaction.find({ userId }).select('bookId status').lean(),
+      Reservation.find({ userId, status: { $in: ['waiting', 'ready'] } }).select('bookId').lean(),
+    ]);
+    // Read = the book was handed out at some point; their content drives the AI ranking
+    const readIds = [...new Set(userTransactions
+      .filter((t) => t.bookId && RECOMMEND_READ_STATUSES.includes(t.status))
+      .map((t) => String(t.bookId)))];
+    // Never suggest a book they have, asked for, read or are waiting for
+    const excludedIds = [...new Set([
+      ...userTransactions.filter((t) => t.bookId && RECOMMEND_EXCLUDE_STATUSES.includes(t.status)).map((t) => String(t.bookId)),
+      ...activeReservations.map((r) => String(r.bookId)),
+    ])];
+
+    if (!favoriteGenres.length && !readIds.length) {
       return res.status(200).json({
         success: true,
         recommendations: [],
+        source: 'fallback',
         message: 'Please complete onboarding to get personalized recommendations',
       });
     }
 
-    // Get user's transaction history to exclude borrowed/returned books
-    const Transaction = require('../models/Transaction');
-    const userTransactions = await Transaction.find({ userId })
-      .select('bookId status')
-      .exec();
-
-    // Extract book IDs that user has interacted with (issued, pending, or returned)
-    const excludedBookIds = userTransactions
-      .filter(t => t.bookId && (t.status === 'issued' || t.status === 'pending' || t.status === 'returned'))
-      .map(t => t.bookId);
-
-    // Build query for books matching favorite genres
-    const favoriteGenres = user.favoriteGenres;
-    const genreQuery = { genre: { $in: favoriteGenres } };
-
-    // Get books matching favorite genres, excluding user's interacted books
-    const matchedBooks = await Book.find({
-      isActive: true,
-      ...genreQuery,
-      _id: { $nin: excludedBookIds },
-    })
-      .sort({ rating: -1, publicationYear: -1 })
-      .limit(6)
-      .exec();
-
-    // If we have 6 or more matched books, return them
-    if (matchedBooks.length >= 6) {
-      return res.status(200).json({
-        success: true,
-        recommendations: matchedBooks.slice(0, 6),
-        favoriteGenres: favoriteGenres,
-      });
+    const picks = [];
+    let source = 'fallback';
+    if (recommendationService.isEnabled()) {
+      try {
+        const ranked = await recommendationService.recommend({
+          readIds, favouriteGenres: favoriteGenres, excludeIds: excludedIds, limit: RECOMMENDATION_LIMIT,
+        });
+        const ids = ranked.map((r) => r.id).filter((id) => mongoose.isValidObjectId(id));
+        // Re-read from MongoDB: current stock, and only books that are still active
+        const found = await Book.find({ _id: { $in: ids }, isActive: true }).lean();
+        const byId = new Map(found.map((b) => [String(b._id), b]));
+        for (const r of ranked) {
+          const book = byId.get(String(r.id));
+          if (book) picks.push({ ...book, recommendationReason: r.reason, recommendationSource: 'ai' });
+        }
+        if (picks.length) source = 'ai';
+      } catch (error) {
+        // Service down, slow, untrained or unconfigured: the fallback below answers instead
+      }
     }
 
-    // If fewer than 6 matched books, fill remaining slots with highest-rated books from other genres
-    const remainingSlots = 6 - matchedBooks.length;
-
-    // Get IDs of already recommended books to avoid duplicates
-    const matchedBookIds = matchedBooks.map(b => b._id);
-    const allExcludedIds = [...matchedBookIds, ...excludedBookIds];
-
-    const fillerBooks = await Book.find({
-      isActive: true,
-      _id: { $nin: allExcludedIds },
-    })
-      .sort({ rating: -1, publicationYear: -1 })
-      .limit(remainingSlots)
-      .exec();
-
-    const recommendations = [...matchedBooks, ...fillerBooks];
+    if (picks.length < RECOMMENDATION_LIMIT) {
+      const taken = [...excludedIds, ...picks.map((b) => String(b._id))];
+      const fill = await fallbackRecommendations(favoriteGenres, taken, RECOMMENDATION_LIMIT - picks.length);
+      picks.push(...fill);
+    }
 
     return res.status(200).json({
       success: true,
-      recommendations: recommendations.slice(0, 6),
-      favoriteGenres: favoriteGenres,
+      recommendations: picks.slice(0, RECOMMENDATION_LIMIT),
+      source,
+      favoriteGenres,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
+};
+
+/**
+ * The MongoDB genre logic: top-rated books in the favourite genres, then top-rated books from any
+ * genre for the remaining slots. Each book gets a reason and recommendationSource 'fallback'.
+ */
+const fallbackRecommendations = async (favoriteGenres, excludedIds, limit) => {
+  const favourites = new Set(favoriteGenres);
+  const matched = favoriteGenres.length
+    ? await Book.find({ isActive: true, genre: { $in: favoriteGenres }, _id: { $nin: excludedIds } })
+      .sort({ rating: -1, publicationYear: -1 })
+      .limit(limit)
+      .lean()
+    : [];
+  const filler = matched.length < limit
+    ? await Book.find({ isActive: true, _id: { $nin: [...excludedIds, ...matched.map((b) => b._id)] } })
+      .sort({ rating: -1, publicationYear: -1 })
+      .limit(limit - matched.length)
+      .lean()
+    : [];
+  return [...matched, ...filler].map((book) => ({
+    ...book,
+    recommendationReason: favourites.has(book.genre) ? `Top rated in ${book.genre}` : 'Highly rated by readers',
+    recommendationSource: 'fallback',
+  }));
 };

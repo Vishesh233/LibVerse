@@ -85,3 +85,6 @@ app.listen(PORT, () => {
 
 // On start, then hourly: reservation expiry (always) and due-soon / overdue reminders (at most one run per day)
 require('./jobs/reminders').startReminderJob();
+
+// Send the catalogue to the AI recommendation service once the database is up (no-op when it is not configured)
+require('./services/recommendationService').trainOnStartup();

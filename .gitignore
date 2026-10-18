@@ -96,6 +96,7 @@ mongo-data/
 
 # Testing
 coverage/
+.pytest_cache/
 .nyc_output/
 
 # Documentation

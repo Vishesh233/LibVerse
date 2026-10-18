@@ -16,6 +16,8 @@ const HeartIcon = ({ filled }) => (
  * - actionVariant: Button variant for the main action
  * - note / noteTone ('ready' | 'waiting'): one status line above the action (e.g. a reservation)
  * - secondaryAction: { label, onClick, disabled } small text action under the main one
+ * - reason: one line saying why the book is shown (e.g. a recommendation's explanation)
+ * - aiPick: "AI" badge on the cover (recommended by the AI service)
  */
 export const BookCard = ({
   book,
@@ -33,6 +35,8 @@ export const BookCard = ({
   note,
   noteTone = 'waiting',
   secondaryAction,
+  reason,
+  aiPick = false,
 }) => {
   const safeRating = Number(book?.rating) || 0;
   const available = Number(book?.availableCopies) || 0;
@@ -68,6 +72,13 @@ export const BookCard = ({
         />
         <div className="book-card__scrim" />
 
+        {aiPick && (
+          <span className="glass-pill glass-pill--ai absolute left-2.5 top-2.5" title="Recommended by the AI model">
+            <span aria-hidden="true">✦</span>
+            AI<span className="sr-only"> recommendation</span>
+          </span>
+        )}
+
         {onWishlistClick && (
           <button
             type="button"
@@ -97,6 +108,7 @@ export const BookCard = ({
       <div className="flex flex-1 flex-col p-3">
         <h3 className="book-card__title text-sm font-semibold leading-snug text-slate-100 line-clamp-2">{title}</h3>
         <p className="mt-0.5 text-xs text-slate-400 line-clamp-1">{book?.author || 'Author unknown'}</p>
+        {reason && <p className="book-card__reason">{reason}</p>}
         {(book?.genre || showAvailability) && (
           <div className="book-card__meta mt-2">
             {book?.genre && <span className="genre-badge">{book.genre}</span>}

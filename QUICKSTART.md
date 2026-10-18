@@ -76,6 +76,9 @@ python app.py
 # Expected: AI Service on http://localhost:5000
 ```
 
+The backend and the AI service share a secret, AI_SERVICE_TOKEN (same value in both .env files).
+Without it the dashboard still shows picks from the MongoDB fallback. Details: [ai-service/README.md](ai-service/README.md).
+
 ## 4. Verify Everything is Running
 
 Open your browser and check:
@@ -253,6 +256,7 @@ MONGODB_URI=mongodb://localhost:27017/smart-library
 JWT_SECRET=your_jwt_secret_key_change_in_production
 PORT=5001
 AI_SERVICE_URL=http://localhost:5000
+AI_SERVICE_TOKEN=<same long random string as in ai-service/.env>
 NODE_ENV=development
 ```
 
@@ -264,8 +268,9 @@ REACT_APP_API_URL=http://localhost:5001/api
 ### AI Service (.env)
 ```
 PORT=5000
-DEBUG=True
-FLASK_ENV=development
+HOST=127.0.0.1
+DEBUG=False
+AI_SERVICE_TOKEN=<same long random string as in backend/.env>
 ```
 
 ## Production Deployment
