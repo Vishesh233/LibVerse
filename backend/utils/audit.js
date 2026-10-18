@@ -59,7 +59,7 @@ const audit = async (req, action, target, summary, meta) => {
 
 /** "Asha K (LIB-1234)" for audit summaries: name and library ID only, never the email */
 const personLabel = (user) => {
-  if (!user) return 'a student';
+  if (!user) return 'a deleted user';
   const name = user.name || 'a user';
   return user.libraryId ? `${name} (${user.libraryId})` : name;
 };

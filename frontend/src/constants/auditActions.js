@@ -14,6 +14,8 @@ export const AUDIT_ACTION_LABELS = {
   'user.activate': 'User activated',
   'user.deactivate': 'User deactivated',
   'user.role_change': 'Role changed',
+  'user.card_reissue': 'Card reissued',
+  'user.library_id_change': 'Library ID changed',
   'fine.waive': 'Fine waived',
   'reservation.staff_cancel': 'Reservation cancelled',
   'reminders.send': 'Reminders sent',

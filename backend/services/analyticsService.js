@@ -134,7 +134,7 @@ const loadOverdue = async (now = new Date()) => {
     const bucket = AGING_BUCKETS.find((b) => daysOverdue >= b.min && daysOverdue <= b.max);
     return {
       _id: t._id,
-      student: t.userId?.name || 'Unknown student',
+      student: t.userId?.name || 'Deleted user',
       libraryId: t.userId?.libraryId || '',
       book: t.bookId?.title || 'Unknown book',
       genre: t.bookId?.genre || '',
@@ -181,7 +181,7 @@ const loadStaffActivity = async (range) => {
     .map((e) => ({
       ...e,
       counts: ordered(e.counts),
-      name: names.get(String(e.actorId))?.name || 'Former staff member',
+      name: names.get(String(e.actorId))?.name || 'Deleted user',
       role: names.get(String(e.actorId))?.role || e.role,
     }))
     .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
@@ -356,7 +356,7 @@ const getReportTables = async (range, now = new Date()) => {
   };
 
   const select = 'userId bookId status issueDate dueDate returnDate returnRequestedAt fineAmount fineWaived finePaid waiverReason waivedBy waivedAt paymentApprovedAt';
-  const [loanCount, loanDocs, fineCount, fineDocs, overdue, topBooks, staffActivity] = await Promise.all([
+  const [loanCount, loanDocs, fineCount, fineDocs, overdue, topBooks, staffActivity, loanStatusRows, loansOverdueNow, fineSums, borrowAgg] = await Promise.all([
     Transaction.countDocuments(loanFilter),
     Transaction.find(loanFilter).select(select).populate('userId', 'name libraryId').populate('bookId', 'title genre')
       .sort('-issueDate').limit(REPORT_ROW_CAP).lean(),
@@ -366,7 +366,54 @@ const getReportTables = async (range, now = new Date()) => {
     loadOverdue(now),
     loadTopBooks(range, 10),
     loadStaffActivity(range),
+    // Summary cards: counted over every matching loan, not just the (capped) rows sent
+    Transaction.aggregate([{ $match: loanFilter }, { $group: { _id: '$status', n: { $sum: 1 } } }]),
+    Transaction.countDocuments({ ...loanFilter, status: 'issued', dueDate: { $lt: startOfDay(now) } }),
+    Transaction.find(fineFilter).select('status dueDate fineAmount fineWaived finePaid').lean(),
+    Transaction.aggregate([
+      { $match: loanFilter },
+      { $lookup: { from: Book.collection.name, localField: 'bookId', foreignField: '_id', as: 'book' } },
+      { $unwind: { path: '$book', preserveNullAndEmptyArrays: true } },
+      { $group: { _id: null, books: { $addToSet: '$bookId' }, borrowers: { $addToSet: '$userId' }, genres: { $push: '$book.genre' } } },
+    ]),
   ]);
+
+  const byStatus = Object.fromEntries(loanStatusRows.map((r) => [r._id, r.n]));
+  const genreCounts = {};
+  (borrowAgg[0]?.genres || []).forEach((g) => { if (g) genreCounts[g] = (genreCounts[g] || 0) + 1; });
+  const topGenre = Object.entries(genreCounts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] || null;
+  const summary = {
+    loans: {
+      total: loanCount,
+      onLoan: (byStatus.issued || 0) + (byStatus.return_requested || 0) + (byStatus.payment_pending || 0),
+      returned: byStatus.returned || 0,
+      overdue: loansOverdueNow,
+    },
+    fines: {
+      count: fineCount,
+      charged: round2(fineSums.reduce((s, t) => s + fineOf(t), 0)),
+      collected: round2(fineSums.reduce((s, t) => s + paidFineOf(t), 0)),
+      waived: round2(fineSums.reduce((s, t) => s + (Number(t.fineWaived) || 0), 0)),
+      payable: round2(fineSums.reduce((s, t) => s + payableFineOf(t), 0)),
+    },
+    overdue: {
+      count: overdue.length,
+      fineSoFar: round2(overdue.reduce((s, r) => s + r.fine, 0)),
+      averageDays: overdue.length ? Math.round((overdue.reduce((s, r) => s + r.daysOverdue, 0) / overdue.length) * 10) / 10 : 0,
+      over30: overdue.filter((r) => r.daysOverdue > 30).length,
+    },
+    topBooks: {
+      loans: loanCount,
+      titles: borrowAgg[0]?.books.length || 0,
+      borrowers: borrowAgg[0]?.borrowers.length || 0,
+      topGenre: topGenre ? { genre: topGenre[0], loans: topGenre[1] } : null,
+    },
+    staff: {
+      actions: staffActivity.reduce((s, r) => s + r.total, 0),
+      members: staffActivity.length,
+      mostActive: staffActivity[0] ? { name: staffActivity[0].name, total: staffActivity[0].total } : null,
+    },
+  };
 
   const loans = loanDocs.map((t) => ({
     _id: t._id,
@@ -374,7 +421,7 @@ const getReportTables = async (range, now = new Date()) => {
     dueDate: t.dueDate,
     returnDate: t.status === 'returned' ? t.returnDate : null,
     status: t.status,
-    student: t.userId?.name || 'Unknown student',
+    student: t.userId?.name || 'Deleted user',
     libraryId: t.userId?.libraryId || '',
     book: t.bookId?.title || 'Unknown book',
     genre: t.bookId?.genre || '',
@@ -387,7 +434,7 @@ const getReportTables = async (range, now = new Date()) => {
   const fines = fineDocs.map((t) => ({
     _id: t._id,
     fixedOn: t.returnRequestedAt || t.returnDate || null,
-    student: t.userId?.name || 'Unknown student',
+    student: t.userId?.name || 'Deleted user',
     libraryId: t.userId?.libraryId || '',
     book: t.bookId?.title || 'Unknown book',
     fine: round2(t.fineAmount),
@@ -412,6 +459,7 @@ const getReportTables = async (range, now = new Date()) => {
     overdue,
     topBooks,
     staffActivity,
+    summary,
     rowCap: REPORT_ROW_CAP,
   };
 };

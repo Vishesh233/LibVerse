@@ -1,12 +1,92 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
 import { useAuth } from '../hooks/useAuth';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { Avatar } from '../components/Avatar';
+
+/**
+ * "Find a student": Library ID (any case), name or email, then Enter. One match (or an exact
+ * Library ID) opens Student 360; several show a short list.
+ */
+const FindStudent = ({ base, isAdmin }) => {
+  const navigate = useNavigate();
+  const inputId = useId();
+  const [q, setQ] = useState('');
+  const [state, setState] = useState({ loading: false, results: null, error: null });
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const text = q.trim();
+    if (!text) return;
+    setState({ loading: true, results: null, error: null });
+    try {
+      const res = await adminAPI.lookupUsers(text);
+      const found = res.data.users || [];
+      if (found.length === 1) {
+        navigate(`${base}/users/${found[0]._id}`);
+        return;
+      }
+      setState({ loading: false, results: found, error: null });
+    } catch (err) {
+      setState({ loading: false, results: null, error: err.response?.data?.message || 'Search failed. Please try again.' });
+    }
+  };
+
+  return (
+    <section className="card-glass !p-4 sm:!p-5" aria-labelledby={`${inputId}-title`}>
+      <h2 id={`${inputId}-title`} className="font-display text-lg font-semibold text-slate-100">Find a {isAdmin ? 'member' : 'student'}</h2>
+      <p className="mt-0.5 text-xs text-slate-400">Type a Library ID (any case), a name or an email and press Enter to open their page.</p>
+      <form onSubmit={submit} className="mt-3 flex gap-2" role="search">
+        <label htmlFor={inputId} className="sr-only">Library ID, name or email</label>
+        <input
+          id={inputId}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="e.g. LIB-1003, Asha or asha@…"
+          autoComplete="off"
+          spellCheck="false"
+          className="input-amo min-w-0 flex-1 !text-base"
+        />
+        <button type="submit" disabled={state.loading || !q.trim()} className="btn-primary min-h-[44px] px-5 text-sm">
+          {state.loading ? 'Finding…' : 'Find'}
+        </button>
+      </form>
+      {state.error && <p className="mt-2 text-sm text-rose-200" role="alert">{state.error}</p>}
+      {state.results && (
+        state.results.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-400" role="status">Nobody matches “{q.trim()}”.</p>
+        ) : (
+          <div className="mt-3" role="status">
+            <p className="mb-2 text-xs text-slate-400">{state.results.length} matches{state.results.length === 10 ? ' (first 10)' : ''}: pick one</p>
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {state.results.map((u) => (
+                <li key={u._id}>
+                  <button type="button" onClick={() => navigate(`${base}/users/${u._id}`)} className="flex w-full items-center gap-3 rounded-xl border border-border bg-white/[0.03] px-3 py-2 text-left hover:border-indigo-400/40">
+                    <Avatar name={u.name} src={u.profileImage} size={9} role={u.role} className="flex-shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-slate-100">{u.name}</span>
+                      <span className="block truncate text-xs text-slate-400"><span className="font-mono">{u.libraryId || 'No ID'}</span>{u.role !== 'student' ? ` · ${u.role}` : ''}{u.isActive === false ? ' · inactive' : ''}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      )}
+    </section>
+  );
+};
 
 export const ManageUsers = () => {
   const { user: currentUser, isAdmin, isLibrarian } = useAuth();
+  const navigate = useNavigate();
+  const base = isAdmin ? '/admin' : '/librarian';
+  // Student 360: admins open anyone, librarians students only (the endpoint enforces the same rule)
+  const canOpen = (u) => isAdmin || u.role === 'student';
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -189,6 +269,8 @@ export const ManageUsers = () => {
           </button>
         </div>
 
+        <FindStudent base={base} isAdmin={isAdmin} />
+
         {/* Filter and Search Bar Card */}
         <div className="card p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
           {/* Search Input */}
@@ -270,7 +352,15 @@ export const ManageUsers = () => {
                         : 'student';
 
                     return (
-                      <tr key={u._id} className="hover:bg-slate-900/30 transition-colors">
+                      <tr
+                        key={u._id}
+                        className={`hover:bg-slate-900/30 transition-colors ${canOpen(u) ? 'cursor-pointer' : ''}`}
+                        onClick={(e) => {
+                          // Row click opens Student 360; the action buttons in the row keep their own job
+                          if (!canOpen(u) || e.target.closest('button, a, input, select')) return;
+                          navigate(`${base}/users/${u._id}`);
+                        }}
+                      >
                         {/* USER */}
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3">
@@ -282,7 +372,13 @@ export const ManageUsers = () => {
                               )}
                             </div>
                             <div>
-                              <p className="font-bold text-slate-100 text-xs">{u.name}</p>
+                              {canOpen(u) ? (
+                                <button type="button" onClick={() => navigate(`${base}/users/${u._id}`)} className="text-left text-xs font-bold text-slate-100 hover:text-indigo-200 hover:underline">
+                                  {u.name}
+                                </button>
+                              ) : (
+                                <p className="font-bold text-slate-100 text-xs">{u.name}</p>
+                              )}
                               <p className="text-[11px] text-slate-400">{u.email}</p>
                               <p className="text-[10px] text-slate-500 mt-0.5">ID: {u.libraryId || 'N/A'}</p>
                             </div>

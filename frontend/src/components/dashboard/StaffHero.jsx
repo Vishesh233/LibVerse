@@ -126,7 +126,7 @@ export const StaffHero = ({ base, firstName, loading, waiting, waitingTab, overd
 
           <nav className="mt-4 flex flex-wrap gap-2.5" aria-label="Needs attention">
             <HeroPill to={`${base}/pending?tab=${waitingTab}`} label="Requests waiting" count={waiting} tone="cyan" loading={loading} />
-            <HeroPill to={`${base}/reports#rep-overdue`} label="Overdue now" count={overdue} tone="rose" loading={loading} />
+            <HeroPill to={`${base}/reports?tab=overdue`} label="Overdue now" count={overdue} tone="rose" loading={loading} />
             <HeroPill to={`${base}/issue-return?tab=return`} label="Due today" count={dueToday} tone="amber" loading={loading} />
           </nav>
         </div>

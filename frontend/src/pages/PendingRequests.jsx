@@ -268,7 +268,7 @@ export const PendingRequests = () => {
                     {rows.map((tx) => (
                       <tr key={tx._id} className="border-b border-border hover:bg-slate-800/40 transition-colors">
                         <td className="px-6 py-4 text-sm font-medium text-slate-100">
-                          {tx.userId?.name || 'Unknown'}
+                          {tx.userId?.name || 'Deleted user'}
                           {tx.userId?.libraryId && <p className="text-[11px] text-slate-500">{tx.userId.libraryId}</p>}
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-400">{tx.bookId?.title || 'Unknown'}</td>

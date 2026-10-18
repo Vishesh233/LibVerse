@@ -32,6 +32,7 @@ import { Onboarding } from './pages/Onboarding';
 import { Notifications } from './pages/Notifications';
 import { ScanDesk } from './pages/ScanDesk';
 import { QrLabels } from './pages/QrLabels';
+import { StudentOverview } from './pages/StudentOverview';
 
 // Splash shows once per browser session (a refresh in the same tab session skips it)
 const SPLASH_KEY = 'libverse:splash-shown';
@@ -235,6 +236,14 @@ function App() {
             }
           />
           <Route
+            path="/librarian/users/:id"
+            element={
+              <ProtectedRoute requiredRole="librarian">
+                <StudentOverview />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/librarian/pending"
             element={
               <ProtectedRoute requiredRole="librarian">
@@ -361,6 +370,14 @@ function App() {
             element={
               <ProtectedRoute requiredRole="admin">
                 <ManageUsers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users/:id"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <StudentOverview />
               </ProtectedRoute>
             }
           />

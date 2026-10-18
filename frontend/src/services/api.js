@@ -112,6 +112,11 @@ export const adminAPI = {
   reissueCard: (userId) => apiClient.post(`/admin/users/${userId}/reissue-card`),
   getNotifications: () => apiClient.get('/admin/notifications'),
   getAllUsers: (params) => apiClient.get('/admin/users', { params }),
+  // Student 360 (librarians: students only); ?historyPage=
+  getUserOverview: (id, params, config = {}) => apiClient.get(`/admin/users/${id}/overview`, { params, ...config }),
+  getUserCard: (id) => apiClient.get(`/admin/users/${id}/card`),
+  // "Find a student": Library ID (any case), name or email
+  lookupUsers: (q) => apiClient.get('/admin/users/lookup', { params: { q } }),
   createUser: (data) => apiClient.post('/admin/users', data),
   updateUser: (id, data) => apiClient.put(`/admin/users/${id}`, data),
   deleteUser: (id) => apiClient.delete(`/admin/users/${id}`),

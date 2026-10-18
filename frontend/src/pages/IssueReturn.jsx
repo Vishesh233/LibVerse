@@ -221,14 +221,14 @@ export const IssueReturn = () => {
     return (
       <div className="flex items-start gap-3">
         <Avatar
-          name={tx.userId?.name || 'Student'}
+          name={tx.userId?.name || 'Deleted user'}
           src={tx.userId?.profileImage}
           size={2}
           className="flex-shrink-0"
         />
         <div className="flex-1 min-w-0">
           <p className={`text-sm font-medium ${isOverdue ? 'text-rose-400' : 'text-slate-200'}`}>
-            {tx.userId?.name || 'Student'} - {tx.bookId?.title || 'Book'}
+            {tx.userId?.name || 'Deleted user'} - {tx.bookId?.title || 'Book'}
             {isOverdue && (
               <span className="ml-2 text-[10px] font-bold text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded">
                 OVERDUE
@@ -236,7 +236,7 @@ export const IssueReturn = () => {
             )}
           </p>
           <p className={`text-xs mt-0.5 ${isOverdue ? 'text-rose-400' : 'text-slate-400'}`}>
-            {tx.userId?.email} • {tx.userId?.libraryId} • Due: {dueDate.toLocaleDateString()}
+            {[tx.userId?.email, tx.userId?.libraryId, `Due: ${dueDate.toLocaleDateString()}`].filter(Boolean).join(' • ')}
           </p>
         </div>
       </div>
@@ -429,7 +429,7 @@ export const IssueReturn = () => {
                             <span className="text-slate-400">Book:</span> {selectedReturnTx.bookId?.title || 'N/A'}
                           </p>
                           <p className="text-sm text-slate-300">
-                            <span className="text-slate-400">Student:</span> {selectedReturnTx.userId?.name || 'N/A'}
+                            <span className="text-slate-400">Student:</span> {selectedReturnTx.userId?.name || 'Deleted user'}
                           </p>
                           <p className="text-sm text-slate-300">
                             <span className="text-slate-400">Issue Date:</span> {new Date(selectedReturnTx.issueDate).toLocaleDateString()}

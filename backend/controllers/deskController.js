@@ -81,12 +81,12 @@ const bookPayload = async (book) => {
       issuedCopies: book.issuedCopies || 0,
       heldCopies: book.heldCopies || 0,
       queueLength: waiting,
-      heldFor: held.map((r) => ({ userId: r.userId?._id, name: r.userId?.name || 'A student', libraryId: r.userId?.libraryId || '', expiresAt: r.expiresAt })),
+      heldFor: held.map((r) => ({ userId: r.userId?._id, name: r.userId?.name || 'Deleted user', libraryId: r.userId?.libraryId || '', expiresAt: r.expiresAt })),
       openLoans: loans.map((t) => ({
         transactionId: t._id,
         status: t.status,
         userId: t.userId?._id,
-        student: t.userId?.name || 'Unknown student',
+        student: t.userId?.name || 'Deleted user',
         libraryId: t.userId?.libraryId || '',
         issueDate: t.issueDate,
         dueDate: t.dueDate,
@@ -242,6 +242,38 @@ exports.reissueCard = async (req, res) => {
   }
 };
 
+const cardPayload = (user) => ({
+  name: user.name,
+  role: user.role,
+  libraryId: user.libraryId,
+  profileImage: user.profileImage || null,
+  memberSince: user.createdAt || null,
+  cardVersion: Number(user.cardVersion) || 1,
+  code: cardCodeFor(user),
+  // Printed on the back of the card: the same constants the loans use
+  rules: { loanDays: LOAN_DAYS, renewalDays: RENEWAL_DAYS, maxRenewals: MAX_RENEWALS, finePerDay: FINE_PER_DAY },
+});
+
+/**
+ * @route GET /api/admin/users/:id/card
+ * @desc A member's current library card (Student 360 "View library card"). Librarians: students only.
+ * @access Private/Staff
+ */
+exports.getUserCard = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ success: false, message: 'User not found' });
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (req.user.role !== 'admin' && user.role !== 'student') {
+      return res.status(403).json({ success: false, message: 'Librarians can only view student cards' });
+    }
+    if (!user.libraryId) return res.status(404).json({ success: false, message: 'This member has no Library ID yet' });
+    res.status(200).json({ success: true, card: cardPayload(user) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 /**
  * @route GET /api/auth/me/card
  * @desc The signed-in member's own library card (signed QR code). Nobody else's card is ever returned.
@@ -251,20 +283,7 @@ exports.getMyCard = async (req, res) => {
   try {
     const user = req.user;
     if (!user.libraryId) return res.status(404).json({ success: false, message: 'Your account has no Library ID yet. Ask the library to add one.' });
-    res.status(200).json({
-      success: true,
-      card: {
-        name: user.name,
-        role: user.role,
-        libraryId: user.libraryId,
-        profileImage: user.profileImage || null,
-        memberSince: user.createdAt || null,
-        cardVersion: Number(user.cardVersion) || 1,
-        code: cardCodeFor(user),
-        // Printed on the back of the card: the same constants the loans use
-        rules: { loanDays: LOAN_DAYS, renewalDays: RENEWAL_DAYS, maxRenewals: MAX_RENEWALS, finePerDay: FINE_PER_DAY },
-      },
-    });
+    res.status(200).json({ success: true, card: cardPayload(user) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -29,7 +29,7 @@ const Details = ({ meta }) => {
 
 const ActorName = ({ entry }) => (
   <span>
-    <span className="font-medium text-slate-100">{entry.actor?.name || 'Former staff member'}</span>
+    <span className="font-medium text-slate-100">{entry.actor?.name || 'Deleted user'}</span>
     <span className="block text-[11px] capitalize text-slate-500">{entry.actor?.role || entry.actorRole}</span>
   </span>
 );
@@ -184,7 +184,7 @@ export const AuditLog = () => {
                   </div>
                   <p className="mt-2 text-sm text-slate-200">{e.summary}</p>
                   <Details meta={e.meta} />
-                  <p className="mt-2 text-xs text-slate-400">By {e.actor?.name || 'Former staff member'} · <span className="capitalize">{e.actor?.role || e.actorRole}</span></p>
+                  <p className="mt-2 text-xs text-slate-400">By {e.actor?.name || 'Deleted user'} · <span className="capitalize">{e.actor?.role || e.actorRole}</span></p>
                 </li>
               ))}
             </ul>

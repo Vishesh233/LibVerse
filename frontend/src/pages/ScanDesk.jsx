@@ -390,7 +390,7 @@ export const ScanDesk = () => {
                     </p>
                     {returnResult.heldForNext && (
                       <p className="mt-1 text-sm text-cyan-100">
-                        Put this copy aside: it is held for {returnResult.heldForNext.name} ({returnResult.heldForNext.libraryId}) until {day(returnResult.heldForNext.expiresAt)}.
+                        Put this copy aside: it is held for {returnResult.heldForNext.name}{returnResult.heldForNext.libraryId ? ` (${returnResult.heldForNext.libraryId})` : ''} until {day(returnResult.heldForNext.expiresAt)}.
                       </p>
                     )}
                   </div>

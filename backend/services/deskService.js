@@ -189,7 +189,7 @@ const returnAtDesk = async (req, transaction) => {
     .sort({ readyAt: -1 })
     .populate('userId', 'name libraryId')
     .lean();
-  const heldForNext = hold ? { name: hold.userId?.name || 'A student', libraryId: hold.userId?.libraryId || '', expiresAt: hold.expiresAt } : null;
+  const heldForNext = hold ? { name: hold.userId?.name || 'Deleted user', libraryId: hold.userId?.libraryId || '', expiresAt: hold.expiresAt } : null;
 
   const title = book?.title || 'Your book';
   const borrower = await User.findById(returned.userId).select('name libraryId').lean().catch(() => null);

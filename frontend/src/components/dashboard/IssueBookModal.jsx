@@ -8,13 +8,14 @@ import { Avatar } from '../Avatar';
 /**
  * Desk issue (staff): pick a student and a book, POST /admin/issue-book.
  * Students and books load when the modal opens (not on every dashboard load).
+ * `presetStudent` ({ _id, name, libraryId }, e.g. from Student 360) fixes the student: only the book is chosen.
  */
-export const IssueBookModal = ({ open, onClose, onIssued }) => {
+export const IssueBookModal = ({ open, onClose, onIssued, presetStudent = null }) => {
   const [students, setStudents] = useState([]);
   const [books, setBooks] = useState([]);
-  const [student, setStudent] = useState(null);
+  const [student, setStudent] = useState(presetStudent);
   const [book, setBook] = useState(null);
-  const [studentSearch, setStudentSearch] = useState('');
+  const [studentSearch, setStudentSearch] = useState(presetStudent?.name || '');
   const [bookSearch, setBookSearch] = useState('');
   const [showStudents, setShowStudents] = useState(false);
   const [showBooks, setShowBooks] = useState(false);
@@ -23,9 +24,9 @@ export const IssueBookModal = ({ open, onClose, onIssued }) => {
   useEffect(() => {
     if (!open) return undefined;
     let cancelled = false;
-    Promise.allSettled([adminAPI.getAllUsers({ limit: 100 }), booksAPI.getBooks({ limit: 100 })]).then(([u, b]) => {
+    Promise.allSettled([presetStudent ? Promise.resolve(null) : adminAPI.getAllUsers({ limit: 100 }), booksAPI.getBooks({ limit: 100 })]).then(([u, b]) => {
       if (cancelled) return;
-      if (u.status === 'fulfilled') setStudents((u.value.data?.users || []).filter((x) => x.role === 'student' || x.role === 'librarian'));
+      if (u.status === 'fulfilled' && u.value) setStudents((u.value.data?.users || []).filter((x) => x.role === 'student' || x.role === 'librarian'));
       if (b.status === 'fulfilled') setBooks(b.value.data?.books || []);
     });
     const onEsc = (e) => e.key === 'Escape' && onClose();
@@ -36,7 +37,7 @@ export const IssueBookModal = ({ open, onClose, onIssued }) => {
       document.removeEventListener('keydown', onEsc);
       document.body.classList.remove('modal-open');
     };
-  }, [open, onClose]);
+  }, [open, onClose, presetStudent?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close the dropdown lists on an outside click
   useEffect(() => {
@@ -52,9 +53,9 @@ export const IssueBookModal = ({ open, onClose, onIssued }) => {
   if (!open) return null;
 
   const reset = () => {
-    setStudent(null);
+    setStudent(presetStudent);
     setBook(null);
-    setStudentSearch('');
+    setStudentSearch(presetStudent?.name || '');
     setBookSearch('');
     setShowStudents(false);
     setShowBooks(false);
@@ -67,7 +68,8 @@ export const IssueBookModal = ({ open, onClose, onIssued }) => {
     }
     setSubmitting(true);
     try {
-      const res = await adminAPI.issueBook({ userEmail: student.email, bookId: book._id });
+      const who = student.email ? { userEmail: student.email } : { libraryId: student.libraryId };
+      const res = await adminAPI.issueBook({ ...who, bookId: book._id });
       toast.success(res.data?.message || 'Book issued successfully!');
       reset();
       onClose();
@@ -91,6 +93,15 @@ export const IssueBookModal = ({ open, onClose, onIssued }) => {
         <div className="space-y-4">
           <div>
             <label htmlFor="issue-student" className="mb-1 block text-xs font-semibold text-slate-300">Student *</label>
+            {presetStudent ? (
+              <div id="issue-student" className="flex items-center gap-3 rounded-xl border border-border bg-input/60 px-3 py-2.5">
+                <Avatar name={presetStudent.name || ''} src={presetStudent.profileImage} size={9} className="flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-slate-100">{presetStudent.name}</p>
+                  <p className="font-mono text-xs text-slate-400">{presetStudent.libraryId}</p>
+                </div>
+              </div>
+            ) : (
             <div className="relative issue-dropdown-container">
               <SearchableDropdown
                 id="issue-student"
@@ -117,6 +128,7 @@ export const IssueBookModal = ({ open, onClose, onIssued }) => {
                 )}
               />
             </div>
+            )}
           </div>
 
           <div>

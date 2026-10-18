@@ -62,6 +62,7 @@ const notificationSchema = new mongoose.Schema(
         'FINE_PAID',
         'FINE_WAIVED',
         'CARD_REISSUED',
+        'CARD_UPDATED',
         'INVENTORY_UPDATE',
         'NEW_LIBRARIAN',
         'SYSTEM_ACTIVITY',

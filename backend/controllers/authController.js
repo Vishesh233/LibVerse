@@ -5,6 +5,7 @@ const Book = require('../models/Book');
 const VALID_GENRES = Book.schema.path('genre').enumValues;
 const invalidGenres = (genres) => genres.filter((g) => !VALID_GENRES.includes(g));
 const { createNotification, notifyStaff } = require('./notificationController');
+const { nextLibraryId } = require('../utils/libraryId');
 const jwt = require('jsonwebtoken');
 
 /**
@@ -71,7 +72,7 @@ exports.signup = async (req, res, next) => {
       role: 'student',
       phone,
       address,
-      libraryId: `LIB-${Date.now()}`,
+      libraryId: await nextLibraryId(), // short and sequential: LIB-1003, LIB-1004 ...
     });
 
     // Create token

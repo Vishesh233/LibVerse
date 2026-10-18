@@ -8,6 +8,7 @@ const { calculateFine, getDaysOverdue, startOfDay, payableFineOf } = require('..
 const { issueAtDesk, returnAtDesk, DeskError } = require('../services/deskService');
 const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
 const { audit, personLabel } = require('../utils/audit');
+const { nextLibraryId } = require('../utils/libraryId');
 const mongoose = require('mongoose');
 
 const USER_ROLES = ['student', 'librarian', 'admin'];
@@ -153,8 +154,8 @@ exports.getDashboard = async (req, res, next) => {
     const overdueList = overdueTransactions.map((tx) => {
       const overdueDays = getDaysOverdue(tx.dueDate, now);
       const fine = calculateFine(tx.dueDate, now);
-      const userName = tx.userId?.name || 'Student';
-      const libraryId = tx.userId?.libraryId || 'N/A';
+      const userName = tx.userId?.name || 'Deleted user';
+      const libraryId = tx.userId?.libraryId || '';
       const bookTitle = tx.bookId?.title || 'Book';
 
       return {
@@ -179,7 +180,7 @@ exports.getDashboard = async (req, res, next) => {
       .sort('-createdAt');
 
     const pendingRequests = pendingTransactions.map((tx) => {
-      const studentName = tx.userId?.name || 'Student';
+      const studentName = tx.userId?.name || 'Deleted user';
       const initials = studentName
         .split(' ')
         .map((n) => n[0])
@@ -208,7 +209,7 @@ exports.getDashboard = async (req, res, next) => {
       .sort('-createdAt');
 
     const returnRequests = returnRequestedTx.map((tx) => {
-      const studentName = tx.userId?.name || 'Student';
+      const studentName = tx.userId?.name || 'Deleted user';
       const initials = studentName
         .split(' ')
         .map((n) => n[0])
@@ -242,7 +243,7 @@ exports.getDashboard = async (req, res, next) => {
       .sort('-createdAt');
 
     const paymentPending = paymentPendingTx.map((tx) => {
-      const studentName = tx.userId?.name || 'Student';
+      const studentName = tx.userId?.name || 'Deleted user';
       const initials = studentName
         .split(' ')
         .map((n) => n[0])
@@ -277,7 +278,7 @@ exports.getDashboard = async (req, res, next) => {
       .limit(10);
 
     const recentActivities = recentTx.map((tx, idx) => {
-      const name = tx.userId?.name || 'Student';
+      const name = tx.userId?.name || 'Deleted user';
       const initials = name
         .split(' ')
         .map((n) => n[0])
@@ -520,7 +521,9 @@ exports.createUser = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Email already in use' });
     }
 
-    const generatedLibraryId = libraryId || `LIB-${Math.floor(1000 + Math.random() * 9000)}`;
+    // An ID typed in by the admin is kept (unique index guards it); otherwise the next short sequential ID
+    const typedId = typeof libraryId === 'string' ? libraryId.trim().toUpperCase() : '';
+    const generatedLibraryId = typedId || (await nextLibraryId());
 
     const newUser = await User.create({
       name,
@@ -908,7 +911,7 @@ exports.createAdminUser = async (req, res, next) => {
       role: 'admin',
       phone,
       address,
-      libraryId: `ADM-${Date.now()}`,
+      libraryId: await nextLibraryId(),
     });
 
     await audit(req, 'user.create', { type: 'User', id: adminUser._id },
@@ -955,11 +958,10 @@ exports.globalSearch = async (req, res, next) => {
       return `/student/books/${bookId}`;
     };
 
-    // Helper to get role-based user URL
-    const getUserUrl = (userId) => {
-      if (userRole === 'admin') return `/admin/users/${userId}`;
-      return `/users/${userId}`;
-    };
+    // Users and loans open Student 360 for the signed-in role (routes: /admin|/librarian/users/:id)
+    const staffBase = userRole === 'admin' ? '/admin' : '/librarian';
+    const getUserUrl = (userId) => `${staffBase}/users/${userId}`;
+    const getLoanUrl = (userId, transactionId) => `${staffBase}/users/${userId}?loan=${transactionId}`;
 
     // Search Books
     const books = await Book.find({
@@ -987,56 +989,59 @@ exports.globalSearch = async (req, res, next) => {
       });
     });
 
-    // Search Users (only for admin/librarian)
     if (userRole === 'admin' || userRole === 'librarian') {
-      const users = await User.find({
+      // Users: librarians only ever see students (Student 360 is students-only for them)
+      const roleFilter = userRole === 'admin' ? {} : { role: 'student' };
+      const userMatch = {
+        ...roleFilter,
         $or: [
           { name: { $regex: searchTerm, $options: 'i' } },
           { email: { $regex: searchTerm, $options: 'i' } },
           { libraryId: { $regex: searchTerm, $options: 'i' } },
         ],
-      })
-        .limit(5)
-        .select('_id name email libraryId role isActive profileImage');
+      };
+      const users = await User.find(userMatch).limit(5).select('_id name libraryId role isActive profileImage');
 
       users.forEach((user) => {
         results.push({
           type: 'user',
           id: user._id,
           title: user.name,
-          subtitle: `${user.email} • ${user.libraryId}`,
+          // Library ID and role only: no email in search results
+          subtitle: [user.libraryId, user.role !== 'student' ? user.role : null, user.isActive === false ? 'inactive' : null].filter(Boolean).join(' • '),
           url: getUserUrl(user._id),
           icon: user.role === 'admin' ? '⚡' : user.role === 'librarian' ? '📚' : '👤',
           profileImage: user.profileImage || null,
         });
       });
-    }
 
-    // Search Transactions (Borrow Records) - for admin/librarian
-    if (userRole === 'admin' || userRole === 'librarian') {
-      const transactions = await Transaction.find({
-        $or: [
-          { 'userId.name': { $regex: searchTerm, $options: 'i' } },
-          { 'bookId.title': { $regex: searchTerm, $options: 'i' } },
-        ],
-      })
-        .limit(3)
-        .populate('userId', 'name email')
-        .populate('bookId', 'title author')
-        .select('_id status dueDate');
+      // Loans whose student or book matches (refs are ids, so match the people/books first)
+      const [studentIds, bookIds] = await Promise.all([
+        User.find({ ...userMatch, role: 'student' }).limit(50).distinct('_id'),
+        Book.find({ title: { $regex: searchTerm, $options: 'i' } }).limit(50).distinct('_id'),
+      ]);
+      const transactions = studentIds.length || bookIds.length
+        ? await Transaction.find({ $or: [{ userId: { $in: studentIds } }, { bookId: { $in: bookIds } }] })
+          .sort({ createdAt: -1 })
+          .limit(3)
+          .populate('userId', 'name role')
+          .populate('bookId', 'title')
+          .select('_id status dueDate userId bookId')
+        : [];
 
-      transactions.forEach((tx) => {
-        const userName = tx.userId?.name || 'Unknown';
-        const bookTitle = tx.bookId?.title || 'Unknown Book';
-        results.push({
-          type: 'transaction',
-          id: tx._id,
-          title: `${userName} - ${bookTitle}`,
-          subtitle: `Status: ${tx.status} • Due: ${new Date(tx.dueDate).toLocaleDateString()}`,
-          url: `/transactions/${tx._id}`,
-          icon: '📋',
+      transactions
+        .filter((tx) => tx.userId && (userRole === 'admin' || tx.userId.role === 'student'))
+        .forEach((tx) => {
+          const bookTitle = tx.bookId?.title || 'Unknown Book';
+          results.push({
+            type: 'transaction',
+            id: tx._id,
+            title: `${tx.userId.name} - ${bookTitle}`,
+            subtitle: `Status: ${tx.status}${tx.dueDate ? ` • Due: ${new Date(tx.dueDate).toLocaleDateString('en-IN')}` : ''}`,
+            url: getLoanUrl(tx.userId._id, tx._id),
+            icon: '📋',
+          });
         });
-      });
     }
 
     res.status(200).json({

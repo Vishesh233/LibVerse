@@ -287,7 +287,7 @@ export const StaffDashboard = ({ role }) => {
               <SectionCard id="today-glance" title="Today at a glance">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <GlanceLink to={`${base}/issue-return?tab=return`} icon={DASH_ICONS.clock} tone="amber" label="Due today" value={a.dueToday} hint="issued loans due back today" loading={isLoading} />
-                  <GlanceLink to={`${base}/reports#rep-overdue`} icon={DASH_ICONS.alert} tone="rose" label="Overdue now" value={a.overdueBooks} hint={fines.accruing ? `${formatRupees(fines.accruing)} in fines growing` : 'past their due date'} loading={isLoading} />
+                  <GlanceLink to={`${base}/reports?tab=overdue`} icon={DASH_ICONS.alert} tone="rose" label="Overdue now" value={a.overdueBooks} hint={fines.accruing ? `${formatRupees(fines.accruing)} in fines growing` : 'past their due date'} loading={isLoading} />
                   <GlanceLink to={`${base}/pending?tab=reservations`} icon={DASH_ICONS.book} tone="emerald" label="Ready for pickup" value={a.readyReservations} hint="reserved copies on hold" loading={isLoading} />
                 </div>
               </SectionCard>

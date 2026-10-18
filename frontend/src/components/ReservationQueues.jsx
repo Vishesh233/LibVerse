@@ -109,7 +109,7 @@ export const ReservationQueues = ({ onChanged }) => {
                       : <Badge variant="neutral">#{r.position}</Badge>}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-slate-100">{r.userId?.name || 'Unknown student'}</span>
+                    <span className="block truncate text-sm font-medium text-slate-100">{r.userId?.name || 'Deleted user'}</span>
                     <span className="block truncate text-[11px] text-slate-500">
                       {r.userId?.libraryId ? `${r.userId.libraryId} · ` : ''}reserved {formatDate(r.createdAt)}
                     </span>

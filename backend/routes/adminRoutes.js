@@ -14,7 +14,8 @@ const {
   globalSearch,
 } = require('../controllers/adminController');
 const { getAnalytics, getReports, getAuditLog } = require('../controllers/analyticsController');
-const { resolveCode, deskIssue, deskReturn, reissueCard } = require('../controllers/deskController');
+const { resolveCode, deskIssue, deskReturn, reissueCard, getUserCard } = require('../controllers/deskController');
+const { getUserOverview, lookupUsers } = require('../controllers/userOverviewController');
 const { protect, isStaff, isAdminRole } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -31,6 +32,10 @@ router.get('/reports', getReports);
 router.get('/audit', isAdminRole, getAuditLog);
 router.get('/notifications', getNotifications);
 router.get('/users', getAllUsers);
+// Student 360 (librarians: students only) and "Find a student"
+router.get('/users/lookup', lookupUsers);
+router.get('/users/:id/overview', getUserOverview);
+router.get('/users/:id/card', getUserCard);
 router.post('/users', createUser);
 router.put('/users/:id', updateUser);
 router.delete('/users/:id', deleteUser);
