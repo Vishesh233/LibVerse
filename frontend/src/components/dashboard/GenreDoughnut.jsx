@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import * as echarts from 'echarts';
+import { echarts } from '../../utils/echarts';
 import { getGenreAccent } from '../../constants/genres';
 import { groupGenres } from './genreGrouping';
 

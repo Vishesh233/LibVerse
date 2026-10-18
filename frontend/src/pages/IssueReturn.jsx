@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminAPI, booksAPI, transactionsAPI } from '../services/api';
@@ -80,26 +80,6 @@ export const IssueReturn = () => {
       setLoading(false);
     }
   };
-
-  // Filter transactions for return based on search query
-  const filteredTransactions = useMemo(() => {
-    if (!returnSearchQuery.trim()) return issuedTransactions;
-    const query = returnSearchQuery.toLowerCase();
-    return issuedTransactions.filter((tx) => {
-      const studentName = tx.userId?.name?.toLowerCase() || '';
-      const studentEmail = tx.userId?.email?.toLowerCase() || '';
-      const libraryId = tx.userId?.libraryId?.toLowerCase() || '';
-      const bookTitle = tx.bookId?.title?.toLowerCase() || '';
-      const txId = tx._id?.toLowerCase() || '';
-      return (
-        studentName.includes(query) ||
-        studentEmail.includes(query) ||
-        libraryId.includes(query) ||
-        bookTitle.includes(query) ||
-        txId.includes(query)
-      );
-    });
-  }, [issuedTransactions, returnSearchQuery]);
 
   useEffect(() => {
     loadData();

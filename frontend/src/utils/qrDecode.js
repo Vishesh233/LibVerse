@@ -1,20 +1,14 @@
 /**
- * QR codes for the scan desk: what the UI encodes and how the scanner decodes it.
+ * QR decoding for the scan desk (pulls in jsqr: import it only where codes are scanned).
  * Plain JS (no React, no DOM) so the Node tests use exactly the same functions.
  */
 import jsQRModule from 'jsqr';
 
+// What the codes contain lives in qrConfig (no dependencies); re-exported for existing callers
+export { QR_LEVEL, bookCode } from './qrConfig.js';
+
 // jsqr ships CommonJS; in Node ESM its function arrives on .default
 const jsQR = typeof jsQRModule === 'function' ? jsQRModule : jsQRModule.default;
-
-/**
- * Error correction for every desk QR (book labels, library cards): level H recovers ~30% of the
- * code, enough for the logo in the centre plus smudges and glare
- */
-export const QR_LEVEL = 'H';
-
-/** QR payload of a book: "LV1:B:<bookId>" (the card payload is signed by the server) */
-export const bookCode = (bookId) => `LV1:B:${bookId}`;
 
 /**
  * Read a QR code from RGBA pixels (canvas ImageData or any { data, width, height }).

@@ -30,20 +30,3 @@ export const Skeleton = ({ lines = 3, className = '' }) => {
     </div>
   );
 };
-
-export const SkeletonCard = ({ count = 4 }) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="card overflow-hidden">
-          <div className="skeleton w-full h-64 !rounded-none"></div>
-          <div className="p-4">
-            <div className="skeleton h-5 mb-3"></div>
-            <div className="skeleton h-4 mb-3 w-3/4"></div>
-            <div className="skeleton h-8"></div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};

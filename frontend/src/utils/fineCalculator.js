@@ -36,18 +36,6 @@ export const getDaysOverdue = (dueDate, asOf = new Date()) => {
 export const calculateFine = (dueDate, asOf = new Date(), finePerDay = 5) => getDaysOverdue(dueDate, asOf) * finePerDay;
 
 /**
- * Get due date (default: 14 days from issue date, the library loan period)
- * @param {string} issueDate - ISO format date string
- * @param {number} daysAllowed - Number of days allowed (default: 14)
- * @returns {string} Due date in ISO format
- */
-export const getDueDate = (issueDate, daysAllowed = 14) => {
-  const date = new Date(issueDate);
-  date.setDate(date.getDate() + daysAllowed);
-  return date.toISOString();
-};
-
-/**
  * Check if a transaction is overdue (due on an earlier calendar day than today)
  * @param {string} dueDate - ISO format date string
  * @returns {boolean}

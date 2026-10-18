@@ -3,16 +3,12 @@
 ---------------------------- */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap");
 
-
-
 /* stylelint-disable-next-line */
 @tailwind base;
 /* stylelint-disable-next-line */
 @tailwind components;
 /* stylelint-disable-next-line */
 @tailwind utilities;
-
-
 
 /* ---------------------------
    Theme Variables
@@ -278,43 +274,8 @@
 }
 
 /* ---------------------------
-   Brand Logo Animation
----------------------------- */
-.login-logo-container {
-  animation: logoFloat 3s ease-in-out infinite;
-}
-
-@keyframes logoFloat {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-.login-logo-icon {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.9), rgba(124, 58, 237, 0.9));
-  box-shadow: 
-    0 20px 60px rgba(99, 102, 241, 0.3),
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
-  transition: all 0.3s ease;
-}
-
-.login-logo-icon:hover {
-  transform: scale(1.05) rotate(5deg);
-  box-shadow: 
-    0 25px 70px rgba(99, 102, 241, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.15) inset;
-}
-
-/* ---------------------------
    Premium Input Fields
 ---------------------------- */
-.login-input-group {
-  position: relative;
-  margin-bottom: 1.5rem;
-}
 
 .login-input {
   width: 100%;
@@ -354,32 +315,6 @@
   color: var(--text-muted);
 }
 
-/* Floating label */
-.login-input-wrapper {
-  position: relative;
-}
-
-.login-floating-label {
-  position: absolute;
-  left: 2.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  pointer-events: none;
-  transition: all 0.2s ease;
-  background: transparent;
-  padding: 0 0.25rem;
-}
-
-.login-input:focus ~ .login-floating-label,
-.login-input:not(:placeholder-shown) ~ .login-floating-label {
-  top: 0;
-  font-size: 0.75rem;
-  color: var(--primary-from);
-  background: linear-gradient(180deg, #0B1120 0%, #0B1120 50%, transparent 50%);
-}
-
 /* Password toggle */
 .login-password-toggle {
   position: absolute;
@@ -399,43 +334,6 @@
 
 .login-password-toggle:hover {
   color: var(--text-primary);
-}
-
-/* ---------------------------
-   Custom Checkbox
----------------------------- */
-.login-checkbox {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
-  background: rgba(15, 23, 42, 0.6);
-  cursor: pointer;
-  position: relative;
-  transition: all 0.2s ease;
-}
-
-.login-checkbox:checked {
-  background: linear-gradient(135deg, var(--primary-from), var(--primary-to));
-  border-color: transparent;
-}
-
-.login-checkbox:checked::after {
-  content: '';
-  position: absolute;
-  left: 5px;
-  top: 2px;
-  width: 5px;
-  height: 9px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
-.login-checkbox:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
 /* ---------------------------
@@ -487,23 +385,6 @@
   left: 100%;
 }
 
-/* Ripple effect */
-.login-button-ripple {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(0);
-  animation: ripple 0.6s ease-out;
-  pointer-events: none;
-}
-
-@keyframes ripple {
-  to {
-    transform: scale(4);
-    opacity: 0;
-  }
-}
-
 /* Loading spinner */
 .login-spinner {
   width: 18px;
@@ -518,16 +399,6 @@
   to {
     transform: rotate(360deg);
   }
-}
-
-/* ---------------------------
-   Toast Notification
- ---------------------------- */
-.toast-success {
-  background: rgba(34, 197, 94, 0.15);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  color: #4ADE80;
-  backdrop-filter: blur(10px);
 }
 
 /* ---------------------------
@@ -658,13 +529,6 @@ select {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
-.card-border {
-  border: 1px solid var(--border);
-}
-
-.transition-default {
-  transition: all 200ms ease;
-}
 
 /* ---------------------------
    Premium Buttons & Cards
@@ -752,18 +616,6 @@ textarea:focus-visible {
   outline: none; /* inputs use the ring below */
 }
 
-/* Icon + Text Button helper: icon immediately before text, equal spacing, centered */
-.btn-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.btn-icon svg {
-  flex-shrink: 0;
-}
-
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border);
@@ -796,7 +648,6 @@ textarea:focus-visible {
 
 /* Soft glow, used sparingly (e.g. KPI cards that need attention) */
 .glow-primary { box-shadow: var(--shadow-glow); }
-.glow-accent { box-shadow: var(--shadow-glow-accent); }
 
 /* ---------------------------
    Book cards: 1px genre-accent gradient border + soft glow, glass pills on the cover.
@@ -887,8 +738,6 @@ textarea:focus-visible {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
-.glass-pill--success { color: #6EE7B7; }
-.glass-pill--danger { color: #FDA4AF; }
 .glass-pill--rating { color: #FCD34D; }
 
 .glass-icon-btn {
@@ -1018,15 +867,6 @@ select.input-amo {
 
 /* small utilities */
 .muted { color: var(--text-muted); }
-.muted-2 { color: var(--text-secondary); }
-
-/* ---------------------------
-   Consistent Spacing Scale
----------------------------- */
-.section-gap { margin-bottom: 2rem; }
-.card-pad { padding: 1.5rem; }
-.card-pad-lg { padding: 2rem; }
-.card-pad-sm { padding: 1rem; }
 
 /* ---------------------------
    Table Styles
@@ -1363,17 +1203,6 @@ body.modal-open {
   text-align: center;
 }
 
-.splash-logo-icon {
-  width: 88px;
-  height: 88px;
-  border-radius: 24px;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, rgba(123, 92, 255, 0.9), rgba(91, 83, 255, 0.96));
-  color: white;
-  box-shadow: 0 20px 60px rgba(123, 92, 255, 0.26);
-}
-
 .splash-logo-text h1 {
   font-size: clamp(2rem, 4vw, 3rem);
   letter-spacing: -0.04em;
@@ -1385,65 +1214,6 @@ body.modal-open {
   font-size: 0.9rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-}
-
-.splash-progress-card {
-  margin-top: 1.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1.5rem;
-  padding: 1rem 1.1rem;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.progress-labels {
-  display: flex;
-  justify-content: space-between;
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-  margin-bottom: 0.75rem;
-}
-
-.progress-track {
-  width: 100%;
-  height: 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.progress-fill {
-  width: 0%;
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--primary-from), var(--primary-to));
-  box-shadow: 0 8px 30px rgba(99,102,241,0.12);
-}
-
-.splash-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  margin-top: 1.75rem;
-}
-
-.stat-card {
-  border-radius: 1.5rem;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  text-align: center;
-}
-
-.stat-card strong {
-  display: block;
-  font-size: 1.2rem;
-  color: white;
-}
-
-.stat-card span {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  letter-spacing: 0.08em;
-  margin-top: 0.35rem;
 }
 
 .splash-book {
@@ -1463,12 +1233,6 @@ body.modal-open {
   inset: 10% 10% 20% 10%;
   background: rgba(255, 255, 255, 0.16);
   border-radius: 12px;
-}
-
-@media (max-width: 640px) {
-  .splash-stats-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* LibVerse brand: "Verse" accent */
@@ -1924,12 +1688,6 @@ body.modal-open {
 @media (max-height: 860px) and (min-width: 640px) {
   .page-header.page-header { margin-bottom: 1.5rem; }
   .page-header .page-header__title { font-size: 1.875rem; line-height: 2.25rem; }
-}
-/* Staff dashboard KPI cards */
-@media (max-height: 860px) {
-  .kpi-card.kpi-card { padding: 1.25rem !important; }
-  .kpi-card .kpi-value { font-size: 1.875rem; }
-  .kpi-card .kpi-body { margin-top: 0.75rem; }
 }
 
 /* ===========================

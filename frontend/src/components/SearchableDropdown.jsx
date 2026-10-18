@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Avatar } from './Avatar';
 import { CoverImage } from './CoverImage';
-import { DEFAULT_BOOK_COVER } from '../utils/bookCover';
 
 /**
  * Reusable searchable dropdown component.

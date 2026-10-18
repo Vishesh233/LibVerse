@@ -153,8 +153,8 @@ pip install -r requirements.txt --force-reinstall
 ### Dependencies Missing
 
 ```bash
-# Backend - might need additional packages
-npm install bcryptjs jsonwebtoken express-validator cors qrcode
+# Backend - reinstall exactly what the lockfile pins
+cd backend && npm ci
 
 # Python - create fresh virtual environment
 python -m venv venv

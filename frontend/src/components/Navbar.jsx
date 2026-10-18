@@ -28,22 +28,6 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen, onOpenMenu }) => {
   const profileRef = useRef(null);
   const searchRef = useRef(null);
 
-  const handleLogoClick = () => {
-    if (user?.role === 'student') {
-      navigate('/student/dashboard');
-    } else if (user?.role === 'librarian') {
-      navigate('/librarian');
-    } else if (user?.role === 'admin') {
-      navigate('/admin');
-    }
-  };
-
-  const booksBasePath = React.useMemo(() => {
-    if (user?.role === 'librarian') return '/librarian/books';
-    if (user?.role === 'admin') return '/admin/books';
-    return '/student/books';
-  }, [user?.role]);
-
   // Global search effect
   useEffect(() => {
     const performSearch = async () => {

@@ -6,8 +6,6 @@ npm-debug.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
-yarn.lock
 
 # Python
 __pycache__/
@@ -110,7 +108,3 @@ qr-codes/
 # Uploads
 uploads/
 temp/
-
-# Lock files (optional - uncomment if team prefers)
-# package-lock.json
-# yarn.lock

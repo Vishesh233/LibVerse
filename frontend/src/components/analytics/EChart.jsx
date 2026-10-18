@@ -1,5 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import * as echarts from 'echarts';
+
+// ECharts is only downloaded once a chart actually mounts (pages that merely import this file,
+// e.g. for CHART_THEME, don't pay for it)
+const loadEcharts = () => import('../../utils/echarts');
 
 // Shared dark styling for every analytics chart
 export const CHART_THEME = {
@@ -34,24 +37,38 @@ export const axisDefaults = {
 export const EChart = ({ option, summary, height = 300, className = '' }) => {
   const ref = useRef(null);
   const chart = useRef(null);
+  const latestOption = useRef(option);
+
+  const applyOption = () => {
+    // Respect reduced motion: no entry animation
+    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    chart.current?.setOption({ animation: !reduce, backgroundColor: 'transparent', ...latestOption.current }, true);
+  };
 
   useEffect(() => {
-    if (!ref.current) return undefined;
-    chart.current = echarts.init(ref.current, null, { renderer: 'canvas' });
-    const observer = new ResizeObserver(() => chart.current?.resize());
-    observer.observe(ref.current);
+    let cancelled = false;
+    let observer = null;
+    loadEcharts()
+      .then(({ echarts }) => {
+        if (cancelled || !ref.current) return;
+        chart.current = echarts.init(ref.current, null, { renderer: 'canvas' });
+        applyOption(); // whatever option arrived while echarts was loading
+        observer = new ResizeObserver(() => chart.current?.resize());
+        observer.observe(ref.current);
+      })
+      .catch((err) => console.error('Chart failed to load:', err)); // the figcaption summary still describes it
     return () => {
-      observer.disconnect();
+      cancelled = true;
+      observer?.disconnect();
       chart.current?.dispose();
       chart.current = null;
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    // Respect reduced motion: no entry animation
-    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    chart.current?.setOption({ animation: !reduce, backgroundColor: 'transparent', ...option }, true);
-  }, [option]);
+    latestOption.current = option;
+    applyOption();
+  }, [option]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <figure className={`m-0 ${className}`}>

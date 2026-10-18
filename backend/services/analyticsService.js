@@ -18,7 +18,6 @@
  *   that final status change)
  * - staff activity: audit log entries of loan-handling actions in range, per staff member
  */
-const mongoose = require('mongoose');
 const Transaction = require('../models/Transaction');
 const Book = require('../models/Book');
 const User = require('../models/User');
@@ -473,5 +472,4 @@ module.exports = {
   AGING_BUCKETS,
   LOAN_STATUSES,
   TZ,
-  isObjectId: (v) => typeof v === 'string' && mongoose.isValidObjectId(v),
 };

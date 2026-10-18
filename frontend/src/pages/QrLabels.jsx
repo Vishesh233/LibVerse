@@ -5,7 +5,7 @@ import { MainLayout } from '../layouts/MainLayout';
 import { Button, EmptyState, PageHeader, Skeleton } from '../components/UI';
 import { QrCode } from '../components/QrCode';
 import { useAuth } from '../hooks/useAuth';
-import { bookCode } from '../utils/qrDecode';
+import { bookCode } from '../utils/qrConfig';
 
 export const LABELS_PER_SHEET = 21; // 3 x 7 on A4
 export const MAX_LABELS = 100; // one page of GET /books?ids=

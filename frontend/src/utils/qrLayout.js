@@ -7,7 +7,7 @@
  * 30%) and the LibVerse book mark is drawn in it.
  */
 import qrcode from 'qrcode-generator';
-import { QR_LEVEL } from './qrDecode.js';
+import { QR_LEVEL } from './qrConfig.js';
 
 export const QR_QUIET = 2;
 

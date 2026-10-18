@@ -1,38 +1,72 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { NotificationProvider } from './context/NotificationContext';
 import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './hooks/useAuth';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SplashScreen } from './components/SplashScreen';
+import { Loader } from './components/Loader';
+import { Skeleton } from './components/UI';
+import { MainLayout } from './layouts/MainLayout';
 
-import { Login } from './pages/Login';
-import { Signup } from './pages/Signup';
-import { Dashboard } from './pages/Dashboard';
-import { Books } from './pages/Books';
-import { MyBooks } from './pages/MyBooks';
-import { AdminDashboard } from './pages/AdminDashboard';
-import { LibrarianDashboard } from './pages/LibrarianDashboard';
-import { PayFine } from './pages/PayFine';
-import { ManageBooks } from './pages/ManageBooks';
-import { AddBook } from './pages/AddBook';
-import { EditBook } from './pages/EditBook';
-import { ManageUsers } from './pages/ManageUsers';
-import { PendingRequests } from './pages/PendingRequests';
-import { Analytics } from './pages/Analytics';
-import { Profile } from './pages/Profile';
-import { BookDetails } from './pages/BookDetails';
-import { Wishlist } from './pages/Wishlist';
-import { Fines } from './pages/Fines';
-import { IssueReturn } from './pages/IssueReturn';
-import { Reports } from './pages/Reports';
-import { AuditLog } from './pages/AuditLog';
-import { Onboarding } from './pages/Onboarding';
-import { Notifications } from './pages/Notifications';
-import { ScanDesk } from './pages/ScanDesk';
-import { QrLabels } from './pages/QrLabels';
-import { StudentOverview } from './pages/StudentOverview';
+// Each page is its own chunk, downloaded the first time its route is opened
+const page = (load, name) => lazy(() => load().then((m) => ({ default: m[name] })));
+const Login = page(() => import('./pages/Login'), 'Login');
+const Signup = page(() => import('./pages/Signup'), 'Signup');
+const Dashboard = page(() => import('./pages/Dashboard'), 'Dashboard');
+const Books = page(() => import('./pages/Books'), 'Books');
+const MyBooks = page(() => import('./pages/MyBooks'), 'MyBooks');
+const AdminDashboard = page(() => import('./pages/AdminDashboard'), 'AdminDashboard');
+const LibrarianDashboard = page(() => import('./pages/LibrarianDashboard'), 'LibrarianDashboard');
+const PayFine = page(() => import('./pages/PayFine'), 'PayFine');
+const ManageBooks = page(() => import('./pages/ManageBooks'), 'ManageBooks');
+const AddBook = page(() => import('./pages/AddBook'), 'AddBook');
+const EditBook = page(() => import('./pages/EditBook'), 'EditBook');
+const ManageUsers = page(() => import('./pages/ManageUsers'), 'ManageUsers');
+const PendingRequests = page(() => import('./pages/PendingRequests'), 'PendingRequests');
+const Analytics = page(() => import('./pages/Analytics'), 'Analytics');
+const Profile = page(() => import('./pages/Profile'), 'Profile');
+const BookDetails = page(() => import('./pages/BookDetails'), 'BookDetails');
+const Wishlist = page(() => import('./pages/Wishlist'), 'Wishlist');
+const Fines = page(() => import('./pages/Fines'), 'Fines');
+const IssueReturn = page(() => import('./pages/IssueReturn'), 'IssueReturn');
+const Reports = page(() => import('./pages/Reports'), 'Reports');
+const AuditLog = page(() => import('./pages/AuditLog'), 'AuditLog');
+const Onboarding = page(() => import('./pages/Onboarding'), 'Onboarding');
+const Notifications = page(() => import('./pages/Notifications'), 'Notifications');
+const ScanDesk = page(() => import('./pages/ScanDesk'), 'ScanDesk');
+const QrLabels = page(() => import('./pages/QrLabels'), 'QrLabels');
+const StudentOverview = page(() => import('./pages/StudentOverview'), 'StudentOverview');
+
+// Pages without the app chrome (sidebar + navbar)
+const BARE_PATHS = ['/login', '/signup', '/student/onboarding'];
+
+/** Shown while a page's chunk downloads: signed-in pages keep the sidebar and navbar in place */
+const PageFallback = () => {
+  const { isAuthenticated } = useAuth();
+  const { pathname } = useLocation();
+  if (!isAuthenticated || BARE_PATHS.includes(pathname)) {
+    return (
+      <div className="min-h-screen grid place-items-center">
+        <Loader />
+      </div>
+    );
+  }
+  return (
+    <MainLayout>
+      <div role="status" aria-label="Loading page" className="space-y-6">
+        <Skeleton className="h-9 w-64" />
+        <Skeleton className="h-4 w-96 max-w-full" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 w-full !rounded-2xl" />)}
+        </div>
+        <Skeleton className="h-64 w-full !rounded-2xl" />
+      </div>
+    </MainLayout>
+  );
+};
 
 // Splash shows once per browser session (a refresh in the same tab session skips it)
 const SPLASH_KEY = 'libverse:splash-shown';
@@ -74,6 +108,7 @@ function App() {
       <Router>
         <AuthProvider>
           <NotificationProvider>
+            <Suspense fallback={<PageFallback />}>
             <Routes>
 
           {/* Public Routes */}
@@ -443,6 +478,7 @@ function App() {
           <Route path="*" element={<Navigate to="/login" />} />
 
         </Routes>
+            </Suspense>
         <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="dark" />
       </NotificationProvider>
       </AuthProvider>
