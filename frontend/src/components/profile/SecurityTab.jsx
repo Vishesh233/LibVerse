@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { authAPI } from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../UI';
 import { EyeIcon, EyeOffIcon, ShieldIcon } from './ProfileIcons';
 
@@ -67,6 +68,7 @@ const PasswordField = ({ id, label, value, onChange, onBlur, autoComplete, error
 
 /** Inline change-password form. A wrong current password is a 401 the API layer does not treat as a logout. */
 export const SecurityTab = ({ user }) => {
+  const { login } = useAuth();
   const [values, setValues] = useState(EMPTY);
   const [visible, setVisible] = useState({});
   const [touched, setTouched] = useState({});
@@ -101,7 +103,9 @@ export const SecurityTab = ({ user }) => {
 
     setSaving(true);
     try {
-      await authAPI.changePassword({ currentPassword: values.current, newPassword: values.next });
+      const res = await authAPI.changePassword({ currentPassword: values.current, newPassword: values.next });
+      // The change signs out every older session, this one included: keep going with the new token
+      if (res.data?.token) login(res.data.user || user, res.data.token);
       reset();
       toast.success('Password changed');
     } catch (err) {

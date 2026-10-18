@@ -15,8 +15,9 @@ exports.protect = async (req, res, next) => {
     return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
   }
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = await User.findById(decoded.id);
   } catch (error) {
     return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
@@ -24,6 +25,11 @@ exports.protect = async (req, res, next) => {
 
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
+  }
+
+  // Signed before the last password change/reset: that session is over
+  if ((decoded.tv || 0) !== (req.user.tokenVersion || 0)) {
+    return res.status(401).json({ success: false, message: 'Your session has ended. Please log in again.' });
   }
 
   if (req.user.isActive === false) {

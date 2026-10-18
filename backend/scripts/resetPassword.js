@@ -67,8 +67,9 @@ const run = async () => {
   }
 
   user.password = first; // hashed by the User pre('save') hook
+  user.tokenVersion = (user.tokenVersion || 0) + 1; // signs the user out everywhere
   await user.save();
-  console.log('Password updated.');
+  console.log('Password updated. Existing sessions for this user are signed out.');
 };
 
 run()

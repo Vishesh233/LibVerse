@@ -124,7 +124,7 @@ exports.requestIssueBook = async (req, res, next) => {
  */
 exports.returnBook = async (req, res, next) => {
   try {
-    const transaction = await Transaction.findById(req.params.id).populate('bookId', 'title');
+    let transaction = await Transaction.findById(req.params.id).populate('bookId', 'title');
 
     if (!transaction) {
       return res.status(404).json({ success: false, message: 'Transaction not found' });
@@ -144,11 +144,19 @@ exports.returnBook = async (req, res, next) => {
     // Calculate fine if overdue
     const fine = calculateFine(transaction.dueDate);
 
-    transaction.fineAmount = fine;
-    transaction.status = 'return_requested';
-    transaction.returnRequestedAt = new Date();
-
-    await transaction.save();
+    // Only from 'issued', in one step: two requests at once can't both file the return (or the fine)
+    transaction = await Transaction.findOneAndUpdate(
+      { _id: transaction._id, status: 'issued' },
+      { $set: { fineAmount: fine, status: 'return_requested', returnRequestedAt: new Date() } },
+      { new: true }
+    ).populate('bookId', 'title');
+    if (!transaction) {
+      return res.status(400).json({ success: false, message: 'Book is not currently issued' });
+    }
+    // The user's running fine total grows by the fixed fine (payment approval and waivers take it off again)
+    if (fine > 0) {
+      await User.updateOne({ _id: transaction.userId }, { $inc: { fineAmount: fine } });
+    }
 
 
     const bookTitle = transaction.bookId?.title || 'Book';
@@ -387,11 +395,15 @@ exports.approvePayment = async (req, res, next) => {
       });
     }
 
-    // Deduct the paid part from the user's running total (a waiver already deducted its part)
-    const user = await User.findById(returned.userId);
-    if (user) {
-      user.fineAmount = Math.max(0, (user.fineAmount || 0) - paidAmount);
-      await user.save();
+    // Who paid (for the audit entry; null-safe if the account was deleted)
+    const borrower = await User.findById(returned.userId).select('name libraryId').lean();
+
+    // Deduct the paid part from the user's running total (a waiver already deducted its part):
+    // one atomic update, never below 0, so concurrent approvals/waivers can't overwrite each other
+    if (paidAmount > 0) {
+      await User.updateOne({ _id: returned.userId }, [
+        { $set: { fineAmount: { $max: [0, { $subtract: [{ $ifNull: ['$fineAmount', 0] }, paidAmount] }] } } },
+      ]);
     }
 
     // Update book availability; the copy goes to the waiting list first
@@ -409,7 +421,7 @@ exports.approvePayment = async (req, res, next) => {
     });
 
     await audit(req, 'payment.approve', { type: 'Transaction', id: returned._id },
-      `Verified a fine payment of ${rupees(paidAmount)} for "${bookTitle}" from ${personLabel(user)}`,
+      `Verified a fine payment of ${rupees(paidAmount)} for "${bookTitle}" from ${personLabel(borrower)}`,
       { amount: paidAmount });
 
     res.status(200).json({
@@ -798,7 +810,7 @@ exports.rejectIssueRequest = async (req, res, next) => {
  */
 exports.renewBook = async (req, res, next) => {
   try {
-    const transaction = await Transaction.findById(req.params.id);
+    let transaction = await Transaction.findById(req.params.id);
 
     if (!transaction) {
       return res.status(404).json({ success: false, message: 'Transaction not found' });
@@ -827,13 +839,26 @@ exports.renewBook = async (req, res, next) => {
       return res.status(400).json({ success: false, message: `Book cannot be renewed more than ${MAX_RENEWALS} times` });
     }
 
-    // Extend due date by 7 days. Assign a new Date: in-place setDate() is not detected by Mongoose and was never saved.
-    transaction.dueDate = new Date(transaction.dueDate.getTime() + RENEWAL_DAYS * DAY_MS);
-    transaction.renewalCount += 1;
-    // New due date: the "due soon" reminder may fire again for it
-    if (transaction.remindersSent) transaction.remindersSent.dueSoon = undefined;
-
-    await transaction.save();
+    // Extend the due date and count the renewal in one conditional update: only while still issued, under
+    // the limit and with the due date we checked, so two renewals at once can't both pass (or skip the limit).
+    // New due date: the "due soon" reminder may fire again for it.
+    transaction = await Transaction.findOneAndUpdate(
+      {
+        _id: transaction._id,
+        status: 'issued',
+        dueDate: transaction.dueDate,
+        $or: [{ renewalCount: { $lt: MAX_RENEWALS } }, { renewalCount: { $exists: false } }],
+      },
+      {
+        $set: { dueDate: new Date(transaction.dueDate.getTime() + RENEWAL_DAYS * DAY_MS) },
+        $inc: { renewalCount: 1 },
+        $unset: { 'remindersSent.dueSoon': '' },
+      },
+      { new: true }
+    );
+    if (!transaction) {
+      return res.status(409).json({ success: false, message: 'This loan changed while renewing. Refresh and try again.' });
+    }
 
     // Student: renewal confirmed
     const renewedBook = await Book.findById(transaction.bookId).select('title').catch(() => null);

@@ -3,12 +3,14 @@ const { signup, login, getCurrentUser, updateProfile, completeOnboarding, update
 const { getMyStats, getMyActivity, getMyReadingStats } = require('../controllers/accountController');
 const { getMyCard } = require('../controllers/deskController');
 const { protect, isStudent } = require('../middleware/authMiddleware');
+const { rateLimiters } = require('../config/security');
 
 const router = express.Router();
+const limit = rateLimiters();
 
 // Public routes
-router.post('/signup', signup);
-router.post('/login', login);
+router.post('/signup', limit.signup, signup);
+router.post('/login', limit.login, login);
 
 // Protected routes
 router.get('/me', protect, getCurrentUser);
@@ -19,6 +21,6 @@ router.get('/me/card', protect, getMyCard);
 router.put('/update-profile', protect, updateProfile);
 router.put('/complete-onboarding', protect, completeOnboarding);
 router.put('/update-favorite-genres', protect, updateFavoriteGenres);
-router.put('/change-password', protect, changePassword);
+router.put('/change-password', limit.passwordChange, protect, changePassword);
 
 module.exports = router;

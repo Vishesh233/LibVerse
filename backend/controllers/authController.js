@@ -31,8 +31,9 @@ const toPublicUser = (user) => ({
 /**
  * Generate JWT Token
  */
-const signToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+// tv = the user's tokenVersion: a token from before a password change/reset no longer works
+const signToken = (user) => {
+  return jwt.sign({ id: user._id, tv: user.tokenVersion || 0 }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || '30d',
   });
 };
@@ -76,7 +77,7 @@ exports.signup = async (req, res, next) => {
     });
 
     // Create token
-    const token = signToken(user._id);
+    const token = signToken(user);
 
     res.status(201).json({
       success: true,
@@ -126,7 +127,7 @@ exports.login = async (req, res, next) => {
     }
 
     // Create token
-    const token = signToken(user._id);
+    const token = signToken(user);
 
     res.status(200).json({
       success: true,
@@ -402,8 +403,10 @@ exports.changePassword = async (req, res, next) => {
       });
     }
 
-    // Update password — pre('save') hook will bcrypt hash it
+    // Update password — pre('save') hook will bcrypt hash it. Bumping tokenVersion signs out every
+    // other session (tokens signed before now); this one continues with the new token below.
     user.password = newPassword;
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
     await user.save();
 
     // Send notification (non-fatal)
@@ -422,6 +425,8 @@ exports.changePassword = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Password changed successfully',
+      token: signToken(user),
+      user: toPublicUser(user),
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

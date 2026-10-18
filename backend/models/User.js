@@ -49,6 +49,11 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Part of every login token: bumping it (password change or reset) signs out older sessions
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
     wishlist: [
       {
         type: mongoose.Schema.Types.ObjectId,
