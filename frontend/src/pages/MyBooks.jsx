@@ -362,7 +362,10 @@ export const MyBooks = () => {
               const onLoan = ON_LOAN.includes(t.status);
               // Still issued: fine grows daily. After a return request: the fixed amount to pay.
               const fine = Number(t.status === 'issued' ? t.fine : t.fineAmount) || 0;
-              const canPay = t.status === 'return_requested' && fine > 0 && !t.finePaid;
+              const waived = Number(t.fineWaived) || 0;
+              // What is still owed after any waiver (server value; 0 once paid)
+              const payable = Number(t.payableFine ?? (t.finePaid ? 0 : Math.max(0, fine - waived))) || 0;
+              const canPay = t.status === 'return_requested' && payable > 0;
 
               return (
                 <Card key={t._id} variant="glass" className="!p-4 sm:!p-5">
@@ -409,10 +412,13 @@ export const MyBooks = () => {
                           <span className="text-xs text-muted">Renewed {Number(t.renewalCount) || 0}/{MAX_RENEWALS}</span>
                         )}
                         {fine > 0 && (
-                          <Badge variant={t.finePaid ? 'success' : 'danger'}>
-                            Fine ₹{fine}{t.finePaid ? ' · paid' : ''}
+                          <Badge variant={t.finePaid ? 'success' : payable > 0 ? 'danger' : 'info'}>
+                            {t.finePaid
+                              ? `Fine ₹${fine - waived} · paid`
+                              : payable > 0 ? `Fine ₹${payable}` : 'Fine waived'}
                           </Badge>
                         )}
+                        {waived > 0 && <Badge variant="info">₹{waived} waived</Badge>}
                       </div>
 
                       {(t.status === 'issued' || canPay) && (
@@ -445,7 +451,7 @@ export const MyBooks = () => {
                           )}
                           {canPay && (
                             <Button size="sm" fullWidth={false} onClick={() => navigate(`/student/pay-fine/${t._id}`)}>
-                              Pay ₹{fine} fine
+                              Pay ₹{payable} fine
                             </Button>
                           )}
                         </div>

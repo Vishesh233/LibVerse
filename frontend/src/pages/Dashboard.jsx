@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MainLayout } from '../layouts/MainLayout';
 import { useAuth } from '../hooks/useAuth';
-import { transactionsAPI, booksAPI, wishlistAPI } from '../services/api';
+import { transactionsAPI, booksAPI, wishlistAPI, authAPI } from '../services/api';
 import { BookCard } from '../components/BookCard';
 import { CoverImage } from '../components/CoverImage';
 import { Badge, EmptyState, Skeleton } from '../components/UI';
@@ -15,6 +15,7 @@ import { formatDate } from '../utils/dateUtils';
 import { ACTIVE_LOAN_STATUSES } from '../hooks/useActiveBookIds';
 import { bookActionFor, formatHoldEnd, holdTimeLeft, useReservations } from '../hooks/useReservations';
 import { GENRES } from '../constants/genres';
+import { ReadingStatsCompact } from '../components/profile/ReadingStats';
 
 const DUE_SOON_DAYS = 3;
 const WEEK_DAYS = 7;
@@ -28,6 +29,10 @@ const DISCOVER_TABS = [
 ];
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+// Still owed after any waiver (server payableFine; 0 once paid)
+const payableOf = (t) => num(t.payableFine ?? (t.finePaid ? 0 : t.fineAmount));
+// Paid amount = fine minus the waived part
+const paidOf = (t) => (t.finePaid ? Math.max(0, num(t.fineAmount) - num(t.fineWaived)) : 0);
 const bookOf = (t) => (t?.bookId && typeof t.bookId === 'object' ? t.bookId : {});
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -72,16 +77,21 @@ export const Dashboard = () => {
   const [discoverTab, setDiscoverTab] = useState('picked');
   const [genre, setGenre] = useState('');
   const [lists, setLists] = useState({}); // "<tab>|<genre>" -> { loading, books, error }
+  const [reading, setReading] = useState({ loading: true, stats: null, error: null });
   const reservations = useReservations();
   const readyReservations = reservations.reservations.filter((r) => r.status === 'ready');
 
   const loadData = useCallback(async () => {
-    const [tx, rec, wish, top] = await Promise.allSettled([
+    const [tx, rec, wish, top, readingRes] = await Promise.allSettled([
       transactionsAPI.getUserTransactions(),
       booksAPI.getRecommendations(),
       wishlistAPI.getWishlist(),
       booksAPI.getBooks({ sort: 'rating', limit: 8 }),
+      authAPI.getReadingStats(),
     ]);
+    setReading(readingRes.status === 'fulfilled'
+      ? { loading: false, stats: readingRes.value.data?.stats || null, error: null }
+      : { loading: false, stats: null, error: readingRes.reason?.response?.data?.message || 'Could not load your reading stats' });
     if (tx.status === 'fulfilled') {
       setTransactions(Array.isArray(tx.value.data?.transactions) ? tx.value.data.transactions : []);
       setTxError(null);
@@ -127,13 +137,14 @@ export const Dashboard = () => {
     const dueWeek = issued.filter((t) => num(t.daysRemaining) >= 0 && num(t.daysRemaining) <= WEEK_DAYS)
       .sort((x, y) => num(x.daysRemaining) - num(y.daysRemaining));
     const dueSoon = dueWeek.filter((t) => num(t.daysRemaining) <= DUE_SOON_DAYS);
-    const paid = transactions.filter((t) => t.finePaid).reduce((sum, t) => sum + num(t.fineAmount), 0);
+    const paid = transactions.reduce((sum, t) => sum + paidOf(t), 0);
     const fixedUnpaid = transactions
       .filter((t) => !t.finePaid && FIXED_FINE_STATUSES.includes(t.status))
-      .reduce((sum, t) => sum + num(t.fineAmount), 0);
+      .reduce((sum, t) => sum + payableOf(t), 0);
+    const waived = transactions.reduce((sum, t) => sum + num(t.fineWaived), 0);
     const accruing = issued.reduce((sum, t) => sum + num(t.fine), 0);
-    const verifying = transactions.filter((t) => t.status === 'payment_pending').reduce((sum, t) => sum + num(t.fineAmount), 0);
-    const payable = transactions.find((t) => t.status === 'return_requested' && num(t.fineAmount) > 0 && !t.finePaid);
+    const verifying = transactions.filter((t) => t.status === 'payment_pending').reduce((sum, t) => sum + payableOf(t), 0);
+    const payable = transactions.find((t) => t.status === 'return_requested' && payableOf(t) > 0);
     const loans = transactions
       .filter((t) => LOAN_STATUSES.includes(t.status))
       .sort((x, y) => new Date(y.issueDate || y.createdAt) - new Date(x.issueDate || x.createdAt))
@@ -146,6 +157,7 @@ export const Dashboard = () => {
       dueWeek,
       dueSoon: dueSoon.length,
       paid,
+      waived,
       pending: fixedUnpaid + accruing,
       accruing,
       verifying,
@@ -367,21 +379,26 @@ export const Dashboard = () => {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <AmountStat label="Total charged" value={formatRupees(s.paid + s.pending)} hint="paid + pending" />
+                <AmountStat label="Total charged" value={formatRupees(s.paid + s.pending + s.waived)} hint={s.waived ? `incl. ${formatRupees(s.waived)} waived` : 'paid + pending'} />
                 <AmountStat label="Paid" value={formatRupees(s.paid)} tone="text-emerald-300" hint="verified by the library" />
                 <AmountStat
                   label="Pending"
                   value={formatRupees(s.pending)}
                   tone={s.pending > 0 ? 'text-rose-300' : 'text-slate-50'}
-                  hint={s.verifying ? `${formatRupees(s.verifying)} being verified` : s.accruing ? `${formatRupees(s.accruing)} still growing` : 'nothing owed'}
+                  hint={s.verifying ? `${formatRupees(s.verifying)} being verified` : s.accruing ? `${formatRupees(s.accruing)} still growing` : s.pending > 0 ? 'unpaid fines' : 'nothing owed'}
                 />
               </div>
             )}
           </SectionCard>
 
+          {/* Reading stats (compact; full version on the profile) */}
+          <SectionCard id="reading-summary" className="xl:col-span-6" title="Your reading" subtitle="Books you have returned" action={<SectionLink to="/student/profile?tab=reading">Reading stats</SectionLink>}>
+            <ReadingStatsCompact stats={reading.stats} loading={reading.loading} error={reading.error} />
+          </SectionCard>
+
           {/* Quick actions */}
-          <SectionCard id="student-quick-actions" className="xl:col-span-6" title="Quick actions">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <SectionCard id="student-quick-actions" className="xl:col-span-12" title="Quick actions">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <QuickTile icon={DASH_ICONS.search} label="Browse books" hint="Search the catalogue" to="/student/books" tone="indigo" />
               <QuickTile icon={DASH_ICONS.book} label="My books" hint="Loans, renewals, returns" to="/student/my-books" tone="cyan" />
               <QuickTile
@@ -391,7 +408,7 @@ export const Dashboard = () => {
                 to={s.payable ? `/student/pay-fine/${s.payable._id}` : undefined}
                 disabled={!s.payable}
                 hint={s.payable
-                  ? `${formatRupees(s.payable.fineAmount)} for ${bookOf(s.payable).title || 'a returned book'}`
+                  ? `${formatRupees(payableOf(s.payable))} for ${bookOf(s.payable).title || 'a returned book'}`
                   : s.accruing ? 'Request a return first, then pay' : 'Nothing to pay right now'}
               />
               <QuickTile icon={DASH_ICONS.bell} label="Notifications" hint="Requests, reminders, fines" to="/student/notifications" tone="amber" />

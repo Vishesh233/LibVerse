@@ -70,6 +70,23 @@ const transactionSchema = new mongoose.Schema(
       ref: 'User',
     },
     paymentApprovedAt: Date,
+    // Fine waiver (staff): the part of fineAmount the student no longer owes.
+    // Payable fine = fineAmount - fineWaived, never below 0 (utils/fineCalculator payableFineOf)
+    fineWaived: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    waiverReason: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
+    waivedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    waivedAt: Date,
     // Automatic reminders (jobs/reminders.js): when each kind was last sent for this loan
     remindersSent: {
       dueSoon: Date,

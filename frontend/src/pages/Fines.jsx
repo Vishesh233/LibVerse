@@ -7,15 +7,26 @@ import { transactionsAPI } from '../services/api';
 import { formatDate } from '../utils/dateUtils';
 
 // What the student can do next. Payment is only accepted once a return is requested.
+// A waived part is never owed: payable = fine - waived (from the server's payableFine).
 const fineState = (fine) => {
-  if (fine.finePaid) return { label: 'Paid', variant: 'success', outstanding: false };
+  if (fine.finePaid) return { label: fine.waived > 0 ? 'Paid (part waived)' : 'Paid', variant: 'success', outstanding: false };
   if (fine.status === 'payment_pending') return { label: 'Verifying payment', variant: 'info', outstanding: false };
   if (fine.status === 'issued') return { label: 'Still growing', variant: 'warning', outstanding: true };
-  return { label: 'Unpaid', variant: 'danger', outstanding: true };
+  if (fine.payable <= 0 && fine.waived > 0) return { label: 'Waived', variant: 'info', outstanding: false };
+  return { label: fine.waived > 0 ? 'Unpaid (part waived)' : 'Unpaid', variant: 'danger', outstanding: true };
 };
+
+/** "₹40" plus "₹20 waived of ₹60" when part of the fine was waived */
+const FineAmount = ({ fine }) => (
+  <span>
+    <span className="font-semibold text-rose-300">₹{fine.finePaid ? fine.paid : fine.payable}</span>
+    {fine.waived > 0 && <span className="block text-[11px] font-normal text-pink-300">₹{fine.waived} waived of ₹{fine.fineAmount}</span>}
+  </span>
+);
 
 const FineAction = ({ fine, navigate }) => {
   if (fine.finePaid) return <span className="text-sm font-semibold text-emerald-400">Paid</span>;
+  if (fine.payable <= 0 && fine.status !== 'issued') return <span className="text-sm text-slate-400">Nothing to pay</span>;
   if (fine.status === 'payment_pending') return <span className="text-sm text-slate-400">Awaiting librarian</span>;
   if (fine.status === 'issued') {
     return (
@@ -27,10 +38,12 @@ const FineAction = ({ fine, navigate }) => {
   if (fine.status === 'return_requested') {
     return (
       <Button size="sm" fullWidth={false} onClick={() => navigate(`/student/pay-fine/${fine._id}`)}>
-        Pay ₹{fine.fineAmount}
+        Pay ₹{fine.payable}
       </Button>
     );
   }
+  // Returned at the desk with a fine recorded: settled with the library directly
+  if (fine.status === 'returned') return <span className="text-sm text-slate-400">Pay at the library desk</span>;
   return null;
 };
 
@@ -48,11 +61,18 @@ export const Fines = () => {
       const response = await transactionsAPI.getUserTransactions();
       const finesList = (response.data.transactions || [])
         // Server values: live fine only while issued, the frozen fine once a return is requested
-        .map((transaction) => ({
-          ...transaction,
-          fineAmount: Number(transaction.fine ?? transaction.fineAmount) || 0,
-          daysLate: Number(transaction.daysLate) || 0,
-        }))
+        .map((transaction) => {
+          const fineAmount = Number(transaction.fine ?? transaction.fineAmount) || 0;
+          const waived = Number(transaction.fineWaived) || 0;
+          return {
+            ...transaction,
+            fineAmount,
+            waived,
+            payable: Number(transaction.payableFine ?? (transaction.finePaid ? 0 : Math.max(0, fineAmount - waived))) || 0,
+            paid: transaction.finePaid ? Math.max(0, fineAmount - waived) : 0,
+            daysLate: Number(transaction.daysLate) || 0,
+          };
+        })
         .filter((transaction) => transaction.fineAmount > 0);
 
       setFines(finesList);
@@ -69,8 +89,9 @@ export const Fines = () => {
     fetchFines();
   }, []);
 
-  const outstanding = fines.reduce((sum, f) => (fineState(f).outstanding ? sum + (Number(f.fineAmount) || 0) : sum), 0);
-  const paidTotal = fines.reduce((sum, f) => (f.finePaid ? sum + (Number(f.fineAmount) || 0) : sum), 0);
+  const outstanding = fines.reduce((sum, f) => (fineState(f).outstanding ? sum + f.payable : sum), 0);
+  const paidTotal = fines.reduce((sum, f) => sum + f.paid, 0);
+  const waivedTotal = fines.reduce((sum, f) => sum + f.waived, 0);
 
   return (
     <MainLayout>
@@ -104,7 +125,7 @@ export const Fines = () => {
           />
         ) : (
           <div className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className={`grid gap-4 ${waivedTotal > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
               <Card variant="glass" className={outstanding > 0 ? 'border-rose-500/30' : ''}>
                 <p className="text-sm text-slate-400">Outstanding</p>
                 <p className={`mt-1 font-display text-3xl font-bold ${outstanding > 0 ? 'text-rose-300' : 'text-slate-100'}`}>₹{outstanding}</p>
@@ -113,6 +134,12 @@ export const Fines = () => {
                 <p className="text-sm text-slate-400">Paid so far</p>
                 <p className="mt-1 font-display text-3xl font-bold text-emerald-300">₹{paidTotal}</p>
               </Card>
+              {waivedTotal > 0 && (
+                <Card variant="glass">
+                  <p className="text-sm text-slate-400">Waived by the library</p>
+                  <p className="mt-1 font-display text-3xl font-bold text-pink-300">₹{waivedTotal}</p>
+                </Card>
+              )}
             </div>
 
             {/* Mobile: cards */}
@@ -137,7 +164,7 @@ export const Fines = () => {
                         </div>
                         <div>
                           <dt className="text-xs text-muted">Fine</dt>
-                          <dd className="font-semibold text-rose-300">₹{fine.fineAmount}</dd>
+                          <dd><FineAmount fine={fine} /></dd>
                         </div>
                       </dl>
                       <div className="mt-3"><FineAction fine={fine} navigate={navigate} /></div>
@@ -169,7 +196,7 @@ export const Fines = () => {
                           <td className="px-6 py-4 text-sm font-medium text-slate-100">{fine.bookId?.title || 'Unknown book'}</td>
                           <td className="px-6 py-4 text-sm text-slate-400">{formatDate(fine.dueDate)}</td>
                           <td className="px-6 py-4 text-sm text-slate-400">{fine.daysLate} day{fine.daysLate === 1 ? '' : 's'}</td>
-                          <td className="px-6 py-4 text-sm font-semibold text-rose-300">₹{fine.fineAmount}</td>
+                          <td className="px-6 py-4 text-sm"><FineAmount fine={fine} /></td>
                           <td className="px-6 py-4 text-sm"><Badge variant={state.variant}>{state.label}</Badge></td>
                           <td className="px-6 py-4 text-sm"><FineAction fine={fine} navigate={navigate} /></td>
                         </tr>

@@ -3,9 +3,10 @@ const Book = require('../models/Book');
 const Transaction = require('../models/Transaction');
 const { getUserNotifications, notifyStudent } = require('./notificationController');
 const { runReminders } = require('../jobs/reminders');
-const { calculateFine, getDaysOverdue, startOfDay } = require('../utils/fineCalculator');
+const { calculateFine, getDaysOverdue, startOfDay, payableFineOf } = require('../utils/fineCalculator');
 const { returnCopy, takeCopyFor, undoTakeCopy } = require('../services/reservationService');
 const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
+const { audit, personLabel } = require('../utils/audit');
 const mongoose = require('mongoose');
 
 const USER_ROLES = ['student', 'librarian', 'admin'];
@@ -119,8 +120,12 @@ exports.getDashboard = async (req, res, next) => {
     const activeUserIds = await Transaction.distinct('userId', { status: 'issued' });
     const activeUsers = activeUserIds.length;
 
-    const fineData = await Transaction.find({ status: 'returned', finePaid: true });
-    const totalFines = fineData.reduce((sum, t) => sum + (t.fineAmount || 0), 0);
+    // Collected on completed returns: the paid part only (a waived part was never paid)
+    const [paidAgg] = await Transaction.aggregate([
+      { $match: { status: 'returned', finePaid: true } },
+      { $group: { _id: null, total: { $sum: { $max: [0, { $subtract: ['$fineAmount', { $ifNull: ['$fineWaived', 0] }] }] } } } },
+    ]);
+    const totalFines = paidAgg?.total || 0;
 
     // Books issued today (real data from MongoDB)
     const startOfToday = new Date();
@@ -222,6 +227,8 @@ exports.getDashboard = async (req, res, next) => {
         userId: tx.userId,
         bookId: tx.bookId,
         fineAmount: tx.fineAmount || 0,
+        fineWaived: tx.fineWaived || 0,
+        payableFine: payableFineOf(tx),
         finePaid: tx.finePaid || false,
         type: 'return',
       };
@@ -254,6 +261,8 @@ exports.getDashboard = async (req, res, next) => {
         userId: tx.userId,
         bookId: tx.bookId,
         fineAmount: tx.fineAmount || 0,
+        fineWaived: tx.fineWaived || 0,
+        payableFine: payableFineOf(tx),
         hasScreenshot: !!tx.paymentScreenshot,
         type: 'payment',
       };
@@ -396,16 +405,18 @@ exports.getDashboard = async (req, res, next) => {
       });
     }
 
-    // 8. Fines summary (server values): paid fines, fines fixed at a return request but unpaid,
-    //    and fines still growing on issued overdue loans
+    // 8. Fines summary (server values): paid fines (minus waivers), fixed fines still payable
+    //    after waivers, fines waived, and fines still growing on issued overdue loans
+    const NET_FINE = { $max: [0, { $subtract: ['$fineAmount', { $ifNull: ['$fineWaived', 0] }] }] };
     const [fineAgg] = await Transaction.aggregate([
       { $match: { fineAmount: { $gt: 0 } } },
       {
         $group: {
           _id: null,
-          collected: { $sum: { $cond: ['$finePaid', '$fineAmount', 0] } },
-          outstandingFixed: { $sum: { $cond: ['$finePaid', 0, '$fineAmount'] } },
-          loansWithFixedFines: { $sum: 1 },
+          collected: { $sum: { $cond: ['$finePaid', NET_FINE, 0] } },
+          outstandingFixed: { $sum: { $cond: ['$finePaid', 0, NET_FINE] } },
+          waived: { $sum: { $ifNull: ['$fineWaived', 0] } },
+          loansWithFixedFines: { $sum: { $cond: [{ $or: ['$finePaid', { $gt: [NET_FINE, 0] }] }, 1, 0] } },
         },
       },
     ]);
@@ -413,6 +424,7 @@ exports.getDashboard = async (req, res, next) => {
     const fineSummary = {
       collected: fineAgg?.collected || 0,
       outstandingFixed: fineAgg?.outstandingFixed || 0,
+      waived: fineAgg?.waived || 0,
       accruing,
       outstanding: (fineAgg?.outstandingFixed || 0) + accruing,
       loansWithFines: (fineAgg?.loansWithFixedFines || 0) + overdueList.length,
@@ -443,79 +455,6 @@ exports.getDashboard = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error fetching admin dashboard:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * @route GET /api/admin/reports
- * @desc Get reports statistics matching Screenshot 1
- * @access Private/Admin
- */
-exports.getReports = async (req, res, next) => {
-  try {
-    const totalIssuedTx = await Transaction.countDocuments({ status: { $in: ['issued', 'returned'] } });
-    const totalMembers = await User.countDocuments({ role: { $in: ['student', 'librarian'] }, isActive: true });
-    
-    const overdueCount = await Transaction.countDocuments({
-      status: 'issued',
-      dueDate: { $lt: startOfDay(new Date()) },
-    });
-
-    const fineData = await Transaction.find({ finePaid: true });
-    const totalFinesSum = fineData.reduce((sum, t) => sum + (t.fineAmount || 0), 0);
-
-    // Top 5 borrowed books
-    const topAgg = await Transaction.aggregate([
-      { $group: { _id: '$bookId', timesBorrowed: { $sum: 1 } } },
-      { $sort: { timesBorrowed: -1 } },
-      { $limit: 5 },
-    ]);
-
-    const topBookIds = topAgg.map((item) => item._id);
-    const topBooksDocs = await Book.find({ _id: { $in: topBookIds } });
-
-    const topBorrowedBooks = topAgg.map((item, index) => {
-      const b = topBooksDocs.find((doc) => doc._id.toString() === item._id.toString());
-      return {
-        rank: `#${index + 1}`,
-        bookTitle: b ? b.title : 'Clean Code',
-        author: b ? b.author : 'Robert C. Martin',
-        timesBorrowed: item.timesBorrowed > 0 ? item.timesBorrowed * 12 + 5 : 87 - index * 10,
-        category: b ? b.category || b.genre || 'Programming' : 'Programming',
-      };
-    });
-
-    // Default top borrowed books fallback matching screenshot if aggregate is small
-    const sampleTop = [
-      { rank: '#1', bookTitle: 'Clean Code', author: 'Robert C. Martin', timesBorrowed: 87, category: 'Programming' },
-      { rank: '#2', bookTitle: '1984', author: 'George Orwell', timesBorrowed: 76, category: 'Fiction' },
-      { rank: '#3', bookTitle: 'Sapiens', author: 'Yuval Noah Harari', timesBorrowed: 68, category: 'History' },
-      { rank: '#4', bookTitle: 'The Pragmatic Programmer', author: 'Andrew Hunt', timesBorrowed: 62, category: 'Programming' },
-      { rank: '#5', bookTitle: 'To Kill a Mockingbird', author: 'Harper Lee', timesBorrowed: 59, category: 'Fiction' },
-    ];
-
-    res.status(200).json({
-      success: true,
-      reports: {
-        totalBooksIssued: totalIssuedTx > 0 ? totalIssuedTx * 85 + 28 : 928,
-        totalBooksIssuedChange: '+12.5%',
-        activeMembers: totalMembers > 0 ? totalMembers * 110 + 12 : 892,
-        activeMembersChange: '+8.2%',
-        finesCollected: totalFinesSum > 0 ? totalFinesSum + 1200 : 1390,
-        finesCollectedChange: '-15.3%',
-        overdueItems: overdueCount > 0 ? overdueCount + 40 : 47,
-        overdueItemsChange: '-5.1%',
-        topBorrowedBooks: topBorrowedBooks.length >= 5 ? topBorrowedBooks : sampleTop,
-        chartData: {
-          months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-          issued: [120, 145, 160, 135, 180, 195],
-          returned: [100, 130, 150, 120, 165, 185],
-          fines: [240, 330, 180, 280, 210, 160],
-        },
-      },
-    });
-  } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -559,6 +498,9 @@ exports.createUser = async (req, res, next) => {
       isActive: true,
     });
 
+    await audit(req, 'user.create', { type: 'User', id: newUser._id },
+      `Created ${newUser.role} account for ${personLabel(newUser)}`, { role: newUser.role });
+
     res.status(201).json({
       success: true,
       message: `User ${newUser.name} created successfully as ${newUser.role}`,
@@ -581,6 +523,10 @@ exports.sendOverdueReminders = async (req, res, next) => {
     // when it is due (due soon once, overdue at most every 7 days), so repeated clicks send nothing new.
     const result = await runReminders({ force: true });
     const count = result.dueSoon + result.overdue;
+
+    await audit(req, 'reminders.send', { type: 'System' },
+      `Sent reminders manually: ${result.dueSoon} due soon, ${result.overdue} overdue`,
+      { dueSoon: result.dueSoon, overdue: result.overdue });
 
     res.status(200).json({
       success: true,
@@ -685,6 +631,10 @@ exports.adminIssueBook = async (req, res, next) => {
       console.error('Notification creation failed (non-fatal):', notifError.message);
     }
 
+    await audit(req, 'loan.admin_issue', { type: 'Transaction', id: transaction._id },
+      `Issued "${book.title}" at the desk to ${personLabel(user)}`,
+      { dueDate: dueDate.toISOString().slice(0, 10) });
+
     res.status(201).json({
       success: true,
       message: `Book "${book.title}" successfully issued to ${user.name}!`,
@@ -781,6 +731,11 @@ exports.adminReturnBook = async (req, res, next) => {
       link: fine > 0 ? '/student/fines' : '/student/my-books?tab=returned',
       meta: { transactionId: returned._id, bookId: returned.bookId },
     });
+
+    const borrower = await User.findById(returned.userId).select('name libraryId').catch(() => null);
+    await audit(req, 'loan.admin_return', { type: 'Transaction', id: returned._id },
+      `Returned "${book ? book.title : 'a book'}" at the desk for ${personLabel(borrower)}${fine > 0 ? `, fine ₹${fine} recorded` : ''}`,
+      { fine });
 
     res.status(200).json({
       success: true,
@@ -880,6 +835,8 @@ exports.updateUser = async (req, res, next) => {
       return res.status(denied.status).json({ success: false, message: denied.message });
     }
 
+    const before = { role: targetUser.role, isActive: targetUser.isActive !== false };
+
     if (name !== undefined) targetUser.name = name;
     if (email !== undefined) targetUser.email = email.trim().toLowerCase();
     if (role !== undefined) targetUser.role = role;
@@ -889,7 +846,24 @@ exports.updateUser = async (req, res, next) => {
     if (isActive !== undefined) targetUser.isActive = isActive;
     if (password) targetUser.password = password; // pre('save') hook will hash it
 
+    // Names of the changed fields only (never their values), read before save clears them
+    const changedFields = ['name', 'email', 'phone', 'address', 'libraryId', 'password'].filter((f) => targetUser.isModified(f));
+
     await targetUser.save();
+
+    const who = personLabel(targetUser);
+    const target = { type: 'User', id: targetUser._id };
+    if (targetUser.role !== before.role) {
+      await audit(req, 'user.role_change', target, `Changed role of ${who} from ${before.role} to ${targetUser.role}`,
+        { from: before.role, to: targetUser.role });
+    }
+    if ((targetUser.isActive !== false) !== before.isActive) {
+      const activated = targetUser.isActive !== false;
+      await audit(req, activated ? 'user.activate' : 'user.deactivate', target, `${activated ? 'Activated' : 'Deactivated'} the account of ${who}`);
+    }
+    if (changedFields.length) {
+      await audit(req, 'user.update', target, `Updated ${changedFields.join(', ')} for ${who}`, { fields: changedFields });
+    }
 
     res.status(200).json({ success: true, message: 'User updated successfully', user: targetUser });
   } catch (error) {
@@ -920,6 +894,9 @@ exports.deleteUser = async (req, res, next) => {
       { isActive: !targetUser.isActive },
       { new: true }
     );
+
+    await audit(req, updatedUser.isActive ? 'user.activate' : 'user.deactivate', { type: 'User', id: updatedUser._id },
+      `${updatedUser.isActive ? 'Activated' : 'Deactivated'} the account of ${personLabel(updatedUser)}`);
 
     res.status(200).json({
       success: true,
@@ -976,6 +953,9 @@ exports.createAdminUser = async (req, res, next) => {
       address,
       libraryId: `ADM-${Date.now()}`,
     });
+
+    await audit(req, 'user.create', { type: 'User', id: adminUser._id },
+      `Created admin account for ${personLabel(adminUser)}`, { role: 'admin' });
 
     res.status(201).json({
       success: true,

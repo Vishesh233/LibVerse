@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const Transaction = require('../models/Transaction');
-const { calculateFine, getDaysLateOf } = require('../utils/fineCalculator');
+const { getDaysLateOf, payableFineOf } = require('../utils/fineCalculator');
 
 exports.initiatePayment = async (req, res, next) => {
   try {
@@ -15,9 +15,8 @@ exports.initiatePayment = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not authorized to pay this fine' });
     }
 
-    const fineAmount = transaction.status === 'issued'
-      ? calculateFine(transaction.dueDate)
-      : transaction.fineAmount;
+    // What is still owed: the fine (growing while issued) minus any waiver; 0 once paid
+    const fineAmount = payableFineOf(transaction);
 
     if (!fineAmount || fineAmount <= 0) {
       return res.status(400).json({ success: false, message: 'No outstanding fine to pay' });
@@ -35,6 +34,7 @@ exports.initiatePayment = async (req, res, next) => {
         bookTitle: transaction.bookId?.title || 'Unknown Book',
         dueDate: transaction.dueDate,
         fineAmount,
+        fineWaived: transaction.fineWaived || 0,
         daysLate,
       },
     });

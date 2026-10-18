@@ -60,6 +60,7 @@ const notificationSchema = new mongoose.Schema(
         'NEW_MEMBER',
         'LOW_STOCK',
         'FINE_PAID',
+        'FINE_WAIVED',
         'INVENTORY_UPDATE',
         'NEW_LIBRARIAN',
         'SYSTEM_ACTIVITY',

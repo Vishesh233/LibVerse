@@ -6,6 +6,7 @@ import { MainLayout } from '../layouts/MainLayout';
 import { Card, Badge, Button, EmptyState, PageHeader } from '../components/UI';
 import { Loader } from '../components/Loader';
 import { ReservationQueues } from '../components/ReservationQueues';
+import { WaiveFineModal, waiverLoanFrom } from '../components/WaiveFineModal';
 import { useAuth } from '../hooks/useAuth';
 import { formatDate } from '../utils/dateUtils';
 
@@ -32,6 +33,7 @@ export const PendingRequests = () => {
   const [loading, setLoading] = useState(true);
   const [actioningId, setActioningId] = useState(null);
   const [screenshot, setScreenshot] = useState(null); // { loading, src } while the viewer is open
+  const [waiving, setWaiving] = useState(null); // loan whose fine is being waived
   const { isAdmin, isLibrarian } = useAuth();
   const canAccess = isAdmin || isLibrarian;
 
@@ -124,6 +126,15 @@ export const PendingRequests = () => {
   const tab = TABS.find((t) => t.key === activeTab);
   const rows = lists[activeTab] || [];
 
+  // Still owed after any waiver (the server sends payableFine; older rows fall back to the stored fine)
+  const payableOf = (tx) => Number(tx.payableFine ?? (tx.finePaid ? 0 : tx.fineAmount)) || 0;
+  const waiveButton = (tx) =>
+    payableOf(tx) > 0 ? (
+      <Button onClick={() => setWaiving(waiverLoanFrom(tx))} variant="secondary" fullWidth={false} className="text-xs px-3 py-1">
+        Waive fine
+      </Button>
+    ) : null;
+
   const renderActions = (tx) => {
     const busy = actioningId === tx._id;
     if (activeTab === 'issue') {
@@ -139,22 +150,29 @@ export const PendingRequests = () => {
       );
     }
     if (activeTab === 'return') {
-      const waitingForFine = tx.fineAmount > 0 && !tx.finePaid;
+      const waitingForFine = payableOf(tx) > 0;
       return (
-        <Button
-          onClick={() => handleApproveReturn(tx._id)}
-          variant="success"
-          disabled={busy || waitingForFine}
-          className="text-xs px-3 py-1"
-        >
-          {waitingForFine ? 'Waiting for fine payment' : busy ? 'Working...' : '✅ Approve Return'}
-        </Button>
+        <span className="inline-flex flex-wrap gap-2">
+          <Button
+            onClick={() => handleApproveReturn(tx._id)}
+            variant="success"
+            fullWidth={false}
+            disabled={busy || waitingForFine}
+            className="text-xs px-3 py-1"
+          >
+            {waitingForFine ? 'Waiting for fine payment' : busy ? 'Working...' : '✅ Approve Return'}
+          </Button>
+          {waiveButton(tx)}
+        </span>
       );
     }
     return (
-      <Button onClick={() => handleApprovePayment(tx._id)} variant="success" disabled={busy} className="text-xs px-3 py-1">
-        {busy ? 'Working...' : '✅ Approve Payment'}
-      </Button>
+      <span className="inline-flex flex-wrap gap-2">
+        <Button onClick={() => handleApprovePayment(tx._id)} variant="success" fullWidth={false} disabled={busy} className="text-xs px-3 py-1">
+          {busy ? 'Working...' : '✅ Approve Payment'}
+        </Button>
+        {waiveButton(tx)}
+      </span>
     );
   };
 
@@ -162,19 +180,27 @@ export const PendingRequests = () => {
     if (activeTab === 'issue') {
       return <Badge variant="warning">Pending</Badge>;
     }
+    const waived = Number(tx.fineWaived) || 0;
+    const waivedNote = waived > 0 ? <span className="block text-[11px] text-pink-300">₹{waived} waived of ₹{tx.fineAmount}</span> : null;
     if (activeTab === 'return') {
-      return tx.fineAmount > 0 ? (
-        <span className="space-x-2">
-          <span className="text-slate-100 font-semibold">₹{tx.fineAmount}</span>
-          <Badge variant={tx.finePaid ? 'success' : 'danger'}>{tx.finePaid ? 'Paid' : 'Unpaid'}</Badge>
+      if (!(tx.fineAmount > 0)) return <Badge variant="success">No fine</Badge>;
+      const payable = payableOf(tx);
+      return (
+        <span className="inline-flex flex-col gap-1">
+          <span className="space-x-2">
+            <span className="text-slate-100 font-semibold">₹{tx.finePaid ? tx.fineAmount - waived : payable}</span>
+            <Badge variant={tx.finePaid ? 'success' : payable > 0 ? 'danger' : 'info'}>
+              {tx.finePaid ? 'Paid' : payable > 0 ? 'Unpaid' : 'Waived'}
+            </Badge>
+          </span>
+          {waivedNote}
         </span>
-      ) : (
-        <Badge variant="success">No fine</Badge>
       );
     }
     return (
       <span className="flex flex-wrap items-center gap-2">
-        <span className="text-slate-100 font-semibold">₹{tx.fineAmount || 0}</span>
+        <span className="text-slate-100 font-semibold">₹{payableOf(tx)}</span>
+        {waivedNote}
         <Badge variant={tx.hasScreenshot ? 'primary' : 'neutral'}>
           {tx.hasScreenshot ? 'Screenshot uploaded' : 'No screenshot'}
         </Badge>
@@ -256,6 +282,8 @@ export const PendingRequests = () => {
           </Card>
         )}
       </div>
+
+      {waiving && <WaiveFineModal loan={waiving} onClose={() => setWaiving(null)} onWaived={fetchAll} />}
 
       {/* Payment screenshot viewer */}
       {screenshot && (

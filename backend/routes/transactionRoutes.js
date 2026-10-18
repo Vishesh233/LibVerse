@@ -11,6 +11,7 @@ const {
   submitPayment,
   approvePayment,
   getPaymentScreenshot,
+  waiveFine,
 } = require('../controllers/transactionController');
 const { protect, isStaff, isStudent } = require('../middleware/authMiddleware');
 
@@ -30,5 +31,6 @@ router.put('/:id/approve', protect, isStaff, approveIssueRequest);
 router.put('/:id/reject', protect, isStaff, rejectIssueRequest);
 router.put('/:id/approve-return', protect, isStaff, approveReturn);
 router.put('/:id/approve-payment', protect, isStaff, approvePayment);
+router.post('/:id/waive', protect, isStaff, waiveFine);
 
 module.exports = router;

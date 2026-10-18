@@ -8,6 +8,7 @@ import { Badge, Button, EmptyState, Skeleton } from '../UI';
 import { DashboardHero } from './DashboardHero';
 import { IssueBookModal } from './IssueBookModal';
 import { GenreDoughnut } from './GenreDoughnut';
+import { WaiveFineModal, waiverLoanFrom } from '../WaiveFineModal';
 import {
   AmountStat, DASH_ICONS, DashTabs, IconTile, KpiLink, QuickTile, SectionCard, SectionLink, formatRupees, greetingFor,
 } from './DashboardKit';
@@ -58,6 +59,7 @@ export const StaffDashboard = ({ role }) => {
   const [busy, setBusy] = useState(null); // "<action>:<transactionId>"
   const [sendingReminders, setSendingReminders] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
+  const [waiving, setWaiving] = useState(null); // loan whose fine is being waived
 
   const load = useCallback(async () => {
     try {
@@ -78,6 +80,14 @@ export const StaffDashboard = ({ role }) => {
   }, [load]);
 
   const closeIssue = useCallback(() => setIssueOpen(false), []);
+  // Still owed after any waiver
+  const payableOf = (req) => Number(req.payableFine ?? (req.finePaid ? 0 : req.fineAmount)) || 0;
+  const waiveButton = (req) =>
+    payableOf(req) > 0 ? (
+      <Button variant="secondary" size="sm" fullWidth={false} disabled={!!busy} onClick={() => setWaiving(waiverLoanFrom(req))}>
+        Waive fine
+      </Button>
+    ) : null;
 
   const runAction = async (key, call, success) => {
     setBusy(key);
@@ -214,24 +224,33 @@ export const StaffDashboard = ({ role }) => {
                           );
                         }
                         if (queueTab === 'return') {
-                          const fineDue = req.fineAmount > 0 && !req.finePaid;
+                          const payable = payableOf(req);
+                          const fineDue = payable > 0;
+                          const waived = Number(req.fineWaived) || 0;
                           return (
                             <RequestRow key={req._id} req={req}
                               meta={req.fineAmount > 0
-                                ? <Badge variant={fineDue ? 'warning' : 'success'}>{fineDue ? `Fine ${formatRupees(req.fineAmount)} unpaid` : 'Fine paid'}</Badge>
+                                ? <>
+                                    <Badge variant={fineDue ? 'warning' : req.finePaid ? 'success' : 'info'}>
+                                      {fineDue ? `Fine ${formatRupees(payable)} unpaid` : req.finePaid ? 'Fine paid' : 'Fine waived'}
+                                    </Badge>
+                                    {waived > 0 && <Badge variant="info">{formatRupees(waived)} waived</Badge>}
+                                  </>
                                 : <Badge variant="neutral">No fine</Badge>}>
                               <Button variant="success" size="sm" fullWidth={false} loading={busy === `return:${req._id}`} disabled={!!busy || fineDue}
                                 title={fineDue ? 'The student must pay the fine first' : undefined}
                                 onClick={() => runAction(`return:${req._id}`, () => transactionsAPI.approveReturn(req._id), 'Return approved.')}>
                                 Approve return
                               </Button>
+                              {waiveButton(req)}
                             </RequestRow>
                           );
                         }
                         return (
                           <RequestRow key={req._id} req={req}
                             meta={<>
-                              <Badge variant="warning">{formatRupees(req.fineAmount)}</Badge>
+                              <Badge variant="warning">{formatRupees(payableOf(req))}</Badge>
+                              {Number(req.fineWaived) > 0 && <Badge variant="info">{formatRupees(req.fineWaived)} waived</Badge>}
                               <Badge variant={req.hasScreenshot ? 'primary' : 'neutral'}>{req.hasScreenshot ? 'Screenshot' : 'No screenshot'}</Badge>
                             </>}>
                             <Link to={`${base}/pending?tab=payment`} className="btn-secondary !min-h-[36px] !px-3 !py-1.5 !text-xs">Review</Link>
@@ -239,6 +258,7 @@ export const StaffDashboard = ({ role }) => {
                               onClick={() => runAction(`payment:${req._id}`, () => transactionsAPI.approvePayment(req._id), 'Payment approved and book returned.')}>
                               Approve payment
                             </Button>
+                            {waiveButton(req)}
                           </RequestRow>
                         );
                       })}
@@ -304,10 +324,10 @@ export const StaffDashboard = ({ role }) => {
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <AmountStat label="Collected" value={formatRupees(fines.collected)} tone="text-emerald-300" hint="verified payments" />
+                    <AmountStat label="Collected" value={formatRupees(fines.collected)} tone="text-emerald-300" hint="verified payments, net of waivers" />
                     <AmountStat label="Outstanding" value={formatRupees(fines.outstanding)} tone="text-rose-300"
                       hint={`${formatRupees(fines.outstandingFixed)} fixed · ${formatRupees(fines.accruing)} accruing`} />
-                    <AmountStat label="Loans with fines" value={fines.loansWithFines ?? 0} hint="paid, owed or accruing" />
+                    <AmountStat label="Waived" value={formatRupees(fines.waived)} tone="text-pink-300" hint={`${fines.loansWithFines ?? 0} loans with fines`} />
                   </div>
                 )}
               </SectionCard>
@@ -329,6 +349,7 @@ export const StaffDashboard = ({ role }) => {
       </div>
 
       <IssueBookModal open={issueOpen} onClose={closeIssue} onIssued={load} />
+      {waiving && <WaiveFineModal loan={waiving} onClose={() => setWaiving(null)} onWaived={load} />}
     </MainLayout>
   );
 };

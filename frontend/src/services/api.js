@@ -53,6 +53,7 @@ export const authAPI = {
   getCurrentUser: () => apiClient.get('/auth/me'),
   getMyStats: () => apiClient.get('/auth/me/stats'),
   getMyActivity: () => apiClient.get('/auth/me/activity'),
+  getReadingStats: () => apiClient.get('/auth/me/reading-stats'),
   updateProfile: (data) => apiClient.put('/auth/update-profile', data),
   completeOnboarding: (data) => apiClient.put('/auth/complete-onboarding', data),
   updateFavoriteGenres: (data) => apiClient.put('/auth/update-favorite-genres', data),
@@ -93,12 +94,18 @@ export const transactionsAPI = {
   submitPayment: (id, data) => apiClient.put(`/transactions/${id}/submit-payment`, data),
   approvePayment: (id) => apiClient.put(`/transactions/${id}/approve-payment`),
   getPaymentScreenshot: (id) => apiClient.get(`/transactions/${id}/payment-screenshot`),
+  // Staff: waive all or part of an unpaid fine ({ amount, reason })
+  waiveFine: (id, data) => apiClient.post(`/transactions/${id}/waive`, data),
 };
 
 // Admin endpoints
 export const adminAPI = {
   getDashboard: () => apiClient.get('/admin/dashboard'),
-  getReports: (params) => apiClient.get('/admin/reports', { params }),
+  // ?from=YYYY-MM-DD&to=YYYY-MM-DD (default: last 12 months)
+  getAnalytics: (params, config = {}) => apiClient.get('/admin/analytics', { params, ...config }),
+  getReports: (params, config = {}) => apiClient.get('/admin/reports', { params, ...config }),
+  // Admin only: ?actor=&action=&from=&to=&page=&limit=
+  getAuditLog: (params, config = {}) => apiClient.get('/admin/audit', { params, ...config }),
   getNotifications: () => apiClient.get('/admin/notifications'),
   getAllUsers: (params) => apiClient.get('/admin/users', { params }),
   createUser: (data) => apiClient.post('/admin/users', data),

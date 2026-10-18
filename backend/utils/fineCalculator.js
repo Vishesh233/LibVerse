@@ -72,4 +72,46 @@ const getDaysLateOf = (t) => {
   return 0;
 };
 
-module.exports = { calculateFine, getDaysOverdue, getDaysLateOf, isOverdue, getDaysRemaining, startOfDay, calendarDaysBetween, FINE_PER_DAY };
+/**
+ * Fine of a transaction before any waiver: still growing for an issued loan, otherwise the
+ * amount fixed at the return request (or at a desk return).
+ * @param {Object} t - transaction ({ status, dueDate, fineAmount })
+ * @returns {Number}
+ */
+const fineOf = (t) => {
+  if (!t) return 0;
+  if (t.status === 'issued') return calculateFine(t.dueDate);
+  return Math.max(0, Number(t.fineAmount) || 0);
+};
+
+/**
+ * What the student still has to pay: fine minus any waiver, never below 0; 0 once paid.
+ * Used everywhere a payable amount is shown or checked.
+ * @param {Object} t - transaction ({ status, dueDate, fineAmount, fineWaived, finePaid })
+ * @returns {Number}
+ */
+const payableFineOf = (t) => {
+  if (!t || t.finePaid) return 0;
+  return Math.max(0, fineOf(t) - (Number(t.fineWaived) || 0));
+};
+
+/**
+ * Amount actually collected for a paid fine (the waived part was never paid)
+ * @param {Object} t
+ * @returns {Number}
+ */
+const paidFineOf = (t) => (t?.finePaid ? Math.max(0, (Number(t.fineAmount) || 0) - (Number(t.fineWaived) || 0)) : 0);
+
+module.exports = {
+  calculateFine,
+  getDaysOverdue,
+  getDaysLateOf,
+  isOverdue,
+  getDaysRemaining,
+  startOfDay,
+  calendarDaysBetween,
+  fineOf,
+  payableFineOf,
+  paidFineOf,
+  FINE_PER_DAY,
+};

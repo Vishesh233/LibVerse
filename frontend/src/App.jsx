@@ -27,6 +27,7 @@ import { Wishlist } from './pages/Wishlist';
 import { Fines } from './pages/Fines';
 import { IssueReturn } from './pages/IssueReturn';
 import { Reports } from './pages/Reports';
+import { AuditLog } from './pages/AuditLog';
 import { Onboarding } from './pages/Onboarding';
 import { Notifications } from './pages/Notifications';
 
@@ -350,6 +351,14 @@ function App() {
             element={
               <ProtectedRoute requiredRole="admin">
                 <Reports />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/audit"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AuditLog />
               </ProtectedRoute>
             }
           />

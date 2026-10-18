@@ -12,6 +12,8 @@ const {
   cancelReservation,
 } = require('../services/reservationService');
 const { toQueryString, toPagination } = require('../utils/escapeRegex');
+const User = require('../models/User');
+const { audit, personLabel } = require('../utils/audit');
 
 const ACTIVE = Reservation.ACTIVE_STATUSES;
 const STATUSES = Reservation.schema.path('status').enumValues;
@@ -265,6 +267,17 @@ exports.cancelReservation = async (req, res) => {
     const cancelled = await cancelReservation(reservation, req.user);
     if (!cancelled) {
       return res.status(409).json({ success: false, message: 'This reservation just changed. Refresh and try again.' });
+    }
+
+    // Staff cancelling a student's reservation is audited (a student cancelling their own is not)
+    if (!isOwner && isStaff) {
+      const [student, book] = await Promise.all([
+        User.findById(reservation.userId).select('name libraryId').lean().catch(() => null),
+        Book.findById(reservation.bookId).select('title').lean().catch(() => null),
+      ]);
+      await audit(req, 'reservation.staff_cancel', { type: 'Reservation', id: reservation._id },
+        `Cancelled the ${reservation.status} reservation of "${book?.title || 'a book'}" for ${personLabel(student)}`,
+        { previousStatus: reservation.status });
     }
 
     res.status(200).json({ success: true, message: 'Reservation cancelled', reservation: cancelled });

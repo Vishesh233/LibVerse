@@ -153,6 +153,9 @@ export const PayFine = () => {
               <div className="grid grid-cols-2 gap-3">
                 <Stat label="Amount due">
                   <p className="font-display text-3xl font-bold text-rose-300">₹{fineData.fineAmount}</p>
+                  {Number(fineData.fineWaived) > 0 && (
+                    <p className="mt-0.5 text-xs text-pink-300">₹{fineData.fineWaived} waived by the library</p>
+                  )}
                 </Stat>
                 <Stat label="Days overdue">
                   <p className="text-lg font-semibold text-slate-100">{daysLate} day{daysLate === 1 ? '' : 's'}</p>

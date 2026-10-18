@@ -2087,3 +2087,36 @@ body.modal-open {
 }
 /* The compact (staff) hero sizes to its content at any height */
 .dash-hero.dash-hero--compact { min-height: 0; }
+
+/* ---------------------------
+   Reports: Print / Save as PDF (window.print). Black on white, no app chrome or controls,
+   every table row, headers repeated on each page.
+---------------------------- */
+@media print {
+  @page { margin: 12mm; }
+  html, body, #root { background: #fff !important; color: #000 !important; height: auto !important; overflow: visible !important; }
+  .Toastify { display: none !important; }
+  .print-report, .print-report * {
+    color: #000 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-report .card-glass,
+  .print-report .dash-section {
+    background: #fff !important;
+    border: 1px solid #bbb !important;
+    backdrop-filter: none !important;
+    break-inside: auto;
+    padding: 8px !important;
+  }
+  .print-report h2 { font-size: 14pt; }
+  .print-report .report-table-wrap { overflow: visible !important; border-color: #bbb !important; }
+  .print-report .report-table { min-width: 0 !important; font-size: 8.5pt; }
+  .print-report .report-table thead { display: table-header-group; background: #eee !important; }
+  .print-report .report-table tr { break-inside: avoid; }
+  .print-report .report-table th, .print-report .report-table td { padding: 3px 5px !important; border-bottom: 1px solid #ddd; }
+  .print-report .report-table th button span[aria-hidden] { display: none; }
+  .print-report .badge-amo { background: none !important; border: 1px solid #999 !important; }
+}

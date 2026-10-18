@@ -1,4 +1,5 @@
 const Transaction = require('../models/Transaction');
+const { calendarDaysBetween, getDaysLateOf } = require('../utils/fineCalculator');
 
 // Loans that are still out with the student (same set as the My books page)
 const ON_LOAN = ['issued', 'return_requested', 'payment_pending', 'overdue'];
@@ -71,7 +72,8 @@ exports.getMyStats = async (req, res) => {
       Transaction.countDocuments({ userId: me, status: { $in: ON_LOAN } }),
       Transaction.aggregate([
         { $match: { userId: me, finePaid: true } },
-        { $group: { _id: null, total: { $sum: '$fineAmount' } } },
+        // Paid part only: a waived part was never paid
+        { $group: { _id: null, total: { $sum: { $max: [0, { $subtract: ['$fineAmount', { $ifNull: ['$fineWaived', 0] }] }] } } } },
       ]),
     ]);
 
@@ -107,7 +109,7 @@ exports.getMyActivity = async (req, res) => {
         let query = Transaction.find(filter)
           .sort({ [dateField]: -1 })
           .limit(ACTIVITY_LIMIT)
-          .select(`bookId userId status fineAmount ${dateField}`)
+          .select(`bookId userId status fineAmount fineWaived ${dateField}`)
           .populate('bookId', 'title');
         if (staff) query = query.populate('userId', 'name libraryId');
         const docs = await query.lean();
@@ -118,7 +120,7 @@ exports.getMyActivity = async (req, res) => {
           date: t[dateField],
           status: t.status,
           book: t.bookId ? { _id: t.bookId._id, title: t.bookId.title } : null,
-          amount: kind.startsWith('payment') ? t.fineAmount || 0 : undefined,
+          amount: kind.startsWith('payment') ? Math.max(0, (t.fineAmount || 0) - (t.fineWaived || 0)) : undefined,
           // Staff see who the approval was for; students only ever see their own records
           student: staff && t.userId ? { name: t.userId.name, libraryId: t.userId.libraryId } : undefined,
         }));
@@ -132,6 +134,74 @@ exports.getMyActivity = async (req, res) => {
       .slice(0, ACTIVITY_LIMIT);
 
     res.status(200).json({ success: true, role: req.user.role, activity });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * @route GET /api/auth/me/reading-stats
+ * @desc The signed-in student's reading: a book counts as read when its loan is returned.
+ *       - booksPerMonth: returned loans per month for the last 12 months (by return date)
+ *       - genres: returned loans per genre, most read first
+ *       - totalRead: all returned loans
+ *       - averageLoanDays: mean calendar days from issue to hand-back (return request, or the
+ *         return itself for a desk return)
+ *       - onTimeRate: % of returned loans handed back on or before the due day (null with none)
+ * @access Private/Student
+ */
+exports.getMyReadingStats = async (req, res) => {
+  try {
+    const loans = await Transaction.find({ userId: req.user._id, status: 'returned' })
+      .select('bookId issueDate dueDate returnDate returnRequestedAt status')
+      .populate('bookId', 'genre')
+      .lean();
+
+    const now = new Date();
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
+      return { key: `${d.getFullYear()}-${d.getMonth()}`, label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`, count: 0 };
+    });
+    const monthIndex = new Map(months.map((m, i) => [m.key, i]));
+
+    const genreCounts = new Map();
+    let loanDaysTotal = 0;
+    let loanDaysCount = 0;
+    let onTime = 0;
+
+    for (const t of loans) {
+      if (t.returnDate) {
+        const d = new Date(t.returnDate);
+        const i = monthIndex.get(`${d.getFullYear()}-${d.getMonth()}`);
+        if (i !== undefined) months[i].count += 1;
+      }
+      const genre = t.bookId?.genre || 'Unknown';
+      genreCounts.set(genre, (genreCounts.get(genre) || 0) + 1);
+
+      const handedBack = t.returnRequestedAt || t.returnDate;
+      if (t.issueDate && handedBack) {
+        loanDaysTotal += Math.max(0, calendarDaysBetween(t.issueDate, handedBack));
+        loanDaysCount += 1;
+      }
+      if (getDaysLateOf(t) === 0) onTime += 1;
+    }
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalRead: loans.length,
+        readLast12Months: months.reduce((sum, m) => sum + m.count, 0),
+        booksPerMonth: months.map(({ label, count }) => ({ label, count })),
+        genres: [...genreCounts.entries()]
+          .map(([genre, count]) => ({ genre, count }))
+          .sort((a, b) => b.count - a.count || a.genre.localeCompare(b.genre)),
+        averageLoanDays: loanDaysCount ? Math.round((loanDaysTotal / loanDaysCount) * 10) / 10 : null,
+        onTimeRate: loans.length ? Math.round((onTime / loans.length) * 100) : null,
+        onTimeReturns: onTime,
+      },
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

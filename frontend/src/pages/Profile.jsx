@@ -10,12 +10,14 @@ import { PersonalInfoTab } from '../components/profile/PersonalInfoTab';
 import { SecurityTab } from '../components/profile/SecurityTab';
 import { PreferencesTab } from '../components/profile/PreferencesTab';
 import { ActivityTab } from '../components/profile/ActivityTab';
-import { ActivityIcon, HeartIcon, LockIcon, UserIcon } from '../components/profile/ProfileIcons';
+import { ReadingStatsPanel } from '../components/profile/ReadingStats';
+import { ActivityIcon, BookIcon, HeartIcon, LockIcon, UserIcon } from '../components/profile/ProfileIcons';
 
 const TABS = [
   { key: 'personal', label: 'Personal info', icon: <UserIcon />, description: 'Your name and contact details.' },
   { key: 'security', label: 'Security', icon: <LockIcon />, description: 'Change the password you sign in with.' },
   { key: 'preferences', label: 'Reading preferences', icon: <HeartIcon />, description: 'Genres used for your recommendations.', studentOnly: true },
+  { key: 'reading', label: 'Reading stats', icon: <BookIcon />, description: 'Books you have read, the genres you read and how you return them.', studentOnly: true },
   { key: 'activity', label: 'Activity', icon: <ActivityIcon />, description: 'What happened recently on your account.' },
 ];
 
@@ -29,6 +31,7 @@ export const Profile = () => {
   const [activity, setActivity] = useState([]);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState(null);
+  const [reading, setReading] = useState({ loading: true, stats: null, error: null, loaded: false });
 
   const tabs = TABS.filter((t) => !t.studentOnly || isStudent);
   const requested = searchParams.get('tab');
@@ -71,6 +74,20 @@ export const Profile = () => {
     loadActivity();
   }, [loadStats, loadActivity]);
 
+  // Reading stats load the first time their tab is opened
+  const loadReading = useCallback(async () => {
+    setReading((r) => ({ ...r, loading: true, error: null }));
+    try {
+      const res = await authAPI.getReadingStats();
+      setReading({ loading: false, stats: res.data?.stats || null, error: null, loaded: true });
+    } catch (err) {
+      setReading({ loading: false, stats: null, error: err.response?.data?.message || 'Please try again in a moment.', loaded: true });
+    }
+  }, []);
+  useEffect(() => {
+    if (activeTab === 'reading' && !reading.loaded) loadReading();
+  }, [activeTab, reading.loaded, loadReading]);
+
   // Merge, so fields the response doesn't carry are kept; the Navbar reads the same stored user
   const handleUserChange = useCallback((changes) => updateUser({ ...user, ...changes }), [user, updateUser]);
 
@@ -104,6 +121,9 @@ export const Profile = () => {
               {activeTab === 'personal' && <PersonalInfoTab user={user} onUserChange={handleUserChange} />}
               {activeTab === 'security' && <SecurityTab user={user} />}
               {activeTab === 'preferences' && <PreferencesTab user={user} onUserChange={handleUserChange} />}
+              {activeTab === 'reading' && (
+                <ReadingStatsPanel stats={reading.stats} loading={reading.loading} error={reading.error} onRetry={loadReading} />
+              )}
               {activeTab === 'activity' && (
                 <ActivityTab
                   activity={activity}

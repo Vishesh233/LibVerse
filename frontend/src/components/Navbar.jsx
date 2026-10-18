@@ -137,7 +137,7 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen, onOpenMenu }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border bg-navbar/95 px-4 text-slate-100 backdrop-blur-md sm:gap-4 sm:px-6">
+    <header className="print:hidden sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border bg-navbar/95 px-4 text-slate-100 backdrop-blur-md sm:gap-4 sm:px-6">
       {/* Menu button (mobile/tablet: the sidebar lives in a drawer) */}
       {onOpenMenu && (
         <button

@@ -11,9 +11,9 @@ const {
   sendOverdueReminders,
   adminIssueBook,
   adminReturnBook,
-  getReports,
   globalSearch,
 } = require('../controllers/adminController');
+const { getAnalytics, getReports, getAuditLog } = require('../controllers/analyticsController');
 const { protect, isStaff, isAdminRole } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -25,7 +25,9 @@ router.get('/search', protect, globalSearch);
 router.use(protect, isStaff);
 
 router.get('/dashboard', getDashboard);
+router.get('/analytics', getAnalytics);
 router.get('/reports', getReports);
+router.get('/audit', isAdminRole, getAuditLog);
 router.get('/notifications', getNotifications);
 router.get('/users', getAllUsers);
 router.post('/users', createUser);

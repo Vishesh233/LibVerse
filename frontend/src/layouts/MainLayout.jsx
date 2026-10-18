@@ -23,9 +23,10 @@ export const MainLayout = ({ children }) => {
   }, [isFullscreen, isMobileNavOpen]);
 
   return (
-    <div className="flex h-screen bg-gradient-to-b from-background to-background-secondary font-sans text-slate-100">
+    // Print (Reports "Print / Save as PDF"): no app chrome, full-height content instead of a scroll box
+    <div className="flex h-screen bg-gradient-to-b from-background to-background-secondary font-sans text-slate-100 print:block print:h-auto print:bg-none">
       {/* Desktop sidebar (lg and up) */}
-      <div className={`hidden lg:block transition-all duration-500 ease-in-out motion-reduce:transition-none ${isFullscreen ? 'w-0 opacity-0 overflow-hidden' : 'w-64'} flex-shrink-0`}>
+      <div className={`hidden lg:block print:!hidden transition-all duration-500 ease-in-out motion-reduce:transition-none ${isFullscreen ? 'w-0 opacity-0 overflow-hidden' : 'w-64'} flex-shrink-0`}>
         <Sidebar />
       </div>
 
@@ -39,13 +40,13 @@ export const MainLayout = ({ children }) => {
         </div>
       )}
 
-      <div className={`flex flex-1 flex-col min-w-0 transition-all duration-500 ease-in-out ${isFullscreen ? 'w-full' : ''}`}>
+      <div className={`flex flex-1 flex-col min-w-0 transition-all duration-500 ease-in-out print:block ${isFullscreen ? 'w-full' : ''}`}>
         <Navbar
           isFullscreen={isFullscreen}
           onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
           onOpenMenu={() => setIsMobileNavOpen(true)}
         />
-        <main className={`app-main flex-1 overflow-y-auto transition-all duration-500 ${isFullscreen ? 'p-5 sm:p-6 lg:p-8' : 'p-4 sm:p-8 lg:p-10'}`}>
+        <main className={`app-main flex-1 overflow-y-auto transition-all duration-500 print:overflow-visible print:!p-0 ${isFullscreen ? 'p-5 sm:p-6 lg:p-8' : 'p-4 sm:p-8 lg:p-10'}`}>
           {children}
         </main>
       </div>

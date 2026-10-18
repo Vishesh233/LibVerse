@@ -6,6 +6,7 @@ const { generateQRCode } = require('../utils/qrGenerator');
 const { afterCopyFreed, cancelBookReservations } = require('../services/reservationService');
 const { armRestockAlert } = require('../utils/bookStock');
 const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
+const { audit } = require('../utils/audit');
 
 // ?sort= values for GET /api/books (anything else keeps the default order)
 const BOOK_SORTS = {
@@ -260,6 +261,10 @@ exports.createBook = async (req, res, next) => {
     book.qrCode = qrCode;
     await book.save();
 
+    await audit(req, 'book.create', { type: 'Book', id: book._id },
+      `Added "${book.title}" by ${book.author} (${book.totalCopies} cop${book.totalCopies === 1 ? 'y' : 'ies'})`,
+      { genre: book.genre, totalCopies: book.totalCopies });
+
     res.status(201).json({
       success: true,
       message: 'Book created successfully',
@@ -365,6 +370,11 @@ exports.updateBook = async (req, res, next) => {
     // No free copy left after the edit: wishlisters hear when one is back
     else if (copiesChanged) await armRestockAlert(book);
 
+    const fields = Object.keys(updateData);
+    await audit(req, 'book.update', { type: 'Book', id: book._id },
+      `Edited "${book.title}"${fields.length ? `: ${fields.join(', ')}` : ''}`,
+      { fields, ...(copiesChanged ? { totalCopies: book.totalCopies, availableCopies: book.availableCopies } : {}) });
+
     res.status(200).json({
       success: true,
       message: 'Book updated successfully',
@@ -393,6 +403,8 @@ exports.deleteBook = async (req, res, next) => {
 
     // Nobody can borrow it any more: cancel its waiting list and release held copies
     await cancelBookReservations(book._id, req.user);
+
+    await audit(req, 'book.delete', { type: 'Book', id: book._id }, `Removed "${book.title}" by ${book.author} from the catalogue`);
 
     res.status(200).json({
       success: true,
