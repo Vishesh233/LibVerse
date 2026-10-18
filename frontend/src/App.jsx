@@ -33,6 +33,8 @@ import { Notifications } from './pages/Notifications';
 // Splash shows once per browser session (a refresh in the same tab session skips it)
 const SPLASH_KEY = 'libverse:splash-shown';
 const SPLASH_MS = 1800;
+// The last part of the splash is its exit (cover wall zooms and fades with the foreground)
+const SPLASH_EXIT_MS = 380;
 
 const splashAlreadyShown = () => {
   try {
@@ -44,6 +46,7 @@ const splashAlreadyShown = () => {
 
 function App() {
   const [showSplash, setShowSplash] = useState(() => !splashAlreadyShown());
+  const [splashExiting, setSplashExiting] = useState(false);
 
   useEffect(() => {
     if (!showSplash) return undefined;
@@ -52,11 +55,15 @@ function App() {
     } catch (e) {
       /* storage unavailable */
     }
+    const exitTimer = setTimeout(() => setSplashExiting(true), SPLASH_MS - SPLASH_EXIT_MS);
     const timer = setTimeout(() => setShowSplash(false), SPLASH_MS);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(exitTimer);
+      clearTimeout(timer);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (showSplash) return <SplashScreen duration={SPLASH_MS} />;
+  if (showSplash) return <SplashScreen duration={SPLASH_MS - SPLASH_EXIT_MS} exiting={splashExiting} />;
 
   return (
     <div className="dark min-h-screen bg-[#020713] text-slate-100">

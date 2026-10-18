@@ -1588,6 +1588,128 @@ body.modal-open {
   animation-delay: var(--particle-delay, 0s);
   pointer-events: none;
 }
+
+/* Splash cover wall: real covers on a tilted plane, under the floating books, particles (z 1)
+   and foreground (z 2). Only transform and opacity animate. */
+.splash-cover-wall {
+  --cover-gap: clamp(10px, 1.2vw, 20px);
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  perspective: 1400px;
+  opacity: 0;
+  transition: opacity 700ms ease-out;
+}
+.splash-cover-wall.has-covers { opacity: 1; }
+
+/* Just big enough to cover the viewport after the 12deg turn (w·cos + h·sin) and the backward tilt */
+.splash-cover-plane {
+  --plane-w: calc(102vw + 21vh);
+  --plane-h: calc((98vh + 21vw) * 1.35);
+  position: absolute;
+  left: calc((100vw - var(--plane-w)) / 2);
+  top: calc((100vh - var(--plane-h)) / 2);
+  width: var(--plane-w);
+  height: var(--plane-h);
+  display: flex;
+  gap: var(--cover-gap);
+  transform: rotateX(24deg) rotateZ(-12deg);
+  transform-origin: 50% 50%;
+}
+
+.splash-cover-column {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Covers are rendered twice; the bottom padding equals the gap so -50% is exactly one set */
+.splash-cover-track {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cover-gap);
+  padding-bottom: var(--cover-gap);
+  will-change: transform;
+  animation: splashCoverScroll var(--cover-duration, 45s) linear infinite;
+  animation-delay: var(--cover-delay, 0s);
+}
+.splash-cover-track.is-reverse { animation-direction: reverse; }
+
+@keyframes splashCoverScroll {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, -50%, 0); }
+}
+
+.splash-cover {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity 600ms ease-out;
+}
+.splash-cover.is-loaded { opacity: 1; }
+
+/* Legibility: overall dark overlay plus a vignette that is darkest behind the foreground */
+.splash-cover-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 62% 58% at 50% 50%, rgba(5, 8, 22, 0.88) 0%, rgba(5, 8, 22, 0.8) 38%, rgba(5, 8, 22, 0.45) 72%, rgba(5, 8, 22, 0.2) 100%),
+    linear-gradient(rgba(5, 8, 22, 0.42), rgba(5, 8, 22, 0.42));
+}
+/* Phones: the card spans almost the full width, so the dark centre does too */
+@media (max-width: 640px) {
+  .splash-cover-shade {
+    background:
+      radial-gradient(ellipse 95% 50% at 50% 50%, rgba(5, 8, 22, 0.92) 0%, rgba(5, 8, 22, 0.86) 55%, rgba(5, 8, 22, 0.5) 85%, rgba(5, 8, 22, 0.3) 100%),
+      linear-gradient(rgba(5, 8, 22, 0.42), rgba(5, 8, 22, 0.42));
+  }
+}
+
+/* A busier backdrop needs a slightly denser card behind the text */
+.libverse-splash .splash-inner { background: rgba(17, 24, 39, 0.72); }
+
+/* Soft cyan glow behind the LogoMark */
+.splash-logo-glow-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.splash-logo-glow {
+  position: absolute;
+  width: 160%;
+  height: 160%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.26) 0%, rgba(34, 211, 238, 0.1) 38%, rgba(34, 211, 238, 0) 70%);
+  pointer-events: none;
+}
+
+/* Exit: the wall zooms slightly and fades while the foreground fades */
+.libverse-splash.is-exiting .splash-cover-wall {
+  animation: splashWallExit 380ms ease-in forwards;
+}
+.libverse-splash.is-exiting .splash-inner {
+  opacity: 0;
+  transition: opacity 380ms ease-in;
+  animation: splashFadeOut 380ms ease-in forwards;
+}
+@keyframes splashWallExit {
+  to { transform: scale(1.05); opacity: 0; }
+}
+@keyframes splashFadeOut {
+  to { opacity: 0; }
+}
+
+/* Reduced motion: a static wall, no zoom (fades only) */
+@media (prefers-reduced-motion: reduce) {
+  .splash-cover-track { animation: none; }
+  .libverse-splash.is-exiting .splash-cover-wall { animation-name: splashFadeOut; }
+}
 /* ---------------------------
    Auth + forms (UI Phase 2A)
 ---------------------------- */

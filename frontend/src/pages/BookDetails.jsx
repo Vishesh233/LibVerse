@@ -94,7 +94,18 @@ export const BookDetails = () => {
     fetchBook();
   }, [id]);
 
-  const goBack = () => navigate(backPath, previousState ? { state: previousState } : undefined);
+  // Opened from the Books grid: step back in history so the list keeps its filters and page.
+  // Otherwise (direct link, new tab, other pages) go to the role's Books page, with the saved
+  // filters when the link carried them.
+  const goBack = () => {
+    const historyIndex = window.history.state?.idx ?? 0;
+    if (previousState?.fromBooksList && historyIndex > 0) {
+      navigate(-1);
+      return;
+    }
+    const search = typeof previousState?.booksSearch === 'string' ? previousState.booksSearch : '';
+    navigate(search ? `${backPath}?${search}` : backPath);
+  };
 
   const handleIssue = async () => {
     setIssuing(true);

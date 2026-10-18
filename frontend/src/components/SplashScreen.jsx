@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { booksAPI } from '../services/api';
 import { GENRES } from '../constants/genres';
 import { LogoMark } from './LogoMark';
+import { SplashCoverWall } from './SplashCoverWall';
 
 const LOADING_MESSAGES = [
   'Initializing...',
@@ -20,7 +21,7 @@ const PARTICLES = Array.from({ length: 14 }, (_, i) => ({
   opacity: 0.25 + ((i % 4) * 0.12),
 }));
 
-export const SplashScreen = ({ duration = 1800 }) => {
+export const SplashScreen = ({ duration = 1800, exiting = false }) => {
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
   const [bookCount, setBookCount] = useState(null);
@@ -77,7 +78,10 @@ export const SplashScreen = ({ duration = 1800 }) => {
   }, []);
 
   return (
-    <div className="libverse-splash">
+    <div className={`libverse-splash ${exiting ? 'is-exiting' : ''}`}>
+      {/* Living wall of real covers, under the floating books, particles and foreground */}
+      <SplashCoverWall exiting={exiting} />
+
       {/* Floating 3D books */}
       <span className="splash-book" style={{ top: '12%', left: '10%', '--book-color': '#7b5cff', '--rotate': '12deg', '--delay': '0s' }} />
       <span className="splash-book" style={{ top: '22%', right: '8%', '--book-color': '#2dd4bf', '--rotate': '-12deg', '--delay': '1.2s' }} />
@@ -101,7 +105,10 @@ export const SplashScreen = ({ duration = 1800 }) => {
 
       <div className="splash-inner splash-enter">
         <div className="splash-logo-card">
-          <LogoMark size="lg" />
+          <div className="splash-logo-glow-wrap">
+            <span className="splash-logo-glow" aria-hidden="true" />
+            <LogoMark size="lg" />
+          </div>
           <div className="splash-logo-text">
             <h1 className="font-display">
               Lib<span className="brand-verse">Verse</span>

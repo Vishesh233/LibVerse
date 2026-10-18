@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { booksAPI, transactionsAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
@@ -39,101 +39,101 @@ const FilterField = ({ id, label, children, className = '' }) => (
 
 export const Books = () => {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [books, setBooks] = useState([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [issuingId, setIssuingId] = useState(null);
   const [wishlistBusyId, setWishlistBusyId] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const [searchTitle, setSearchTitle] = useState('');
-  const [searchAuthor, setSearchAuthor] = useState('');
-  const [genre, setGenre] = useState('');
-  const [rating, setRating] = useState('');
-  const [availability, setAvailability] = useState('');
-  const [page, setPage] = useState(1);
+  // The URL is the single source of truth for the filters, so they survive refresh,
+  // back/forward and deep links, and one filter change is one render and one request.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const genre = searchParams.get('genre') || '';
+  const rating = searchParams.get('rating') || '';
+  const availability = searchParams.get('availability') || '';
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const urlTitle = searchParams.get('title') || '';
+  const urlAuthor = searchParams.get('author') || '';
 
-  // Sync filter state to URL search params so category/rating/page survive
-  // navigation and browser back/forward.
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (searchTitle) params.set('title', searchTitle);
-    if (searchAuthor) params.set('author', searchAuthor);
-    if (genre) params.set('genre', genre);
-    if (rating) params.set('rating', rating);
-    if (availability) params.set('availability', availability);
-    if (page > 1) params.set('page', String(page));
-    const queryString = params.toString();
-    const newSearch = queryString ? `?${queryString}` : '';
-    if (location.search !== newSearch) {
-      navigate({ pathname: location.pathname, search: newSearch }, { replace: true });
-    }
-  }, [searchTitle, searchAuthor, genre, rating, availability, page, navigate, location.pathname]);
-
-  // After the first load, keep the current grid visible while refetching (no skeleton flash).
-  const hasLoadedRef = useRef(false);
-
+  // Text boxes update instantly; their debounced value is what goes into the URL
+  const [searchTitle, setSearchTitle] = useState(urlTitle);
+  const [searchAuthor, setSearchAuthor] = useState(urlAuthor);
   const debouncedTitle = useDebounce(searchTitle, 300);
   const debouncedAuthor = useDebounce(searchAuthor, 300);
+
+  /** Set (or clear, with '') URL filters; any filter change except paging goes back to page 1 */
+  const updateParams = useCallback((changes) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      Object.entries(changes).forEach(([key, value]) => {
+        if (value) next.set(key, String(value));
+        else next.delete(key);
+      });
+      if (!('page' in changes)) next.delete('page');
+      if (next.get('page') === '1') next.delete('page');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // Debounced search text -> URL (only when it differs, so this can't loop)
+  const writtenTextRef = useRef({ title: urlTitle, author: urlAuthor });
+  useEffect(() => {
+    const title = debouncedTitle.trim();
+    const author = debouncedAuthor.trim();
+    if (title !== urlTitle || author !== urlAuthor) {
+      writtenTextRef.current = { title, author };
+      updateParams({ title, author });
+    }
+  }, [debouncedTitle, debouncedAuthor]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // URL -> text boxes, only for changes made elsewhere (back/forward, Clear filters),
+  // never for the value this page just wrote, so typing is never overwritten
+  useEffect(() => {
+    const written = writtenTextRef.current;
+    if (urlTitle === written.title && urlAuthor === written.author) return;
+    writtenTextRef.current = { title: urlTitle, author: urlAuthor };
+    setSearchTitle(urlTitle);
+    setSearchAuthor(urlAuthor);
+  }, [urlTitle, urlAuthor]);
 
   const { isStudent } = useAuth();
   const { toggleWishlist, isWishlisted } = useWishlist();
   const { hasActive, markRequested } = useActiveBookIds();
   const reservations = useReservations();
 
-  const fetchBooks = useCallback(async () => {
-    if (!hasLoadedRef.current) setLoading(true);
-    else setRefreshing(true);
-    try {
-      const res = await booksAPI.getBooks({
-        title: debouncedTitle,
-        author: debouncedAuthor,
-        genre,
-        rating,
-        availability,
-        page,
-        limit: PAGE_SIZE,
+  // One request per distinct query; a newer query cancels the older one, so a slow
+  // response can never overwrite newer results. No automatic retries.
+  const queryKey = JSON.stringify({ title: urlTitle, author: urlAuthor, genre, rating, availability, page });
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    booksAPI
+      .getBooks({ ...JSON.parse(queryKey), limit: PAGE_SIZE }, { signal: controller.signal })
+      .then((res) => {
+        const list = res.data.books || [];
+        setBooks(list);
+        setTotal(res.data.total ?? list.length);
+        setTotalPages(res.data.pages || 1);
+        setLoadError(null);
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setBooks([]);
+        setTotal(0);
+        setTotalPages(1);
+        setLoadError(err.response?.data?.message || 'We couldn’t reach the library right now.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
       });
+    return () => controller.abort();
+  }, [queryKey, reloadKey]);
 
-      setBooks(res.data.books || []);
-      setTotal(res.data.total ?? (res.data.books || []).length);
-      setTotalPages(res.data.pages || 1);
-      setLoadError(null);
-      hasLoadedRef.current = true;
-    } catch (err) {
-      const message = err.response?.data?.message || 'Failed to load books';
-      setLoadError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [debouncedTitle, debouncedAuthor, genre, rating, availability, page]);
-
-  useEffect(() => {
-    fetchBooks();
-  }, [fetchBooks]);
-
-  // Restore filters from URL search params when they change (e.g. back button).
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    setGenre(params.get('genre') || '');
-    setRating(params.get('rating') || '');
-    setAvailability(params.get('availability') || '');
-    setPage(Math.max(1, Number(params.get('page')) || 1));
-    setSearchTitle(params.get('title') || '');
-    setSearchAuthor(params.get('author') || '');
-  }, [location.search]);
-
-  // Any filter change goes back to page 1
-  const updateFilter = (setter) => (e) => {
-    setter(e.target.value);
-    setPage(1);
-  };
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
   const handleIssueBook = useCallback(async (bookId) => {
     setIssuingId(bookId);
@@ -141,13 +141,13 @@ export const Books = () => {
       await transactionsAPI.requestIssueBook({ bookId });
       markRequested(bookId);
       toast.success('Request sent. A librarian will review it shortly.');
-      fetchBooks();
+      reload();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Request failed');
     } finally {
       setIssuingId(null);
     }
-  }, [fetchBooks, markRequested]);
+  }, [reload, markRequested]);
 
   const handleWishlistToggle = useCallback(async (book) => {
     setWishlistBusyId(book._id);
@@ -162,16 +162,16 @@ export const Books = () => {
     }
   }, [toggleWishlist]);
 
-  const hasFilters = !!(searchTitle || searchAuthor || genre || rating || availability);
+  const hasOtherFilters = !!(urlTitle || urlAuthor || genre || rating);
+  const hasFilters = hasOtherFilters || !!availability;
 
   const handleClearFilters = useCallback(() => {
     setSearchTitle('');
     setSearchAuthor('');
-    setGenre('');
-    setRating('');
-    setAvailability('');
-    setPage(1);
-  }, []);
+    setSearchParams(new URLSearchParams(), { replace: true });
+  }, [setSearchParams]);
+
+  const selectFilter = (key) => (e) => updateParams({ [key]: e.target.value });
 
   // Request / Reserve / Borrow now (held copy) / Cancel reservation
   const actionFor = (book) =>
@@ -188,7 +188,9 @@ export const Books = () => {
       <div className="mx-auto max-w-7xl">
         <PageHeader
           title="Browse books"
-          subtitle={loading ? 'Loading the catalogue...' : `${total} book${total === 1 ? '' : 's'} ${hasFilters ? 'match your filters' : 'in the collection'}`}
+          subtitle={loadError ? 'Find your next read'
+            : loading && books.length === 0 ? 'Loading the catalogue...'
+            : `${total} book${total === 1 ? '' : 's'} ${hasFilters ? 'match your filters' : 'in the collection'}`}
         />
 
         {/* Filters: wrap on small screens */}
@@ -199,7 +201,7 @@ export const Books = () => {
                 id="filter-title"
                 type="search"
                 value={searchTitle}
-                onChange={updateFilter(setSearchTitle)}
+                onChange={(e) => setSearchTitle(e.target.value)}
                 placeholder="Search by title"
                 className="input-amo w-full"
               />
@@ -209,13 +211,13 @@ export const Books = () => {
                 id="filter-author"
                 type="search"
                 value={searchAuthor}
-                onChange={updateFilter(setSearchAuthor)}
+                onChange={(e) => setSearchAuthor(e.target.value)}
                 placeholder="Search by author"
                 className="input-amo w-full"
               />
             </FilterField>
             <FilterField id="filter-genre" label="Genre">
-              <select id="filter-genre" value={genre} onChange={updateFilter(setGenre)} className="input-amo w-full">
+              <select id="filter-genre" value={genre} onChange={selectFilter('genre')} className="input-amo w-full">
                 <option value="">All genres</option>
                 {GENRES.map((g) => (
                   <option key={g} value={g}>{g}</option>
@@ -223,14 +225,14 @@ export const Books = () => {
               </select>
             </FilterField>
             <FilterField id="filter-availability" label="Availability">
-              <select id="filter-availability" value={availability} onChange={updateFilter(setAvailability)} className="input-amo w-full">
+              <select id="filter-availability" value={availability} onChange={selectFilter('availability')} className="input-amo w-full">
                 <option value="">All</option>
                 <option value="available">Available now</option>
                 <option value="unavailable">Unavailable</option>
               </select>
             </FilterField>
             <FilterField id="filter-rating" label="Rating">
-              <select id="filter-rating" value={rating} onChange={updateFilter(setRating)} className="input-amo w-full">
+              <select id="filter-rating" value={rating} onChange={selectFilter('rating')} className="input-amo w-full">
                 <option value="">Any rating</option>
                 <option value="4">4★ and up</option>
                 <option value="3">3★ and up</option>
@@ -238,32 +240,49 @@ export const Books = () => {
                 <option value="1">1★ and up</option>
               </select>
             </FilterField>
-            <Button variant="ghost" fullWidth={false} onClick={handleClearFilters} disabled={!hasFilters} className="w-full lg:w-auto">
+            <Button variant="ghost" fullWidth={false} onClick={handleClearFilters} disabled={!hasFilters && !searchTitle && !searchAuthor} className="w-full lg:w-auto">
               Clear
             </Button>
           </div>
         </Card>
 
+        {/* While a new query loads, the current grid stays (dimmed); the skeleton only
+            shows when there is no grid to keep, so nothing flashes between states */}
         {loading && books.length === 0 ? (
           <GridSkeleton />
-        ) : loadError && books.length === 0 ? (
+        ) : loadError ? (
           <EmptyState
             icon="⚠️"
             title="Couldn't load the catalogue"
             message={loadError}
-            action={<Button fullWidth={false} onClick={fetchBooks}>Try again</Button>}
+            action={<Button fullWidth={false} onClick={reload}>Try again</Button>}
           />
         ) : books.length === 0 ? (
-          <EmptyState
-            icon="🔍"
-            title="No books found"
-            message={hasFilters ? 'No books match these filters. Try a broader search.' : 'The catalogue is empty right now.'}
-            action={hasFilters ? <Button fullWidth={false} variant="secondary" onClick={handleClearFilters}>Clear filters</Button> : null}
-          />
+          availability === 'unavailable' ? (
+            <EmptyState
+              icon="✅"
+              title="Every title has a free copy right now"
+              message={hasOtherFilters
+                ? 'Nothing matching these filters is fully borrowed, so you can request any of them.'
+                : 'No book is fully borrowed or on hold, so you can request any title straight away.'}
+              action={<Button fullWidth={false} variant="secondary" onClick={() => updateParams({ availability: '' })}>Show all books</Button>}
+            />
+          ) : (
+            <EmptyState
+              icon="🔍"
+              title={availability === 'available' ? 'No free copies match these filters' : 'No books found'}
+              message={hasFilters
+                ? availability === 'available'
+                  ? 'Try a broader search, or switch Availability to Unavailable to join a waiting list.'
+                  : 'No books match these filters. Try a broader search.'
+                : 'The catalogue is empty right now.'}
+              action={hasFilters ? <Button fullWidth={false} variant="secondary" onClick={handleClearFilters}>Clear filters</Button> : null}
+            />
+          )
         ) : (
           <div
-            className={`book-grid transition-opacity ${refreshing ? 'opacity-60' : ''}`}
-            aria-busy={refreshing || undefined}
+            className={`book-grid transition-opacity duration-200 ${loading ? 'opacity-60' : ''}`}
+            aria-busy={loading || undefined}
           >
             {books.map((book) => {
               const action = actionFor(book);
@@ -273,7 +292,8 @@ export const Books = () => {
                   book={book}
                   onCardClick={() =>
                     navigate(`/student/books/${book._id}`, {
-                      state: { genre, searchTitle, searchAuthor, rating, availability, page },
+                      // Lets the details page go back to this list with the same filters
+                      state: { fromBooksList: true, booksSearch: searchParams.toString() },
                     })
                   }
                   onActionClick={() => action.onClick?.()}
@@ -293,7 +313,9 @@ export const Books = () => {
           </div>
         )}
 
-        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+        {!loadError && books.length > 0 && (
+          <Pagination currentPage={page} totalPages={totalPages} onPageChange={(p) => updateParams({ page: p })} />
+        )}
       </div>
     </MainLayout>
   );
