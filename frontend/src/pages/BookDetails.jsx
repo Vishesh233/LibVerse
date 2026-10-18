@@ -6,6 +6,7 @@ import { booksAPI, transactionsAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useWishlist } from '../hooks/useWishlist';
 import { useActiveBookIds } from '../hooks/useActiveBookIds';
+import { bookActionFor, useReservations } from '../hooks/useReservations';
 import { DeleteBookModal } from '../components/DeleteBookModal';
 import { CoverImage } from '../components/CoverImage';
 import { Badge, Button, Card, EmptyState, Skeleton } from '../components/UI';
@@ -57,6 +58,7 @@ export const BookDetails = () => {
 
   const [book, setBook] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [queue, setQueue] = useState({ waiting: 0, ready: 0 });
   const [loading, setLoading] = useState(true);
   const [issuing, setIssuing] = useState(false);
   const [error, setError] = useState(null);
@@ -71,12 +73,14 @@ export const BookDetails = () => {
 
   const { toggleWishlist, isWishlisted } = useWishlist();
   const { hasActive, markRequested } = useActiveBookIds();
+  const reservations = useReservations();
 
   const fetchBook = async () => {
     try {
       const res = await booksAPI.getBookById(id);
       setBook(res.data.book || res.data);
       setReviews(Array.isArray(res.data.reviews) ? res.data.reviews : []);
+      setQueue({ waiting: Number(res.data.reservations?.waiting) || 0, ready: Number(res.data.reservations?.ready) || 0 });
       setError(null);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load book');
@@ -186,10 +190,20 @@ export const BookDetails = () => {
   const alreadyRequested = hasActive(id);
   const wishlisted = isWishlisted(book._id);
 
-  let requestLabel = 'Request this book';
-  if (issuing) requestLabel = 'Requesting...';
-  else if (alreadyRequested) requestLabel = 'Already requested';
-  else if (available <= 0) requestLabel = 'Not available right now';
+  // Request / Reserve / Borrow now (held copy) / Cancel reservation; refetch so the queue counts stay current
+  const action = bookActionFor(book, {
+    isStudent,
+    requesting: issuing,
+    hasActive: alreadyRequested,
+    reservations: {
+      ...reservations,
+      reserve: (bookId) => reservations.reserve(bookId).then(fetchBook),
+      cancel: (r) => reservations.cancel(r).then(fetchBook),
+    },
+    onRequest: handleIssue,
+  });
+  const myReservation = reservations.reservationFor(book._id);
+  const waitingLabel = `${queue.waiting} ${queue.waiting === 1 ? 'student' : 'students'} waiting`;
 
   return (
     <MainLayout>
@@ -222,6 +236,7 @@ export const BookDetails = () => {
                       {available > 0 ? `${available} of ${book.totalCopies ?? available} available` : 'Unavailable'}
                     </Badge>
                     {book.genre && <Badge variant="primary" size="md">{book.genre}</Badge>}
+                    {queue.waiting > 0 && <Badge variant="info" size="md">{waitingLabel}</Badge>}
                   </div>
                   <h1 className="mt-3 font-display text-3xl font-bold leading-tight text-slate-50 sm:text-4xl">{book.title}</h1>
                   <p className="mt-1.5 text-lg text-slate-300">{book.author}</p>
@@ -246,17 +261,43 @@ export const BookDetails = () => {
                 )}
               </div>
 
+              {isStudent && action.note && (
+                <p
+                  role="status"
+                  className={`rounded-xl border px-4 py-3 text-sm font-medium ${
+                    action.noteTone === 'ready'
+                      ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'
+                      : 'border-violet-400/30 bg-violet-500/10 text-violet-100'
+                  }`}
+                >
+                  {action.note}
+                  {myReservation?.status === 'waiting' && <span className="text-violet-200/80"> · we'll notify you when a copy is held for you</span>}
+                </p>
+              )}
               {isStudent && (
-                <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   <Button
                     size="lg"
-                    onClick={handleIssue}
+                    variant={action.variant || 'primary'}
+                    onClick={action.onClick}
                     loading={issuing}
-                    disabled={alreadyRequested || available <= 0}
+                    disabled={action.disabled || !action.onClick}
                     className="sm:flex-1"
                   >
-                    {requestLabel}
+                    {action.label === 'Request book' ? 'Request this book' : action.label === 'Reserve' ? 'Reserve this book' : action.label}
                   </Button>
+                  {action.secondary && (
+                    <Button
+                      size="lg"
+                      variant="ghost"
+                      fullWidth={false}
+                      onClick={action.secondary.onClick}
+                      disabled={action.secondary.disabled}
+                      className="w-full sm:w-auto"
+                    >
+                      {action.secondary.label}
+                    </Button>
+                  )}
                   <Button
                     size="lg"
                     variant={wishlisted ? 'danger' : 'secondary'}
@@ -273,6 +314,11 @@ export const BookDetails = () => {
               {isStudent && alreadyRequested && (
                 <p className="-mt-3 text-sm text-slate-400">You already have an open request or loan for this book. See My Books for its status.</p>
               )}
+              {isStudent && !alreadyRequested && !myReservation && available <= 0 && (
+                <p className="-mt-3 text-sm text-slate-400">
+                  No copy is free right now. Reserve it to join the waiting list{queue.waiting > 0 ? ` (${waitingLabel})` : ''}; when a copy comes back it is held for you for 48 hours.
+                </p>
+              )}
 
               <dl className="grid grid-cols-2 gap-x-6 gap-y-5 rounded-2xl border border-border bg-input/60 p-5 sm:grid-cols-3">
                 <Meta label="Publisher">{book.publisher || 'Unknown'}</Meta>
@@ -281,6 +327,17 @@ export const BookDetails = () => {
                 <Meta label="Pages">{book.pages || 'N/A'}</Meta>
                 <Meta label="ISBN">{book.isbn || 'N/A'}</Meta>
                 <Meta label="Total copies">{book.totalCopies ?? 0}</Meta>
+                {canManage && (
+                  <Meta label="Waiting list">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`${isAdmin ? '/admin' : '/librarian'}/pending?tab=reservations`)}
+                      className="text-left underline decoration-slate-500 underline-offset-4 hover:text-cyan-200"
+                    >
+                      {queue.waiting} waiting · {queue.ready} held
+                    </button>
+                  </Meta>
+                )}
               </dl>
 
               <div>

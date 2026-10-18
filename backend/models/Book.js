@@ -71,6 +71,19 @@ const bookSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Copies set aside for a ready reservation (utils/bookStock.js).
+    // Invariant: availableCopies + issuedCopies + heldCopies === totalCopies
+    heldCopies: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    // Set when the last free copy goes; cleared when a copy is free again, which sends the
+    // one "back in stock" notification to students who wishlisted the book
+    restockAlertPending: {
+      type: Boolean,
+      default: false,
+    },
     qrCode: String, // QR code URL or data
     coverImage: String,
     location: String, // shelf location in library

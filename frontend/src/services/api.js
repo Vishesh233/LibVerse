@@ -123,6 +123,17 @@ export const wishlistAPI = {
   removeFromWishlist: (bookId) => apiClient.delete(`/wishlist/${bookId}`),
 };
 
+// Reservation (waiting list) endpoints
+export const reservationsAPI = {
+  reserve: (bookId) => apiClient.post('/reservations', { bookId }),
+  getMine: () => apiClient.get('/reservations/me'),
+  // Staff. params: bookId, status (active|waiting|ready|fulfilled|cancelled|expired|all), page, limit
+  getAll: (params) => apiClient.get('/reservations', { params }),
+  // Staff: books with an active waiting list. params: page, limit
+  getQueues: (params) => apiClient.get('/reservations/queues', { params }),
+  cancel: (id) => apiClient.delete(`/reservations/${id}`),
+};
+
 // Notification endpoints
 export const notificationAPI = {
   // params: page, limit, unread ('true'), category

@@ -50,6 +50,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const wishlistRoutes = require('./routes/wishlistRoutes');
+const reservationRoutes = require('./routes/reservationRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/books', bookRoutes);
@@ -59,6 +60,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/reservations', reservationRoutes);
 
 app.use('/uploads', express.static('uploads'));
 
@@ -81,5 +83,5 @@ app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
 
-// Automatic due-soon / overdue reminders: on start, then hourly (at most one run per day)
+// On start, then hourly: reservation expiry (always) and due-soon / overdue reminders (at most one run per day)
 require('./jobs/reminders').startReminderJob();

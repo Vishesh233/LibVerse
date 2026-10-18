@@ -154,7 +154,7 @@ export const Notifications = () => {
               bare
               icon="🔔"
               title={filtered ? 'Nothing matches these filters' : 'No notifications yet'}
-              message={filtered ? 'Try another filter.' : 'Updates about requests, returns, fines and reminders will appear here.'}
+              message={filtered ? 'Try another filter.' : 'Updates about requests, returns, fines, reminders and reservations will appear here.'}
             />
           ) : (
             <div className="divide-y divide-border" aria-live="polite">

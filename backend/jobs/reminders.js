@@ -9,14 +9,20 @@
  * startReminderJob() runs on server start and then hourly. A JobLock document makes the scheduled run
  * happen at most once per calendar day even with several servers. Each loan is also claimed atomically
  * before it is notified, so concurrent runs (or the staff "Send reminders" button) never double-send.
+ *
+ * The same hourly tick expires ready reservations that were not borrowed within 48 hours
+ * (services/reservationService.js), under its own JobLock (once per clock hour). It always runs:
+ * REMINDERS_ENABLED only turns the reminders off.
  */
 const mongoose = require('mongoose');
 const Transaction = require('../models/Transaction');
 const JobLock = require('../models/JobLock');
 const { notifyStudent } = require('../controllers/notificationController');
+const { expireReservations } = require('../services/reservationService');
 const { calculateFine, getDaysOverdue, startOfDay, calendarDaysBetween } = require('../utils/fineCalculator');
 
 const JOB_ID = 'reminders';
+const EXPIRY_JOB_ID = 'reservation-expiry';
 const DUE_SOON_DAYS = 2;
 const OVERDUE_REPEAT_DAYS = 7;
 const HOUR_MS = 60 * 60 * 1000;
@@ -34,16 +40,18 @@ const dayOffset = (date, days) => {
   return d;
 };
 
+const hourKey = (date) => `${dayKey(date)}T${String(new Date(date).getHours()).padStart(2, '0')}`;
+
 /**
- * Claim today's scheduled run. Returns false if it already ran today (here or on another server):
- * the filter misses, the upsert tries to insert the same _id and fails with a duplicate key.
+ * Claim a scheduled run for one period (`field` = the period key, e.g. today). Returns false if it
+ * already ran in this period (here or on another server): the filter misses, the upsert tries to
+ * insert the same _id and fails with a duplicate key.
  */
-const claimDailyRun = async (now) => {
-  const today = dayKey(now);
+const claimRun = async (jobId, field, key, now) => {
   try {
     const lock = await JobLock.findOneAndUpdate(
-      { _id: JOB_ID, lastRunDay: { $ne: today } },
-      { $set: { lastRunDay: today, lastRunAt: now } },
+      { _id: jobId, [field]: { $ne: key } },
+      { $set: { [field]: key, lastRunAt: now } },
       { upsert: true, new: true }
     );
     return !!lock;
@@ -52,6 +60,8 @@ const claimDailyRun = async (now) => {
     throw error;
   }
 };
+
+const claimDailyRun = (now) => claimRun(JOB_ID, 'lastRunDay', dayKey(now), now);
 
 /**
  * Claim one loan for a reminder kind, notify, and release the claim if the notification failed.
@@ -147,20 +157,46 @@ const runReminders = async ({ now = new Date(), force = false } = {}) => {
   return { skipped: false, dueSoon, overdue };
 };
 
-/** Run now (once connected) and then hourly; REMINDERS_ENABLED=false turns it off. */
+/**
+ * Expire ready reservations past their 48 hours (release the copy, notify, promote the next in line).
+ * @param {Object} [options]
+ * @param {Date} [options.now] - reference time (tests simulate later hours)
+ * @param {Boolean} [options.force] - skip the once-per-hour lock
+ * @returns {Promise<{ skipped: Boolean, expired: Number, promoted: Number }>}
+ */
+const runReservationExpiry = async ({ now = new Date(), force = false } = {}) => {
+  if (!force && !(await claimRun(EXPIRY_JOB_ID, 'lastRunHour', hourKey(now), now))) {
+    return { skipped: true, expired: 0, promoted: 0 };
+  }
+  const { expired, promoted } = await expireReservations({ now });
+  if (!force) await JobLock.updateOne({ _id: EXPIRY_JOB_ID }, { $set: { lastResult: { expired, promoted } } });
+  return { skipped: false, expired, promoted };
+};
+
+/**
+ * Run now (once connected) and then hourly. Reservation expiry always runs;
+ * REMINDERS_ENABLED=false turns the reminders off.
+ */
 const startReminderJob = () => {
-  if (String(process.env.REMINDERS_ENABLED ?? 'true').trim().toLowerCase() === 'false') {
-    console.log('Automatic reminders are disabled (REMINDERS_ENABLED=false)');
-    return null;
+  const remindersEnabled = String(process.env.REMINDERS_ENABLED ?? 'true').trim().toLowerCase() !== 'false';
+  if (!remindersEnabled) {
+    console.log('Automatic reminders are disabled (REMINDERS_ENABLED=false); reservation expiry still runs');
   }
 
   let timer = null;
-  const tick = () =>
+  const tick = () => {
+    runReservationExpiry()
+      .then((r) => {
+        if (r.expired) console.log(`Reservations expired: ${r.expired}, next in line promoted: ${r.promoted}`);
+      })
+      .catch((error) => console.error('Reservation expiry failed (retrying next hour):', error.message));
+    if (!remindersEnabled) return;
     runReminders()
       .then((r) => {
         if (!r.skipped) console.log(`Reminders sent: ${r.dueSoon} due soon, ${r.overdue} overdue`);
       })
       .catch((error) => console.error('Reminder job failed (retrying next hour):', error.message));
+  };
 
   const begin = () => {
     tick();
@@ -173,4 +209,4 @@ const startReminderJob = () => {
   return () => timer && clearInterval(timer);
 };
 
-module.exports = { runReminders, startReminderJob, DUE_SOON_DAYS, OVERDUE_REPEAT_DAYS };
+module.exports = { runReminders, runReservationExpiry, startReminderJob, DUE_SOON_DAYS, OVERDUE_REPEAT_DAYS };

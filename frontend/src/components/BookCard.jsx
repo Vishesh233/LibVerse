@@ -14,6 +14,8 @@ const HeartIcon = ({ filled }) => (
  * - showAvailability: availability text next to the genre (from availableCopies)
  * - onWishlistClick: renders a heart toggle over the cover
  * - actionVariant: Button variant for the main action
+ * - note / noteTone ('ready' | 'waiting'): one status line above the action (e.g. a reservation)
+ * - secondaryAction: { label, onClick, disabled } small text action under the main one
  */
 export const BookCard = ({
   book,
@@ -28,6 +30,9 @@ export const BookCard = ({
   wishlistBusy = false,
   showAvailability = true,
   footer,
+  note,
+  noteTone = 'waiting',
+  secondaryAction,
 }) => {
   const safeRating = Number(book?.rating) || 0;
   const available = Number(book?.availableCopies) || 0;
@@ -107,6 +112,11 @@ export const BookCard = ({
 
         {onActionClick && (
           <div className="mt-auto pt-3">
+            {note && (
+              <p className={`book-card__note book-card__note--${noteTone}`} role="status">
+                {note}
+              </p>
+            )}
             <Button
               size="sm"
               className="!min-h-[40px]"
@@ -120,6 +130,19 @@ export const BookCard = ({
             >
               {actionLabel}
             </Button>
+            {secondaryAction && (
+              <button
+                type="button"
+                disabled={secondaryAction.disabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  secondaryAction.onClick();
+                }}
+                className="book-card__secondary"
+              >
+                {secondaryAction.label}
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -4,7 +4,7 @@ const Transaction = require('../models/Transaction');
 const { getUserNotifications, notifyStudent } = require('./notificationController');
 const { runReminders } = require('../jobs/reminders');
 const { calculateFine, getDaysOverdue, startOfDay } = require('../utils/fineCalculator');
-const { takeBookCopy, returnBookCopy } = require('../utils/bookStock');
+const { returnCopy, takeCopyFor, undoTakeCopy } = require('../services/reservationService');
 const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
 const mongoose = require('mongoose');
 
@@ -642,9 +642,11 @@ exports.adminIssueBook = async (req, res, next) => {
       return res.status(404).json({ success: false, message: `Book not found matching "${bookTitle || bookId}"` });
     }
 
-    // Atomically take a copy first, so stock can never go negative
-    const takenBook = await takeBookCopy(book._id);
-    if (!takenBook) {
+    // Atomically take a copy first, so stock can never go negative: the copy held for this student's
+    // ready reservation if there is one, otherwise a free copy (never one held for someone else)
+    const transactionId = new mongoose.Types.ObjectId();
+    const taken = await takeCopyFor(user._id, book._id, transactionId);
+    if (!taken) {
       return res.status(400).json({ success: false, message: `No available copies for "${book.title}"` });
     }
 
@@ -655,6 +657,7 @@ exports.adminIssueBook = async (req, res, next) => {
     let transaction;
     try {
       transaction = await Transaction.create({
+        _id: transactionId,
         userId: user._id,
         bookId: book._id,
         issueDate: now,
@@ -665,8 +668,8 @@ exports.adminIssueBook = async (req, res, next) => {
         approvalDate: now,
       });
     } catch (createError) {
-      // Put the copy back if the transaction could not be recorded
-      await returnBookCopy(book._id);
+      // Put the copy back (and the reservation) if the transaction could not be recorded
+      await undoTakeCopy(taken, book._id);
       throw createError;
     }
 
@@ -768,7 +771,8 @@ exports.adminReturnBook = async (req, res, next) => {
       }
     }
 
-    const book = await returnBookCopy(returned.bookId);
+    // The copy goes to the waiting list first
+    const book = await returnCopy(returned.bookId);
 
     await notifyStudent(returned.userId, {
       type: 'BOOK_RETURNED',

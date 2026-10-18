@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useSearchParams } from 'react-router-dom';
-import { transactionsAPI } from '../services/api';
+import { reservationsAPI, transactionsAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
 import { Card, Badge, Button, EmptyState, PageHeader } from '../components/UI';
 import { Loader } from '../components/Loader';
+import { ReservationQueues } from '../components/ReservationQueues';
 import { useAuth } from '../hooks/useAuth';
 import { formatDate } from '../utils/dateUtils';
 
@@ -14,16 +15,20 @@ const TABS = [
   { key: 'return', status: 'return_requested', label: 'Return Requests', emptyIcon: '📚', emptyMessage: 'No books waiting for return approval' },
   { key: 'payment', status: 'payment_pending', label: 'Payment Verification', emptyIcon: '💳', emptyMessage: 'No fine payments waiting for verification' },
 ];
+// Waiting lists per book (its own component and data source)
+const RESERVATIONS_TAB = { key: 'reservations', label: 'Reservations' };
+const ALL_TABS = [...TABS, RESERVATIONS_TAB];
 
 export const PendingRequests = () => {
-  // ?tab=issue|return|payment (notification links open the matching tab)
+  // ?tab=issue|return|payment|reservations (notification links open the matching tab)
   const [searchParams] = useSearchParams();
   const linkedTab = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(() => (TABS.some((t) => t.key === linkedTab) ? linkedTab : 'issue'));
+  const [activeTab, setActiveTab] = useState(() => (ALL_TABS.some((t) => t.key === linkedTab) ? linkedTab : 'issue'));
   useEffect(() => {
-    if (TABS.some((t) => t.key === linkedTab)) setActiveTab(linkedTab);
+    if (ALL_TABS.some((t) => t.key === linkedTab)) setActiveTab(linkedTab);
   }, [linkedTab]);
   const [lists, setLists] = useState({ issue: [], return: [], payment: [] });
+  const [activeReservations, setActiveReservations] = useState(0);
   const [loading, setLoading] = useState(true);
   const [actioningId, setActioningId] = useState(null);
   const [screenshot, setScreenshot] = useState(null); // { loading, src } while the viewer is open
@@ -34,8 +39,19 @@ export const PendingRequests = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // Active (waiting + held) reservations, for the tab count
+  const fetchReservationCount = useCallback(async () => {
+    try {
+      const res = await reservationsAPI.getAll({ status: 'active', limit: 1 });
+      setActiveReservations(Number(res.data.total) || 0);
+    } catch {
+      // the count is optional; the tab still loads its own list
+    }
+  }, []);
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
+    fetchReservationCount();
     try {
       const responses = await Promise.all(
         TABS.map((tab) => transactionsAPI.getAllTransactions({ status: tab.status, limit: 100 }))
@@ -51,7 +67,7 @@ export const PendingRequests = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchReservationCount]);
 
   useEffect(() => {
     if (canAccess) {
@@ -106,7 +122,7 @@ export const PendingRequests = () => {
   }
 
   const tab = TABS.find((t) => t.key === activeTab);
-  const rows = lists[activeTab];
+  const rows = lists[activeTab] || [];
 
   const renderActions = (tx) => {
     const busy = actioningId === tx._id;
@@ -178,11 +194,11 @@ export const PendingRequests = () => {
     <MainLayout>
       {/* <main> already pads the page; no second padding layer here */}
       <div className="max-w-7xl mx-auto">
-        <PageHeader title="Requests" subtitle="Review issue requests, returns and fine payments from students." />
+        <PageHeader title="Requests" subtitle="Review issue requests, returns, fine payments and reservation queues." />
 
         {/* Tabs with counts */}
         <div className="mb-6 flex flex-wrap items-center gap-1 rounded-xl border border-border bg-input p-1 w-fit">
-          {TABS.map((t) => (
+          {ALL_TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
@@ -193,46 +209,52 @@ export const PendingRequests = () => {
               }`}
             >
               {t.label}
-              <span className="ml-2 text-xs font-bold text-amber-400">{lists[t.key].length}</span>
+              <span className="ml-2 text-xs font-bold text-amber-400">
+                {t.key === RESERVATIONS_TAB.key ? activeReservations : lists[t.key].length}
+              </span>
             </button>
           ))}
         </div>
 
-        <Card>
-          {loading ? (
-            <Loader />
-          ) : rows.length === 0 ? (
-            <EmptyState icon={tab.emptyIcon} title="All Caught Up!" message={tab.emptyMessage} />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="table-amo w-full">
-                <thead>
-                  <tr>
-                    <th className="px-6 py-3 text-left">Student</th>
-                    <th className="px-6 py-3 text-left">Book Title</th>
-                    <th className="px-6 py-3 text-left">Date</th>
-                    <th className="px-6 py-3 text-left">{activeTab === 'issue' ? 'Status' : 'Fine'}</th>
-                    <th className="px-6 py-3 text-left">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((tx) => (
-                    <tr key={tx._id} className="border-b border-border hover:bg-slate-800/40 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-slate-100">
-                        {tx.userId?.name || 'Unknown'}
-                        {tx.userId?.libraryId && <p className="text-[11px] text-slate-500">{tx.userId.libraryId}</p>}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-400">{tx.bookId?.title || 'Unknown'}</td>
-                      <td className="px-6 py-4 text-sm text-slate-400">{formatDate(dateFor(tx))}</td>
-                      <td className="px-6 py-4 text-sm">{renderDetails(tx)}</td>
-                      <td className="px-6 py-4 text-sm space-x-2">{renderActions(tx)}</td>
+        {activeTab === RESERVATIONS_TAB.key ? (
+          <ReservationQueues onChanged={fetchReservationCount} />
+        ) : (
+          <Card>
+            {loading ? (
+              <Loader />
+            ) : rows.length === 0 ? (
+              <EmptyState icon={tab.emptyIcon} title="All Caught Up!" message={tab.emptyMessage} />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="table-amo w-full">
+                  <thead>
+                    <tr>
+                      <th className="px-6 py-3 text-left">Student</th>
+                      <th className="px-6 py-3 text-left">Book Title</th>
+                      <th className="px-6 py-3 text-left">Date</th>
+                      <th className="px-6 py-3 text-left">{activeTab === 'issue' ? 'Status' : 'Fine'}</th>
+                      <th className="px-6 py-3 text-left">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
+                  </thead>
+                  <tbody>
+                    {rows.map((tx) => (
+                      <tr key={tx._id} className="border-b border-border hover:bg-slate-800/40 transition-colors">
+                        <td className="px-6 py-4 text-sm font-medium text-slate-100">
+                          {tx.userId?.name || 'Unknown'}
+                          {tx.userId?.libraryId && <p className="text-[11px] text-slate-500">{tx.userId.libraryId}</p>}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-400">{tx.bookId?.title || 'Unknown'}</td>
+                        <td className="px-6 py-4 text-sm text-slate-400">{formatDate(dateFor(tx))}</td>
+                        <td className="px-6 py-4 text-sm">{renderDetails(tx)}</td>
+                        <td className="px-6 py-4 text-sm space-x-2">{renderActions(tx)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        )}
       </div>
 
       {/* Payment screenshot viewer */}

@@ -3,7 +3,8 @@ const Book = require('../models/Book');
 const User = require('../models/User');
 const { notifyStudent, notifyStaff } = require('./notificationController');
 const { calculateFine, getDaysLateOf, getDaysRemaining, isOverdue } = require('../utils/fineCalculator');
-const { takeBookCopy, returnBookCopy } = require('../utils/bookStock');
+const Reservation = require('../models/Reservation');
+const { returnCopy, takeCopyFor } = require('../services/reservationService');
 const { toQueryString, toPagination } = require('../utils/escapeRegex');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -39,8 +40,8 @@ exports.requestIssueBook = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Book not found' });
     }
 
-    // Check if book is available
-    if (book.availableCopies <= 0) {
+    // Check if book is available: a free copy, or a copy held for this student's ready reservation
+    if (book.availableCopies <= 0 && !(await Reservation.exists({ userId, bookId: book._id, status: 'ready' }))) {
       return res.status(400).json({ success: false, message: 'Book is not available' });
     }
 
@@ -216,8 +217,8 @@ exports.approveReturn = async (req, res, next) => {
       });
     }
 
-    // Update book availability
-    const book = await returnBookCopy(transaction.bookId?._id || transaction.bookId);
+    // Update book availability; the copy goes to the waiting list first
+    const book = await returnCopy(transaction.bookId?._id || transaction.bookId);
 
     const bookTitle = returned.bookId?.title || book?.title || 'Book';
 
@@ -370,8 +371,8 @@ exports.approvePayment = async (req, res, next) => {
       await user.save();
     }
 
-    // Update book availability
-    const book = await returnBookCopy(transaction.bookId?._id || transaction.bookId);
+    // Update book availability; the copy goes to the waiting list first
+    const book = await returnCopy(transaction.bookId?._id || transaction.bookId);
 
     const bookTitle = returned.bookId?.title || book?.title || 'Book';
 
@@ -546,9 +547,10 @@ exports.approveIssueRequest = async (req, res, next) => {
       });
     }
 
-    // 2. Atomically take a copy; if none is left, put the request back to pending
-    const updatedBook = await takeBookCopy(book._id);
-    if (!updatedBook) {
+    // 2. Atomically take a copy (the one held for the student's ready reservation, else a free one);
+    //    if none is left, put the request back to pending
+    const taken = await takeCopyFor(issued.userId, book._id, issued._id);
+    if (!taken) {
       await Transaction.updateOne(
         { _id: transaction._id, status: 'issued' },
         {

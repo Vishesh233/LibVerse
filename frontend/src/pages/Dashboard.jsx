@@ -13,6 +13,7 @@ import {
 } from '../components/dashboard/DashboardKit';
 import { formatDate } from '../utils/dateUtils';
 import { ACTIVE_LOAN_STATUSES } from '../hooks/useActiveBookIds';
+import { bookActionFor, formatHoldEnd, holdTimeLeft, useReservations } from '../hooks/useReservations';
 import { GENRES } from '../constants/genres';
 
 const DUE_SOON_DAYS = 3;
@@ -71,6 +72,8 @@ export const Dashboard = () => {
   const [discoverTab, setDiscoverTab] = useState('picked');
   const [genre, setGenre] = useState('');
   const [lists, setLists] = useState({}); // "<tab>|<genre>" -> { loading, books, error }
+  const reservations = useReservations();
+  const readyReservations = reservations.reservations.filter((r) => r.status === 'ready');
 
   const loadData = useCallback(async () => {
     const [tx, rec, wish, top] = await Promise.allSettled([
@@ -173,12 +176,15 @@ export const Dashboard = () => {
     }
   };
 
-  const actionFor = (book) => {
-    if (requestingBookId === book._id) return { label: 'Requesting...', disabled: true };
-    if (activeBookIds.has(String(book._id))) return { label: 'Requested', disabled: true };
-    if (num(book.availableCopies) <= 0) return { label: 'Unavailable', disabled: true };
-    return { label: 'Request book', disabled: false };
-  };
+  // Request / Reserve / Borrow now (held copy) / Cancel reservation
+  const actionFor = (book) =>
+    bookActionFor(book, {
+      isStudent: true,
+      requesting: requestingBookId === book._id,
+      hasActive: activeBookIds.has(String(book._id)),
+      reservations,
+      onRequest: handleRequestBook,
+    });
 
   const firstName = (user?.name || '').trim().split(/\s+/)[0];
   const genrePills = ['', ...favoriteGenres, ...GENRES.filter((g) => !favoriteGenres.includes(g))];
@@ -211,6 +217,19 @@ export const Dashboard = () => {
               <EmptyState bare icon="⚠️" title="Couldn't load your loans" message={txError} />
             ) : (
               <div className="space-y-3">
+                {readyReservations.map((r) => (
+                  <Link
+                    key={r._id}
+                    to="/student/my-books?tab=reservations"
+                    className="flex items-start gap-3 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-3 transition-colors hover:bg-emerald-500/15"
+                  >
+                    <span className="mt-0.5 text-emerald-300">{DASH_ICONS.book}</span>
+                    <span className="min-w-0 text-sm text-emerald-50">
+                      <span className="font-semibold">“{r.bookId?.title || 'A reserved book'}” is ready for you.</span>{' '}
+                      Borrow by {formatHoldEnd(r.expiresAt)} <span className="text-emerald-200/80">({holdTimeLeft(r.expiresAt)})</span>
+                    </span>
+                  </Link>
+                ))}
                 {s.overdue.length > 0 && (
                   <div className="flex items-start gap-3 rounded-2xl border border-rose-400/30 bg-rose-500/10 p-3" role="alert">
                     <span className="mt-0.5 text-rose-300">{DASH_ICONS.alert}</span>
@@ -231,7 +250,7 @@ export const Dashboard = () => {
                       </p>
                     )}
                   </div>
-                ) : s.overdue.length === 0 ? (
+                ) : s.overdue.length === 0 && readyReservations.length === 0 ? (
                   <div className="flex items-center gap-3">
                     <span className="text-emerald-300">{DASH_ICONS.check}</span>
                     <p className="text-sm text-slate-200">All clear — nothing due this week.</p>
@@ -295,10 +314,14 @@ export const Dashboard = () => {
                         key={book._id}
                         book={book}
                         onCardClick={() => navigate(`/student/books/${book._id}`)}
-                        onActionClick={() => handleRequestBook(book._id)}
+                        onActionClick={() => action.onClick?.()}
                         isLoading={requestingBookId === book._id}
                         actionLabel={action.label}
-                        actionDisabled={action.disabled}
+                        actionDisabled={action.disabled || !action.onClick}
+                        actionVariant={action.variant}
+                        note={action.note}
+                        noteTone={action.noteTone}
+                        secondaryAction={action.secondary}
                       />
                     );
                   })}

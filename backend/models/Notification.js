@@ -10,6 +10,7 @@ const CATEGORY_TYPES = {
   return: ['RETURN_REQUEST', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'BOOK_RETURNED'],
   fine: ['PAYMENT_PENDING', 'PAYMENT_APPROVED', 'FINE_GENERATED', 'FINE_PAID'],
   reminder: ['DUE_DATE_REMINDER', 'BOOK_OVERDUE'],
+  reservation: ['RESERVATION_READY', 'RESERVATION_EXPIRED', 'RESERVATION_CANCELLED', 'BACK_IN_STOCK'],
 };
 const CATEGORIES = [...Object.keys(CATEGORY_TYPES), 'system'];
 const categoryOf = (type) => CATEGORIES.find((c) => CATEGORY_TYPES[c]?.includes(type)) || 'system';
@@ -67,6 +68,10 @@ const notificationSchema = new mongoose.Schema(
         'CRITICAL_ALERT',
         'DATABASE_NOTIFICATION',
         'NAME_CHANGE',
+        'RESERVATION_READY',
+        'RESERVATION_EXPIRED',
+        'RESERVATION_CANCELLED',
+        'BACK_IN_STOCK',
       ],
     },
     isRead: {

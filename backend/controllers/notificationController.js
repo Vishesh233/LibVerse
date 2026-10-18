@@ -86,7 +86,7 @@ const unreadCountFor = (userId) => Notification.countDocuments({ userId, isRead:
 /**
  * @route GET /api/notifications (also GET /api/admin/notifications)
  * @desc The signed-in user's own notifications, newest first, paginated
- * Query: page, limit (max 50), unread=true, category=request|approval|return|fine|reminder|system
+ * Query: page, limit (max 50), unread=true, category=request|approval|return|fine|reminder|reservation|system
  */
 exports.getUserNotifications = async (req, res, next) => {
   try {

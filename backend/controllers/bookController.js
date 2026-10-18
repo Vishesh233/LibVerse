@@ -1,7 +1,10 @@
 const Book = require('../models/Book');
 const User = require('../models/User');
 const Review = require('../models/Review');
+const Reservation = require('../models/Reservation');
 const { generateQRCode } = require('../utils/qrGenerator');
+const { afterCopyFreed, cancelBookReservations } = require('../services/reservationService');
+const { armRestockAlert } = require('../utils/bookStock');
 const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
 
 // ?sort= values for GET /api/books (anything else keeps the default order)
@@ -177,10 +180,17 @@ exports.getBook = async (req, res, next) => {
     // Get reviews (public page: reviewer name only, never the email)
     const reviews = await Review.find({ bookId: req.params.id }).populate('userId', 'name');
 
+    // Waiting-list size (counts only, no names)
+    const [waiting, ready] = await Promise.all([
+      Reservation.countDocuments({ bookId: book._id, status: 'waiting' }),
+      Reservation.countDocuments({ bookId: book._id, status: 'ready' }),
+    ]);
+
     res.status(200).json({
       success: true,
       book,
       reviews,
+      reservations: { waiting, ready },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -313,10 +323,47 @@ exports.updateBook = async (req, res, next) => {
     if (pages !== undefined) updateData.pages = pages;
     if (language !== undefined) updateData.language = language;
 
-    book = await Book.findByIdAndUpdate(req.params.id, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    // Copy counts must keep available + issued + held (for reservations) === total, none negative
+    const copiesChanged = ['totalCopies', 'availableCopies', 'issuedCopies'].some((k) => updateData[k] !== undefined);
+    const held = Number(book.heldCopies) || 0;
+    if (copiesChanged) {
+      const next = {
+        total: Number(updateData.totalCopies ?? book.totalCopies),
+        available: Number(updateData.availableCopies ?? book.availableCopies),
+        issued: Number(updateData.issuedCopies ?? book.issuedCopies ?? 0),
+      };
+      const valid = Object.values(next).every((n) => Number.isInteger(n) && n >= 0);
+      if (!valid || next.available + next.issued + held !== next.total) {
+        return res.status(400).json({
+          success: false,
+          message: `Copy counts don't add up: available (${updateData.availableCopies ?? book.availableCopies}) + issued (${updateData.issuedCopies ?? book.issuedCopies ?? 0})${held ? ` + held for reservations (${held})` : ''} must equal total (${updateData.totalCopies ?? book.totalCopies}).`,
+        });
+      }
+    }
+
+    // Only the counts checked above may change: conditional on the stock not moving meanwhile
+    // (a 0 count may be missing on older documents)
+    const sameCount = (n) => (n ? n : { $in: [0, null] });
+    book = await Book.findOneAndUpdate(
+      copiesChanged
+        ? {
+            _id: book._id,
+            availableCopies: sameCount(book.availableCopies),
+            issuedCopies: sameCount(book.issuedCopies),
+            heldCopies: sameCount(held),
+          }
+        : { _id: book._id },
+      updateData,
+      { new: true, runValidators: true }
+    );
+    if (!book) {
+      return res.status(409).json({ success: false, message: 'Copies of this book were just issued or returned. Reload and try again.' });
+    }
+
+    // New free copies go to the waiting list first, then wishlisters hear it is back
+    if (copiesChanged && book.availableCopies > 0) await afterCopyFreed(book._id);
+    // No free copy left after the edit: wishlisters hear when one is back
+    else if (copiesChanged) await armRestockAlert(book);
 
     res.status(200).json({
       success: true,
@@ -343,6 +390,9 @@ exports.deleteBook = async (req, res, next) => {
 
     book.isActive = false;
     await book.save();
+
+    // Nobody can borrow it any more: cancel its waiting list and release held copies
+    await cancelBookReservations(book._id, req.user);
 
     res.status(200).json({
       success: true,

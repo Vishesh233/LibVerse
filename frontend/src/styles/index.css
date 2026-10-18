@@ -1864,6 +1864,28 @@ body.modal-open {
 }
 .book-card__availability--yes { color: #6EE7B7; }
 .book-card__availability--no { color: #FDA4AF; }
+/* Reservation status above the card action */
+.book-card__note {
+  margin-bottom: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.book-card__note--waiting { color: #C4B5FD; }
+.book-card__note--ready { color: #6EE7B7; }
+.book-card__secondary {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  margin-top: 0.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #CBD5E1;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.book-card__secondary:hover:not(:disabled) { color: #FDA4AF; background-color: rgba(255, 255, 255, 0.04); }
+.book-card__secondary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ===========================
    Dashboards (Phase 2C): hero with cover collage, compact layout blocks

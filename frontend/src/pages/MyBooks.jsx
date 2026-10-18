@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { transactionsAPI } from '../services/api';
@@ -7,6 +7,8 @@ import { formatDate } from '../utils/dateUtils';
 import { getDaysUntilDue } from '../utils/fineCalculator';
 import { CoverImage } from '../components/CoverImage';
 import { Badge, Button, Card, EmptyState, PageHeader, Skeleton } from '../components/UI';
+import { ACTIVE_LOAN_STATUSES } from '../hooks/useActiveBookIds';
+import { ACTIVE_RESERVATION_STATUSES, formatHoldEnd, holdTimeLeft, useReservations } from '../hooks/useReservations';
 
 const STATUS_META = {
   issued: { label: 'Issued', variant: 'primary' },
@@ -26,7 +28,16 @@ const TABS = [
   { key: 'payment_pending', label: 'Payment pending' },
   { key: 'returned', label: 'Returned' },
   { key: 'rejected', label: 'Rejected' },
+  { key: 'reservations', label: 'Reservations' },
 ];
+
+const RESERVATION_META = {
+  ready: { label: 'Ready to borrow', variant: 'success' },
+  waiting: { label: 'Waiting', variant: 'info' },
+  fulfilled: { label: 'Borrowed', variant: 'primary' },
+  cancelled: { label: 'Cancelled', variant: 'neutral' },
+  expired: { label: 'Expired', variant: 'danger' },
+};
 
 // Server rule (PUT /transactions/:id/renew): at most 3 renewals, never once overdue
 const MAX_RENEWALS = 3;
@@ -49,6 +60,87 @@ const DueBadge = ({ dueDate }) => {
   if (days === 0) return <Badge variant="warning">Due today</Badge>;
   if (days <= 3) return <Badge variant="warning">{days} day{days === 1 ? '' : 's'} left</Badge>;
   return <Badge variant="success">{days} days left</Badge>;
+};
+
+/** One reservation: position in line, or the held copy's countdown with Borrow now */
+const ReservationCard = ({ r, requested, busy, borrowing, onOpen, onBorrow, onCancel, now }) => {
+  const book = r.bookId && typeof r.bookId === 'object' ? r.bookId : {};
+  const meta = RESERVATION_META[r.status] || { label: r.status, variant: 'neutral' };
+  const active = ACTIVE_RESERVATION_STATUSES.includes(r.status);
+
+  return (
+    <Card variant="glass" className={`!p-4 sm:!p-5 ${active ? '' : 'opacity-75'} ${r.status === 'ready' ? 'border-emerald-400/30' : ''}`}>
+      <div className="flex gap-4">
+        <button
+          type="button"
+          onClick={() => book._id && onOpen(book._id)}
+          className="h-32 w-[5.5rem] flex-shrink-0 overflow-hidden rounded-xl border border-white/10 bg-input"
+          aria-label={`${book.title || 'Book'} details`}
+        >
+          <CoverImage book={book} src={book.imageUrl || book.coverImage} alt="" />
+        </button>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="font-semibold leading-snug text-slate-100 line-clamp-2">{book.title || 'Unknown title'}</h3>
+              <p className="mt-0.5 text-sm text-slate-400 line-clamp-1">{book.author || 'Unknown author'}</p>
+            </div>
+            <Badge variant={meta.variant}>{r.status === 'waiting' && r.position ? `#${r.position} in line` : meta.label}</Badge>
+          </div>
+
+          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <div>
+              <dt className="text-xs text-muted">Reserved</dt>
+              <dd className="text-slate-200">{formatDate(r.createdAt)}</dd>
+            </div>
+            {r.status === 'ready' && (
+              <div>
+                <dt className="text-xs text-muted">Borrow by</dt>
+                <dd className="text-slate-200">{formatHoldEnd(r.expiresAt)}</dd>
+              </div>
+            )}
+            {r.status === 'waiting' && (
+              <div>
+                <dt className="text-xs text-muted">Position</dt>
+                <dd className="text-slate-200">{r.position === 1 ? 'Next in line' : `#${r.position}`}</dd>
+              </div>
+            )}
+            {!active && (
+              <div>
+                <dt className="text-xs text-muted">{meta.label}</dt>
+                <dd className="text-slate-200">{formatDate(r.updatedAt)}</dd>
+              </div>
+            )}
+          </dl>
+
+          {r.status === 'ready' && (
+            <p className="mt-3 text-xs font-semibold text-emerald-300" role="status">
+              A copy is held for you · {holdTimeLeft(r.expiresAt, now)}
+            </p>
+          )}
+          {r.status === 'waiting' && (
+            <p className="mt-3 text-xs text-slate-400">We'll notify you when a copy is held for you. You then have 48 hours to borrow it.</p>
+          )}
+
+          {active && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {r.status === 'ready' && (requested ? (
+                <Badge variant="warning">Request sent · waiting for the library</Badge>
+              ) : (
+                <Button size="sm" fullWidth={false} loading={borrowing} disabled={busy} onClick={() => onBorrow(r)}>
+                  {borrowing ? 'Requesting...' : 'Borrow now'}
+                </Button>
+              ))}
+              <Button size="sm" fullWidth={false} variant="ghost" loading={busy} disabled={borrowing} onClick={() => onCancel(r)}>
+                {busy ? 'Cancelling...' : 'Cancel reservation'}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
 };
 
 const ListSkeleton = () => (
@@ -74,9 +166,23 @@ export const MyBooks = () => {
   const [loadError, setLoadError] = useState(null);
   const [actioningId, setActioningId] = useState(null);
   const [renewingId, setRenewingId] = useState(null);
+  const [borrowingId, setBorrowingId] = useState(null);
+  const reservations = useReservations();
+  // Re-render the hold countdowns every minute
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   const requestedTab = searchParams.get('tab');
   const activeTab = TABS.some((t) => t.key === requestedTab) ? requestedTab : 'all';
+
+  // Keep the selected tab visible in the scrolling strip (links can open the last tab, Reservations)
+  const tablistRef = useRef(null);
+  useEffect(() => {
+    tablistRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeTab]);
   const setActiveTab = (key) => setSearchParams(key === 'all' ? {} : { tab: key }, { replace: true });
 
   const load = useCallback(async () => {
@@ -102,8 +208,29 @@ export const MyBooks = () => {
     transactions.forEach((t) => {
       c[t.status] = (c[t.status] || 0) + 1;
     });
+    c.reservations = reservations.activeCount;
     return c;
-  }, [transactions]);
+  }, [transactions, reservations.activeCount]);
+
+  // Books with an open request or loan: a ready reservation that was already requested shows that instead of Borrow now
+  const openBookIds = useMemo(
+    () => new Set(transactions.filter((t) => ACTIVE_LOAN_STATUSES.includes(t.status)).map((t) => String(t.bookId?._id || t.bookId))),
+    [transactions]
+  );
+
+  const handleBorrow = async (r) => {
+    const bookId = r.bookId?._id || r.bookId;
+    setBorrowingId(r._id);
+    try {
+      await transactionsAPI.requestIssueBook({ bookId });
+      toast.success('Request sent. Collect the book once a librarian approves it.');
+      await Promise.all([load(), reservations.refresh()]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not request the book');
+    } finally {
+      setBorrowingId(null);
+    }
+  };
 
   const visible = useMemo(
     () => (activeTab === 'all' ? transactions : transactions.filter((t) => t.status === activeTab)),
@@ -153,7 +280,7 @@ export const MyBooks = () => {
 
         {/* Status tabs: scroll sideways on small screens */}
         <div className="-mx-4 mb-6 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <div role="tablist" aria-label="Filter by status" className="flex w-max gap-2">
+          <div ref={tablistRef} role="tablist" aria-label="Filter by status" className="flex w-max gap-2">
             {TABS.map((tab) => {
               const selected = activeTab === tab.key;
               return (
@@ -177,7 +304,41 @@ export const MyBooks = () => {
           </div>
         </div>
 
-        {loading ? (
+        {activeTab === 'reservations' ? (
+          reservations.loading ? (
+            <ListSkeleton />
+          ) : reservations.error && reservations.reservations.length === 0 ? (
+            <EmptyState
+              icon="⚠️"
+              title="Couldn't load your reservations"
+              message={reservations.error}
+              action={<Button fullWidth={false} onClick={reservations.refresh}>Try again</Button>}
+            />
+          ) : reservations.reservations.length === 0 ? (
+            <EmptyState
+              icon="🔖"
+              title="No reservations"
+              message="When a book has no free copy, reserve it from the catalogue to join the waiting list."
+              action={<Button fullWidth={false} onClick={() => navigate('/student/books?availability=unavailable')}>Browse unavailable books</Button>}
+            />
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {reservations.reservations.map((r) => (
+                <ReservationCard
+                  key={r._id}
+                  r={r}
+                  now={now}
+                  requested={openBookIds.has(String(r.bookId?._id || r.bookId))}
+                  busy={reservations.isBusy(r.bookId?._id || r.bookId)}
+                  borrowing={borrowingId === r._id}
+                  onOpen={(bookId) => navigate(`/student/books/${bookId}`)}
+                  onBorrow={handleBorrow}
+                  onCancel={reservations.cancel}
+                />
+              ))}
+            </div>
+          )
+        ) : loading ? (
           <ListSkeleton />
         ) : loadError && transactions.length === 0 ? (
           <EmptyState

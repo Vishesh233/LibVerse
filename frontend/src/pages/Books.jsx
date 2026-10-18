@@ -10,6 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useDebounce } from '../hooks/useDebounce';
 import { useWishlist } from '../hooks/useWishlist';
 import { useActiveBookIds } from '../hooks/useActiveBookIds';
+import { bookActionFor, useReservations } from '../hooks/useReservations';
 import { GENRES } from '../constants/genres';
 
 const PAGE_SIZE = 12;
@@ -82,6 +83,7 @@ export const Books = () => {
   const { isStudent } = useAuth();
   const { toggleWishlist, isWishlisted } = useWishlist();
   const { hasActive, markRequested } = useActiveBookIds();
+  const reservations = useReservations();
 
   const fetchBooks = useCallback(async () => {
     if (!hasLoadedRef.current) setLoading(true);
@@ -171,12 +173,15 @@ export const Books = () => {
     setPage(1);
   }, []);
 
-  const actionFor = (book) => {
-    if (issuingId === book._id) return { label: 'Requesting...', disabled: true };
-    if (hasActive(book._id)) return { label: 'Already requested', disabled: true };
-    if ((Number(book.availableCopies) || 0) <= 0) return { label: 'Not available', disabled: true };
-    return { label: 'Request book', disabled: !isStudent };
-  };
+  // Request / Reserve / Borrow now (held copy) / Cancel reservation
+  const actionFor = (book) =>
+    bookActionFor(book, {
+      isStudent,
+      requesting: issuingId === book._id,
+      hasActive: hasActive(book._id),
+      reservations,
+      onRequest: handleIssueBook,
+    });
 
   return (
     <MainLayout>
@@ -271,13 +276,17 @@ export const Books = () => {
                       state: { genre, searchTitle, searchAuthor, rating, availability, page },
                     })
                   }
-                  onActionClick={() => handleIssueBook(book._id)}
+                  onActionClick={() => action.onClick?.()}
                   onWishlistClick={isStudent ? handleWishlistToggle : undefined}
                   isWishlisted={isWishlisted(book._id)}
                   wishlistBusy={wishlistBusyId === book._id}
                   isLoading={issuingId === book._id}
                   actionLabel={action.label}
-                  actionDisabled={action.disabled}
+                  actionDisabled={action.disabled || !action.onClick}
+                  actionVariant={action.variant}
+                  note={action.note}
+                  noteTone={action.noteTone}
+                  secondaryAction={action.secondary}
                 />
               );
             })}
