@@ -398,7 +398,7 @@ export const Dashboard = () => {
 
           {/* Quick actions */}
           <SectionCard id="student-quick-actions" className="xl:col-span-12" title="Quick actions">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               <QuickTile icon={DASH_ICONS.search} label="Browse books" hint="Search the catalogue" to="/student/books" tone="indigo" />
               <QuickTile icon={DASH_ICONS.book} label="My books" hint="Loans, renewals, returns" to="/student/my-books" tone="cyan" />
               <QuickTile
@@ -411,6 +411,7 @@ export const Dashboard = () => {
                   ? `${formatRupees(payableOf(s.payable))} for ${bookOf(s.payable).title || 'a returned book'}`
                   : s.accruing ? 'Request a return first, then pay' : 'Nothing to pay right now'}
               />
+              <QuickTile icon={DASH_ICONS.card} label="Library card" hint="Show the QR at the desk" to="/student/profile?tab=card" tone="emerald" />
               <QuickTile icon={DASH_ICONS.bell} label="Notifications" hint="Requests, reminders, fines" to="/student/notifications" tone="amber" />
             </div>
           </SectionCard>

@@ -27,8 +27,7 @@ const rupees = (n) => `₹${(Math.round((Number(n) || 0) * 100) / 100).toLocaleS
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const LOAN_DAYS = 14;
-const RENEWAL_DAYS = 7;
+const { LOAN_DAYS, RENEWAL_DAYS, MAX_RENEWALS } = require('../utils/loanRules');
 
 // Payment screenshots: PNG/JPEG/WEBP data URI, at most ~3 MB once decoded
 const SCREENSHOT_PATTERN = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
@@ -824,8 +823,8 @@ exports.renewBook = async (req, res, next) => {
       });
     }
 
-    if (transaction.renewalCount >= 3) {
-      return res.status(400).json({ success: false, message: 'Book cannot be renewed more than 3 times' });
+    if (transaction.renewalCount >= MAX_RENEWALS) {
+      return res.status(400).json({ success: false, message: `Book cannot be renewed more than ${MAX_RENEWALS} times` });
     }
 
     // Extend due date by 7 days. Assign a new Date: in-place setDate() is not detected by Mongoose and was never saved.

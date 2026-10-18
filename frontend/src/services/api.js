@@ -54,6 +54,8 @@ export const authAPI = {
   getMyStats: () => apiClient.get('/auth/me/stats'),
   getMyActivity: () => apiClient.get('/auth/me/activity'),
   getReadingStats: () => apiClient.get('/auth/me/reading-stats'),
+  // The signed-in member's own library card (signed QR code)
+  getMyCard: () => apiClient.get('/auth/me/card'),
   updateProfile: (data) => apiClient.put('/auth/update-profile', data),
   completeOnboarding: (data) => apiClient.put('/auth/complete-onboarding', data),
   updateFavoriteGenres: (data) => apiClient.put('/auth/update-favorite-genres', data),
@@ -106,6 +108,8 @@ export const adminAPI = {
   getReports: (params, config = {}) => apiClient.get('/admin/reports', { params, ...config }),
   // Admin only: ?actor=&action=&from=&to=&page=&limit=
   getAuditLog: (params, config = {}) => apiClient.get('/admin/audit', { params, ...config }),
+  // Admin only: new card version, the old card QR stops working
+  reissueCard: (userId) => apiClient.post(`/admin/users/${userId}/reissue-card`),
   getNotifications: () => apiClient.get('/admin/notifications'),
   getAllUsers: (params) => apiClient.get('/admin/users', { params }),
   createUser: (data) => apiClient.post('/admin/users', data),
@@ -150,3 +154,11 @@ export const notificationAPI = {
 };
 
 export default apiClient;
+
+// Scan desk (staff)
+export const deskAPI = {
+  // A scanned or typed code: library card, book code, Library ID or ISBN
+  resolve: (code, config = {}) => apiClient.get('/admin/desk/resolve', { params: { code }, ...config }),
+  issue: (userId, bookId) => apiClient.post('/admin/desk/issue', { userId, bookId }),
+  returnLoan: (transactionId) => apiClient.post('/admin/desk/return', { transactionId }),
+};

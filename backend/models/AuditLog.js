@@ -19,6 +19,7 @@ const AUDIT_ACTIONS = [
   'user.activate',
   'user.deactivate',
   'user.role_change',
+  'user.card_reissue',
   'fine.waive',
   'reservation.staff_cancel',
   'reminders.send',

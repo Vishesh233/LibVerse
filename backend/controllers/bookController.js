@@ -2,7 +2,6 @@ const Book = require('../models/Book');
 const User = require('../models/User');
 const Review = require('../models/Review');
 const Reservation = require('../models/Reservation');
-const { generateQRCode } = require('../utils/qrGenerator');
 const { afterCopyFreed, cancelBookReservations } = require('../services/reservationService');
 const { armRestockAlert } = require('../utils/bookStock');
 const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
@@ -33,6 +32,13 @@ exports.getBooks = async (req, res, next) => {
     const sort = BOOK_SORTS[toQueryString(req.query.sort)];
 
     let filter = { isActive: true };
+
+    // ?ids=a,b,c - specific books (QR label sheets); invalid ids are ignored, at most 100 (one page)
+    const ids = toQueryString(req.query.ids);
+    if (ids) {
+      const valid = ids.split(',').map((s) => s.trim()).filter((s) => /^[a-f0-9]{24}$/i.test(s)).slice(0, 100);
+      filter._id = { $in: valid };
+    }
 
     // ?q= one search box: title OR author (escaped, case-insensitive)
     const q = toQueryString(req.query.q); // already trimmed; undefined when absent or not a string
@@ -256,10 +262,7 @@ exports.createBook = async (req, res, next) => {
       language,
     });
 
-    // Generate QR code
-    const qrCode = await generateQRCode(book._id, book.title);
-    book.qrCode = qrCode;
-    await book.save();
+    // No stored QR image: the desk QR ("LV1:B:<bookId>") is drawn on the fly by the frontend
 
     await audit(req, 'book.create', { type: 'Book', id: book._id },
       `Added "${book.title}" by ${book.author} (${book.totalCopies} cop${book.totalCopies === 1 ? 'y' : 'ies'})`,

@@ -9,6 +9,13 @@ import { LogoMark } from './LogoMark';
 const REQUEST_STATUSES = ['pending', 'return_requested', 'payment_pending'];
 const REQUEST_COUNT_REFRESH_MS = 60 * 1000;
 
+const SCAN_ICON = (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z" />
+  </svg>
+);
+
 const useRequestCount = (enabled) => {
   const [count, setCount] = useState(null);
   const location = useLocation();
@@ -154,6 +161,11 @@ export const Sidebar = ({ onNavigate }) => {
       ),
     },
     {
+      label: 'Scan desk',
+      to: '/librarian/scan',
+      icon: SCAN_ICON,
+    },
+    {
       label: 'Users',
       to: '/librarian/users',
       icon: (
@@ -237,6 +249,11 @@ export const Sidebar = ({ onNavigate }) => {
           <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
       ),
+    },
+    {
+      label: 'Scan desk',
+      to: '/admin/scan',
+      icon: SCAN_ICON,
     },
     {
       label: 'Requests',

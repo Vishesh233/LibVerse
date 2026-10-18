@@ -11,12 +11,14 @@ import { SecurityTab } from '../components/profile/SecurityTab';
 import { PreferencesTab } from '../components/profile/PreferencesTab';
 import { ActivityTab } from '../components/profile/ActivityTab';
 import { ReadingStatsPanel } from '../components/profile/ReadingStats';
-import { ActivityIcon, BookIcon, HeartIcon, LockIcon, UserIcon } from '../components/profile/ProfileIcons';
+import { ActivityIcon, BookIcon, CardIcon, HeartIcon, LockIcon, UserIcon } from '../components/profile/ProfileIcons';
+import { LibraryCardPanel } from '../components/LibraryCard';
 
 const TABS = [
   { key: 'personal', label: 'Personal info', icon: <UserIcon />, description: 'Your name and contact details.' },
   { key: 'security', label: 'Security', icon: <LockIcon />, description: 'Change the password you sign in with.' },
   { key: 'preferences', label: 'Reading preferences', icon: <HeartIcon />, description: 'Genres used for your recommendations.', studentOnly: true },
+  { key: 'card', label: 'Library card', icon: <CardIcon />, description: 'Your digital library card. Show the QR code at the desk to borrow and return books.' },
   { key: 'reading', label: 'Reading stats', icon: <BookIcon />, description: 'Books you have read, the genres you read and how you return them.', studentOnly: true },
   { key: 'activity', label: 'Activity', icon: <ActivityIcon />, description: 'What happened recently on your account.' },
 ];
@@ -121,6 +123,7 @@ export const Profile = () => {
               {activeTab === 'personal' && <PersonalInfoTab user={user} onUserChange={handleUserChange} />}
               {activeTab === 'security' && <SecurityTab user={user} />}
               {activeTab === 'preferences' && <PreferencesTab user={user} onUserChange={handleUserChange} />}
+              {activeTab === 'card' && <LibraryCardPanel />}
               {activeTab === 'reading' && (
                 <ReadingStatsPanel stats={reading.stats} loading={reading.loading} error={reading.error} onRetry={loadReading} />
               )}

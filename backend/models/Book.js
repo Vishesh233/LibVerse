@@ -84,7 +84,9 @@ const bookSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    qrCode: String, // QR code URL or data
+    // Legacy: a PNG data URL stored by older versions (kept readable, no longer written).
+    // The desk QR is "LV1:B:<bookId>", generated on the fly by the frontend.
+    qrCode: String,
     coverImage: String,
     location: String, // shelf location in library
     isActive: {

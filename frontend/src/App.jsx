@@ -30,6 +30,8 @@ import { Reports } from './pages/Reports';
 import { AuditLog } from './pages/AuditLog';
 import { Onboarding } from './pages/Onboarding';
 import { Notifications } from './pages/Notifications';
+import { ScanDesk } from './pages/ScanDesk';
+import { QrLabels } from './pages/QrLabels';
 
 // Splash shows once per browser session (a refresh in the same tab session skips it)
 const SPLASH_KEY = 'libverse:splash-shown';
@@ -185,6 +187,22 @@ function App() {
             }
           />
           <Route
+            path="/librarian/books/labels"
+            element={
+              <ProtectedRoute requiredRole="librarian">
+                <QrLabels />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/librarian/scan"
+            element={
+              <ProtectedRoute requiredRole="librarian">
+                <ScanDesk />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/librarian/books/add"
             element={
               <ProtectedRoute requiredRole="librarian">
@@ -287,6 +305,22 @@ function App() {
             element={
               <ProtectedRoute requiredRole="admin">
                 <ManageBooks />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/books/labels"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <QrLabels />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/scan"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <ScanDesk />
               </ProtectedRoute>
             }
           />

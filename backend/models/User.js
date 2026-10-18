@@ -34,6 +34,13 @@ const userSchema = new mongoose.Schema(
       sparse: true,
     },
     profileImage: String,
+    // Digital library card (utils/libraryCard.js): the QR carries this version; reissuing the card
+    // increments it so an older printed or saved QR stops working
+    cardVersion: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
     isActive: {
       type: Boolean,
       default: true,

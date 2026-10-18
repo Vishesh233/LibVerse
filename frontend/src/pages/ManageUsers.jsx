@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { adminAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
 import { useAuth } from '../hooks/useAuth';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 export const ManageUsers = () => {
   const { user: currentUser, isAdmin, isLibrarian } = useAuth();
@@ -137,6 +138,23 @@ export const ManageUsers = () => {
       fetchUsers();
     } catch (err) {
       toast.error(err.response?.data?.message || `Failed to ${action} user`);
+    }
+  };
+
+  // Admin only: a new card version; the old card QR stops working at the desk
+  const [reissuing, setReissuing] = useState(null);
+  const [reissueBusy, setReissueBusy] = useState(false);
+  const confirmReissue = async () => {
+    if (!reissuing) return;
+    setReissueBusy(true);
+    try {
+      const res = await adminAPI.reissueCard(reissuing._id);
+      toast.success(res.data?.message || 'New card issued');
+      setReissuing(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'The card could not be reissued');
+    } finally {
+      setReissueBusy(false);
     }
   };
 
@@ -311,6 +329,19 @@ export const ManageUsers = () => {
                             >
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            )}
+                            {isAdmin && u.libraryId && (
+                            <button
+                              type="button"
+                              onClick={() => setReissuing(u)}
+                              title="Reissue library card"
+                              aria-label={`Reissue the library card of ${u.name}`}
+                              className="p-1.5 rounded-lg transition-colors text-slate-400 hover:text-cyan-300 hover:bg-cyan-900/30 cursor-pointer"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
                               </svg>
                             </button>
                             )}
@@ -522,6 +553,16 @@ export const ManageUsers = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!reissuing}
+        title="Reissue library card?"
+        description={reissuing ? `${reissuing.name} (${reissuing.libraryId}) gets a new card. Their current card QR, printed or saved, stops working at the desk straight away. They are notified and can open the new card from their profile.` : ''}
+        confirmText="Reissue card"
+        onConfirm={confirmReissue}
+        onCancel={() => setReissuing(null)}
+        loading={reissueBusy}
+      />
     </MainLayout>
   );
 };

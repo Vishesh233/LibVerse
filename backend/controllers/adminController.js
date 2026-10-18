@@ -1,10 +1,10 @@
 const User = require('../models/User');
 const Book = require('../models/Book');
 const Transaction = require('../models/Transaction');
-const { getUserNotifications, notifyStudent } = require('./notificationController');
+const { getUserNotifications } = require('./notificationController');
 const { runReminders } = require('../jobs/reminders');
 const { calculateFine, getDaysOverdue, startOfDay, payableFineOf } = require('../utils/fineCalculator');
-const { returnCopy, takeCopyFor, undoTakeCopy } = require('../services/reservationService');
+const { issueAtDesk, returnAtDesk, DeskError } = require('../services/deskService');
 const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
 const { audit, personLabel } = require('../utils/audit');
 const mongoose = require('mongoose');
@@ -588,52 +588,9 @@ exports.adminIssueBook = async (req, res, next) => {
       return res.status(404).json({ success: false, message: `Book not found matching "${bookTitle || bookId}"` });
     }
 
-    // Atomically take a copy first, so stock can never go negative: the copy held for this student's
-    // ready reservation if there is one, otherwise a free copy (never one held for someone else)
-    const transactionId = new mongoose.Types.ObjectId();
-    const taken = await takeCopyFor(user._id, book._id, transactionId);
-    if (!taken) {
-      return res.status(400).json({ success: false, message: `No available copies for "${book.title}"` });
-    }
-
-    // Loan period starts now (unless the librarian chose a due date)
-    const now = new Date();
-    const dueDate = customDueDate ? new Date(customDueDate) : new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-
-    let transaction;
-    try {
-      transaction = await Transaction.create({
-        _id: transactionId,
-        userId: user._id,
-        bookId: book._id,
-        issueDate: now,
-        dueDate,
-        status: 'issued',
-        isApproved: true,
-        approvedBy: req.user._id,
-        approvalDate: now,
-      });
-    } catch (createError) {
-      // Put the copy back (and the reservation) if the transaction could not be recorded
-      await undoTakeCopy(taken, book._id);
-      throw createError;
-    }
-
-    // Create notification for the student (non-fatal - never fails the main operation)
-    try {
-      await notifyStudent(user._id, {
-        type: 'BOOK_ISSUED',
-        title: 'Book issued',
-        message: `"${book.title}" has been issued to you at the library. Due date: ${dueDate.toLocaleDateString()}.`,
-        link: '/student/my-books?tab=issued',
-        meta: { transactionId: transaction._id, bookId: book._id },
-      });    } catch (notifError) {
-      console.error('Notification creation failed (non-fatal):', notifError.message);
-    }
-
-    await audit(req, 'loan.admin_issue', { type: 'Transaction', id: transaction._id },
-      `Issued "${book.title}" at the desk to ${personLabel(user)}`,
-      { dueDate: dueDate.toISOString().slice(0, 10) });
+    // Same rules as the scan desk (services/deskService): student, active, no open loan of this book,
+    // atomic copy (their held copy for a ready reservation, never one held for someone else)
+    const { transaction } = await issueAtDesk(req, user, book, { dueDate: customDueDate ? new Date(customDueDate) : undefined });
 
     res.status(201).json({
       success: true,
@@ -641,6 +598,7 @@ exports.adminIssueBook = async (req, res, next) => {
       transaction,
     });
   } catch (error) {
+    if (error instanceof DeskError) return res.status(error.status).json({ success: false, message: error.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -696,46 +654,9 @@ exports.adminReturnBook = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Active issued transaction not found matching the criteria' });
     }
 
-    if (transaction.status !== 'issued') {
-      return res.status(400).json({ success: false, message: 'This book transaction is not in issued status' });
-    }
-
-    const fine = calculateFine(transaction.dueDate);
-
-    // Atomic status change - only one return can move it out of 'issued'
-    const returned = await Transaction.findOneAndUpdate(
-      { _id: transaction._id, status: 'issued' },
-      { $set: { fineAmount: fine, returnDate: new Date(), status: 'returned' } },
-      { new: true }
-    );
-
-    if (!returned) {
-      return res.status(400).json({ success: false, message: 'This book transaction is not in issued status' });
-    }
-
-    if (fine > 0) {
-      const user = await User.findById(returned.userId);
-      if (user) {
-        user.fineAmount += fine;
-        await user.save();
-      }
-    }
-
-    // The copy goes to the waiting list first
-    const book = await returnCopy(returned.bookId);
-
-    await notifyStudent(returned.userId, {
-      type: 'BOOK_RETURNED',
-      title: 'Book returned',
-      message: `"${book ? book.title : 'Your book'}" was returned at the library.${fine > 0 ? ` A fine of ₹${fine} was recorded.` : ''}`,
-      link: fine > 0 ? '/student/fines' : '/student/my-books?tab=returned',
-      meta: { transactionId: returned._id, bookId: returned.bookId },
-    });
-
-    const borrower = await User.findById(returned.userId).select('name libraryId').catch(() => null);
-    await audit(req, 'loan.admin_return', { type: 'Transaction', id: returned._id },
-      `Returned "${book ? book.title : 'a book'}" at the desk for ${personLabel(borrower)}${fine > 0 ? `, fine ₹${fine} recorded` : ''}`,
-      { fine });
+    // Same rules as the scan desk: an issued loan's fine is fixed and recorded; a return request with
+    // nothing payable is completed; the copy goes to the next reservation first
+    const { transaction: returned, fine, book } = await returnAtDesk(req, transaction);
 
     res.status(200).json({
       success: true,
@@ -744,6 +665,7 @@ exports.adminReturnBook = async (req, res, next) => {
       fine,
     });
   } catch (error) {
+    if (error instanceof DeskError) return res.status(error.status).json({ success: false, message: error.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };

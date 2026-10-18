@@ -14,6 +14,7 @@ const {
   globalSearch,
 } = require('../controllers/adminController');
 const { getAnalytics, getReports, getAuditLog } = require('../controllers/analyticsController');
+const { resolveCode, deskIssue, deskReturn, reissueCard } = require('../controllers/deskController');
 const { protect, isStaff, isAdminRole } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -38,5 +39,11 @@ router.post('/create-admin', isAdminRole, createAdminUser);
 router.post('/send-reminders', sendOverdueReminders);
 router.post('/issue-book', adminIssueBook);
 router.post('/return-book', adminReturnBook);
+
+// Scan desk
+router.get('/desk/resolve', resolveCode);
+router.post('/desk/issue', deskIssue);
+router.post('/desk/return', deskReturn);
+router.post('/users/:id/reissue-card', isAdminRole, reissueCard);
 
 module.exports = router;

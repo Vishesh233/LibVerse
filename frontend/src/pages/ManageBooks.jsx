@@ -11,7 +11,21 @@ import { GENRES } from '../constants/genres';
 import { Pagination } from '../components/Pagination';
 
 const PAGE_SIZE = 24;
+const MAX_LABELS = 100; // one label print view (GET /books?ids= returns at most 100)
 const pageFrom = (value) => Math.max(1, parseInt(value, 10) || 1);
+
+/** Checkbox shown on each book while choosing books for QR labels */
+const SelectBox = ({ book, checked, onToggle }) => (
+  <label className="absolute right-3 top-3 z-10 grid h-9 w-9 cursor-pointer place-items-center rounded-xl border border-white/15 bg-slate-950/80" onClick={(e) => e.stopPropagation()}>
+    <input
+      type="checkbox"
+      className="h-4 w-4 cursor-pointer accent-cyan-400"
+      checked={checked}
+      onChange={() => onToggle(book)}
+      aria-label={`Select “${book.title}” for QR labels`}
+    />
+  </label>
+);
 
 export const ManageBooks = () => {
   const navigate = useNavigate();
@@ -20,6 +34,23 @@ export const ManageBooks = () => {
   const addPath = isAdmin ? '/admin/books/add' : '/librarian/books/add';
   const editPath = (id) => (isAdmin ? `/admin/books/${id}/edit` : `/librarian/books/${id}/edit`);
   const detailsPath = (id) => (isAdmin ? `/admin/books/${id}` : `/librarian/books/${id}`);
+  const labelsPath = isAdmin ? '/admin/books/labels' : '/librarian/books/labels';
+
+  // QR labels: books picked across pages (id -> title), kept while paging and filtering
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState(() => new Map());
+  const toggleSelected = (book) => {
+    setSelected((prev) => {
+      const next = new Map(prev);
+      if (next.has(book._id)) next.delete(book._id);
+      else if (next.size >= MAX_LABELS) {
+        toast.info(`You can print up to ${MAX_LABELS} labels at a time.`);
+        return prev;
+      } else next.set(book._id, book.title);
+      return next;
+    });
+  };
+  const openBook = (book) => (selecting ? toggleSelected(book) : navigate(detailsPath(book._id)));
 
   // Page, search and genre live in the URL (?page=&q=&genre=) so reload and back keep the view
   const [searchParams, setSearchParams] = useSearchParams();
@@ -139,16 +170,65 @@ export const ManageBooks = () => {
                 : `${total.toLocaleString()} ${total === 1 ? 'book' : 'books'}${filtered ? ' match your filters' : ' in the collection'}${pages > 1 ? ` · page ${page} of ${pages}` : ''}`}
             </p>
           </div>
-          <button
-            onClick={() => navigate(addPath)}
-            className="btn-primary whitespace-nowrap"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Add New Book
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSelecting((s) => !s)}
+              aria-pressed={selecting}
+              className={`${selecting ? 'btn-primary' : 'btn-secondary'} whitespace-nowrap`}
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
+              </svg>
+              {selecting ? 'Done selecting' : 'Select for labels'}
+            </button>
+            <button
+              onClick={() => navigate(addPath)}
+              className="btn-primary whitespace-nowrap"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Add New Book
+            </button>
+          </div>
         </div>
+
+        {(selecting || selected.size > 0) && (
+          <div className="sticky top-2 z-20 mb-6 flex flex-col gap-3 rounded-2xl border border-cyan-400/30 bg-slate-950/90 p-3 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between" role="region" aria-label="QR label selection">
+            <p className="text-sm text-slate-200" aria-live="polite">
+              <strong className="text-cyan-300">{selected.size}</strong> book{selected.size === 1 ? '' : 's'} selected for QR labels
+              <span className="text-slate-500"> · up to {MAX_LABELS}</span>
+              {selecting && <span className="block text-xs text-slate-400">Click books to add or remove them. Your choice is kept when you change page or search.</span>}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {selecting && (
+                <button
+                  type="button"
+                  className="btn-secondary min-h-[40px] px-3 text-xs"
+                  onClick={() => setSelected((prev) => {
+                    const next = new Map(prev);
+                    books.forEach((b) => { if (next.size < MAX_LABELS) next.set(b._id, b.title); });
+                    return next;
+                  })}
+                >
+                  Select this page
+                </button>
+              )}
+              <button type="button" className="btn-ghost min-h-[40px] px-3 text-xs" onClick={() => setSelected(new Map())} disabled={selected.size === 0}>
+                Clear
+              </button>
+              <button
+                type="button"
+                className="btn-primary min-h-[40px] px-4 text-xs"
+                disabled={selected.size === 0}
+                onClick={() => navigate(`${labelsPath}?ids=${[...selected.keys()].join(',')}`)}
+              >
+                Print labels{selected.size ? ` (${selected.size})` : ''}
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="mb-6 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
@@ -256,10 +336,11 @@ export const ManageBooks = () => {
             {filteredBooks.map((book) => (
               <div
                 key={book._id}
-                onClick={() => navigate(detailsPath(book._id))}
-                className="card cursor-pointer transition-all duration-250 hover:-translate-y-1 hover:shadow-glow hover:border-indigo-500/30"
+                onClick={() => openBook(book)}
+                className={`card relative cursor-pointer transition-all duration-250 hover:-translate-y-1 hover:shadow-glow hover:border-indigo-500/30 ${selected.has(book._id) ? '!border-cyan-400/60 ring-1 ring-cyan-400/40' : ''}`}
               >
-                <div className="flex items-start gap-4">
+                {selecting && <SelectBox book={book} checked={selected.has(book._id)} onToggle={toggleSelected} />}
+                <div className={`flex items-start gap-4 ${selecting ? 'pr-10' : ''}`}>
                   <div className="h-28 w-20 overflow-hidden rounded-2xl bg-input flex-shrink-0">
                     <CoverImage book={book} alt={book.title} />
                   </div>
@@ -297,7 +378,7 @@ export const ManageBooks = () => {
                   )}
                 </div>
 
-                <div className="mt-4 flex items-center gap-2">
+                <div className={`mt-4 flex items-center gap-2 ${selecting ? 'hidden' : ''}`}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -325,9 +406,10 @@ export const ManageBooks = () => {
             {filteredBooks.map((book) => (
               <div
                 key={book._id}
-                onClick={() => navigate(detailsPath(book._id))}
-                className="card cursor-pointer transition-all duration-250 hover:shadow-glow hover:border-indigo-500/30 flex items-center gap-4"
+                onClick={() => openBook(book)}
+                className={`card relative cursor-pointer transition-all duration-250 hover:shadow-glow hover:border-indigo-500/30 flex items-center gap-4 ${selecting ? 'pr-16' : ''} ${selected.has(book._id) ? '!border-cyan-400/60 ring-1 ring-cyan-400/40' : ''}`}
               >
+                {selecting && <SelectBox book={book} checked={selected.has(book._id)} onToggle={toggleSelected} />}
                 <div className="h-20 w-14 overflow-hidden rounded-xl bg-input flex-shrink-0">
                   <CoverImage book={book} alt={book.title} />
                 </div>
@@ -345,7 +427,7 @@ export const ManageBooks = () => {
                     </span>
                   </div>
                 </div>
-                <div className="flex gap-2 flex-shrink-0">
+                <div className={`flex gap-2 flex-shrink-0 ${selecting ? 'hidden' : ''}`}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

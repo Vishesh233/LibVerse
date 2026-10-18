@@ -2120,3 +2120,347 @@ body.modal-open {
   .print-report .report-table th button span[aria-hidden] { display: none; }
   .print-report .badge-amo { background: none !important; border: 1px solid #999 !important; }
 }
+
+/* ---------------------------
+   Scan desk: viewfinder corners over the camera preview
+---------------------------- */
+.desk-scan-frame {
+  --c: rgba(34, 211, 238, 0.95);
+  aspect-ratio: 1;
+  height: auto;
+  background:
+    linear-gradient(var(--c), var(--c)) top left / 28px 3px,
+    linear-gradient(var(--c), var(--c)) top left / 3px 28px,
+    linear-gradient(var(--c), var(--c)) top right / 28px 3px,
+    linear-gradient(var(--c), var(--c)) top right / 3px 28px,
+    linear-gradient(var(--c), var(--c)) bottom left / 28px 3px,
+    linear-gradient(var(--c), var(--c)) bottom left / 3px 28px,
+    linear-gradient(var(--c), var(--c)) bottom right / 28px 3px,
+    linear-gradient(var(--c), var(--c)) bottom right / 3px 28px;
+  background-repeat: no-repeat;
+  box-shadow: 0 0 0 9999px rgba(2, 6, 23, 0.35);
+}
+
+/* ---------------------------
+   Profile tabs: one scrolling row from sm up, a fade on the side with more tabs
+---------------------------- */
+.profile-tabs { position: relative; }
+@media (min-width: 640px) {
+  .profile-tabs__list {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .profile-tabs__list::-webkit-scrollbar { display: none; }
+  .profile-tabs::before,
+  .profile-tabs::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    bottom: 1px;
+    width: 48px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 1;
+  }
+  .profile-tabs::before {
+    left: 1px;
+    border-radius: 16px 0 0 16px;
+    background: linear-gradient(90deg, #0F1424 25%, rgba(15, 20, 36, 0));
+  }
+  .profile-tabs::after {
+    right: 1px;
+    border-radius: 0 16px 16px 0;
+    background: linear-gradient(270deg, #0F1424 25%, rgba(15, 20, 36, 0));
+  }
+  .profile-tabs[data-fade-left]::before,
+  .profile-tabs[data-fade-right]::after { opacity: 1; }
+}
+
+/* ---------------------------
+   Library card (CR80, 85.6 x 54 mm). The card is a size container: 1cqw = 1% of its width, so
+   one layout serves the screen, print at real size and the PNG (utils/cardArt).
+---------------------------- */
+.lv-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 85.6 / 54;
+  container-type: inline-size;
+  border-radius: 3.715% / 5.89%; /* 3.18 mm corners (cqw on the container itself would use the viewport) */
+  color: #F8FAFC;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.lv-card,
+.lv-card *,
+.lv-print-sheet,
+.lv-print-sheet * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.lv-card__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 12% 9%, rgba(34, 211, 238, 0.16), transparent 58%),
+    radial-gradient(circle at 96% 95%, rgba(139, 92, 246, 0.16), transparent 55%),
+    linear-gradient(135deg, #081028 0%, #0E1A44 55%, #0A1230 100%);
+}
+.lv-card__pattern { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; }
+.lv-card__holo {
+  position: absolute;
+  left: 0;
+  right: 0;
+  opacity: 0.6;
+  overflow: hidden;
+  background: linear-gradient(90deg, #7DD3FC, #C4B5FD, #F0ABFC, #FDE68A, #86EFAC, #7DD3FC);
+}
+/* Shimmer: screen only, never with reduced motion */
+@media screen and (prefers-reduced-motion: no-preference) {
+  .lv-card__holo::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.9) 50%, transparent 70%) no-repeat;
+    background-size: 40% 100%;
+    animation: lvHoloShimmer 4.5s ease-in-out infinite;
+  }
+}
+@keyframes lvHoloShimmer {
+  0% { background-position: -60% 0; }
+  60%, 100% { background-position: 160% 0; }
+}
+.lv-card__accent { position: absolute; left: 0; right: 0; bottom: 0; background: #22D3EE; }
+.lv-card__stripe { position: absolute; left: 0; right: 0; background: #040814; }
+
+.lv-card__text { position: absolute; line-height: 1; white-space: nowrap; }
+.lv-card__word { font-family: "Space Grotesk", Inter, system-ui, sans-serif; font-weight: 700; color: #F8FAFC; letter-spacing: -0.01em; }
+/* A solid colour (not gradient-clipped text) so "Verse" also prints */
+.lv-card__verse { color: #A78BFA; }
+.lv-card__label { font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #7C8DB0; }
+.lv-card__name {
+  font-family: "Space Grotesk", Inter, system-ui, sans-serif;
+  font-weight: 700;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lv-card__role {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #67E8F9;
+  background: rgba(34, 211, 238, 0.14);
+  box-shadow: inset 0 0 0 0.15cqw rgba(103, 232, 249, 0.45);
+}
+.lv-card__id { font-family: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace; font-weight: 700; letter-spacing: 0.02em; }
+.lv-card__since { font-weight: 600; color: #E2E8F0; }
+.lv-card__caption { text-align: center; color: #94A3B8; font-weight: 500; }
+.lv-card__title { font-family: "Space Grotesk", Inter, system-ui, sans-serif; font-weight: 700; }
+.lv-card__rule { font-weight: 500; color: #E2E8F0; padding-left: calc(var(--lv-dot) + 1.4cqw); }
+.lv-card__rule::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.1em;
+  width: var(--lv-dot);
+  height: var(--lv-dot);
+  border-radius: 999px;
+  background: #22D3EE;
+}
+.lv-card__found { font-weight: 600; white-space: normal; line-height: 1.3; }
+.lv-card__muted { font-weight: 500; color: #94A3B8; }
+
+.lv-card__logo { position: absolute; display: block; line-height: 0; }
+.lv-card__logo .logo-mark__tile {
+  width: var(--lv-tile);
+  height: var(--lv-tile);
+  border-radius: var(--lv-radius);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  background: linear-gradient(180deg, #262A38, #12141E);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.lv-card__logo .logo-mark__icon { width: var(--lv-icon); height: var(--lv-icon); }
+
+.lv-card__avatar {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6366F1, #8B5CF6);
+  color: #fff;
+  font-family: "Space Grotesk", Inter, system-ui, sans-serif;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow:
+    0 0 0 calc(var(--lv-ring) * 0.5) #0B1433,
+    0 0 0 calc(var(--lv-ring) * 1.5) rgba(34, 211, 238, 0.75),
+    0 0 0 calc(var(--lv-ring) * 2.6) rgba(34, 211, 238, 0.14);
+}
+.lv-card__avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.lv-card__qr { position: absolute; display: block; box-sizing: border-box; background: #fff; }
+.lv-card__qr svg { display: block; width: 100%; height: 100%; }
+
+/* Flip (screen) */
+.lv-flip { margin: 0 auto; width: 100%; max-width: 440px; perspective: 1400px; }
+.lv-flip__inner {
+  position: relative;
+  display: block;
+  aspect-ratio: 85.6 / 54;
+  border-radius: 3.715% / 5.89%;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.2, 0.75, 0.25, 1);
+  cursor: pointer;
+}
+.lv-flip__inner:focus-visible { outline: 2px solid #22D3EE; outline-offset: 6px; }
+.lv-flip[data-flipped] .lv-flip__inner { transform: rotateY(180deg); }
+.lv-flip__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.lv-flip__face--back { transform: rotateY(180deg); }
+/* Reduced motion: an instant swap, no 3D */
+@media (prefers-reduced-motion: reduce) {
+  .lv-flip__inner { transition: none; transform-style: flat; }
+  .lv-flip[data-flipped] .lv-flip__inner { transform: none; }
+  .lv-flip__face--back { transform: none; visibility: hidden; }
+  .lv-flip[data-flipped] .lv-flip__face { visibility: hidden; }
+  .lv-flip[data-flipped] .lv-flip__face--back { visibility: visible; }
+}
+
+/* Print sheet: rendered into <body>, shown only while printing the card */
+.lv-print-sheet { display: none; }
+
+/* ---------------------------
+   QR label sheets: A4 pages, 3 x 7 labels of 60 x 37.5 mm inside the 12 mm print margin
+---------------------------- */
+.label-page {
+  box-sizing: border-box;
+  width: 210mm;
+  height: 297mm;
+  padding: 12mm;
+  margin: 0 auto 28px;
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+}
+.label-sheet {
+  display: grid;
+  grid-template-columns: repeat(3, 60mm);
+  grid-auto-rows: 37.5mm;
+  column-gap: 3mm;
+  row-gap: 1.5mm;
+  align-content: start;
+}
+.qr-label {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 2.5mm;
+  padding: 2mm 2.5mm;
+  border: 0.25mm dashed #cbd5e1;
+  border-radius: 2mm;
+  overflow: hidden;
+  break-inside: avoid;
+}
+.qr-label__qr { flex: 0 0 30mm; width: 30mm; height: 30mm; }
+.qr-label__qr svg { display: block; width: 100%; height: 100%; }
+.qr-label__text { min-width: 0; display: flex; flex-direction: column; gap: 1mm; font-family: Inter, system-ui, sans-serif; }
+.qr-label__title {
+  font-size: 8.5pt;
+  font-weight: 700;
+  line-height: 1.15;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.qr-label__author {
+  font-size: 7pt;
+  line-height: 1.2;
+  color: #334155;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.qr-label__shelf { font-size: 7pt; font-weight: 700; color: #0f172a; }
+.qr-label__brand { font-size: 5.5pt; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b; }
+
+@media print {
+  /* Library card: only the sheet; both sides at real size, centred on one A4 page */
+  html.printing-card #root,
+  html.printing-card .Toastify { display: none !important; }
+  html.printing-card,
+  html.printing-card body { background: #fff !important; }
+  html.printing-card .lv-print-sheet {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22mm;
+    width: 100%;
+    height: 270mm; /* inside the 12 mm page margins, so it stays on one page */
+    overflow: hidden;
+    break-inside: avoid;
+  }
+  .lv-print-slot { position: relative; margin: 0; width: 85.6mm; height: 54mm; break-inside: avoid; }
+  .lv-print-slot .lv-card { width: 85.6mm; height: 54mm; box-shadow: none !important; }
+  .lv-print-slot .logo-mark__icon { filter: none; }
+  .lv-print-slot figcaption {
+    position: absolute;
+    top: calc(54mm + 8mm);
+    left: 0;
+    right: 0;
+    text-align: center;
+    font: 500 7pt Inter, system-ui, sans-serif;
+    color: #555;
+  }
+  /* Crop marks: 5 mm hairlines, 2 mm clear of each corner */
+  .lv-crop { position: absolute; width: 7mm; height: 7mm; }
+  .lv-crop::before,
+  .lv-crop::after { content: ""; position: absolute; background: #000; }
+  .lv-crop::before { width: 5mm; height: 0.2mm; } /* horizontal, on the card's top/bottom edge line */
+  .lv-crop::after { width: 0.2mm; height: 5mm; } /* vertical, on the card's left/right edge line */
+  .lv-crop--tl { top: -7mm; left: -7mm; }
+  .lv-crop--tl::before { left: 0; bottom: 0; }
+  .lv-crop--tl::after { right: 0; top: 0; }
+  .lv-crop--tr { top: -7mm; right: -7mm; }
+  .lv-crop--tr::before { right: 0; bottom: 0; }
+  .lv-crop--tr::after { left: 0; top: 0; }
+  .lv-crop--bl { bottom: -7mm; left: -7mm; }
+  .lv-crop--bl::before { left: 0; top: 0; }
+  .lv-crop--bl::after { right: 0; bottom: 0; }
+  .lv-crop--br { bottom: -7mm; right: -7mm; }
+  .lv-crop--br::before { right: 0; top: 0; }
+  .lv-crop--br::after { left: 0; bottom: 0; }
+
+  /* QR labels: one A4 page per sheet (the page margin replaces the on-screen padding) */
+  .label-preview { zoom: 1 !important; }
+  .label-page {
+    width: auto;
+    height: 272mm;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+    break-after: page;
+    break-inside: avoid;
+    overflow: hidden;
+  }
+  .label-page:last-child { break-after: auto; }
+  .qr-label,
+  .qr-label * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
