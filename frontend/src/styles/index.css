@@ -2122,6 +2122,58 @@ body.modal-open {
 }
 
 /* ---------------------------
+   Dashboards
+---------------------------- */
+/* Fine stats: 3 across when the card is wide enough, else 2 + 1 (the last one full width), 1 on phones */
+.fines-wrap { container-type: inline-size; }
+.fines-stats { display: grid; gap: 0.75rem; grid-template-columns: 1fr; }
+@container (min-width: 20rem) {
+  .fines-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fines-stats > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+@container (min-width: 34rem) {
+  .fines-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .fines-stats > :last-child:nth-child(odd) { grid-column: auto; }
+}
+.genre-legend__row { transition: background-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease; }
+
+/* Staff hero ("control room"): dark navy base with three slowly drifting colour blobs and a faint
+   grid. Blobs stay below 0.32 opacity over #0A1230, so slate-200 / cyan-200 text keeps >= 7:1. */
+.staff-hero { background: #0A1230; }
+.staff-hero__mesh { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.staff-hero__blob {
+  position: absolute;
+  width: 55%;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.3;
+}
+.staff-hero__blob--a { left: -12%; top: -55%; background: #6366F1; }
+.staff-hero__blob--b { right: -10%; top: -35%; background: #22D3EE; opacity: 0.2; }
+.staff-hero__blob--c { left: 30%; bottom: -70%; background: #8B5CF6; opacity: 0.24; }
+.staff-hero__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 35%, #000 70%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 35%, #000 70%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .staff-hero__blob--a { animation: staffMeshA 26s ease-in-out infinite alternate; }
+  .staff-hero__blob--b { animation: staffMeshB 32s ease-in-out infinite alternate; }
+  .staff-hero__blob--c { animation: staffMeshC 38s ease-in-out infinite alternate; }
+  .staff-hero__pulse { animation: staffPulse 2.4s ease-in-out infinite; }
+}
+@keyframes staffMeshA { to { transform: translate(22%, 18%) scale(1.12); } }
+@keyframes staffMeshB { to { transform: translate(-18%, 24%) scale(0.92); } }
+@keyframes staffMeshC { to { transform: translate(-20%, -14%) scale(1.1); } }
+@keyframes staffPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+/* ---------------------------
    Scan desk: viewfinder corners over the camera preview
 ---------------------------- */
 .desk-scan-frame {

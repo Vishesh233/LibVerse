@@ -1,16 +1,16 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MainLayout } from '../../layouts/MainLayout';
 import { adminAPI, transactionsAPI } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { Badge, Button, EmptyState, Skeleton } from '../UI';
-import { DashboardHero } from './DashboardHero';
+import { StaffHero } from './StaffHero';
 import { IssueBookModal } from './IssueBookModal';
 import { GenreDoughnut } from './GenreDoughnut';
 import { WaiveFineModal, waiverLoanFrom } from '../WaiveFineModal';
 import {
-  AmountStat, DASH_ICONS, DashTabs, IconTile, KpiLink, QuickTile, SectionCard, SectionLink, formatRupees, greetingFor,
+  AmountStat, CompactEmpty, DASH_ICONS, DashTabs, IconTile, KpiLink, QuickTile, SectionCard, SectionLink, formatRupees,
 } from './DashboardKit';
 
 // recentActivities[].status (labels from GET /admin/dashboard) -> icon + badge
@@ -42,6 +42,19 @@ const RequestRow = ({ req, children, meta }) => (
     </div>
     <div className="flex flex-shrink-0 flex-wrap gap-2">{children}</div>
   </li>
+);
+
+/** One "Today at a glance" figure: a link with an icon, the count and a hint */
+const GlanceLink = ({ to, icon, tone, label, value, hint, loading }) => (
+  <Link to={to} className="group flex min-h-[64px] min-w-0 items-center gap-3 rounded-2xl border border-border bg-white/[0.03] p-3 transition-colors hover:border-indigo-400/30 hover:bg-white/[0.06]">
+    <IconTile icon={icon} tone={value > 0 ? tone : 'slate'} className="h-10 w-10" />
+    <span className="min-w-0 flex-1">
+      <span className="block text-xs font-medium text-slate-400">{label}</span>
+      {loading ? <Skeleton className="mt-1 h-6 w-10" /> : <span className="block font-display text-xl font-bold leading-tight text-slate-50">{value ?? 0}</span>}
+      <span className="block truncate text-[11px] text-muted">{hint}</span>
+    </span>
+    <span className="flex-shrink-0 text-slate-500 transition-colors group-hover:text-slate-200" aria-hidden="true">{DASH_ICONS.chevron}</span>
+  </Link>
 );
 
 /**
@@ -78,6 +91,19 @@ export const StaffDashboard = ({ role }) => {
   useEffect(() => {
     load();
   }, [load]);
+
+  // First load: open the first queue that has something waiting (Issue -> Return -> Payment)
+  const queuePicked = useRef(false);
+  useEffect(() => {
+    if (!analytics || queuePicked.current) return;
+    queuePicked.current = true;
+    const first = [
+      ['issue', analytics.pendingRequests],
+      ['return', analytics.returnRequests],
+      ['payment', analytics.paymentPending],
+    ].find(([, list]) => (list || []).length > 0);
+    setQueueTab(first ? first[0] : 'issue');
+  }, [analytics]);
 
   const closeIssue = useCallback(() => setIssueOpen(false), []);
   // Still owed after any waiver
@@ -125,7 +151,7 @@ export const StaffDashboard = ({ role }) => {
   const activities = (a.recentActivities || []).slice(0, 6);
   const isLoading = loading && !analytics;
   const firstName = (user?.name || '').trim().split(/\s+/)[0];
-  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const firstQueueTab = issueQueue.length ? 'issue' : returnQueue.length ? 'return' : paymentQueue.length ? 'payment' : 'issue';
 
   const queueTabs = [
     { key: 'issue', label: 'Issue', count: issueQueue.length },
@@ -142,36 +168,19 @@ export const StaffDashboard = ({ role }) => {
   return (
     <MainLayout>
       <div className="mx-auto max-w-7xl space-y-5 pb-10">
-        {/* Hero */}
-        <DashboardHero compact titleId="staff-hero-title">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-300">{today}</p>
-              <h1 id="staff-hero-title" className="mt-1 font-display text-2xl font-bold tracking-tight text-slate-50 sm:text-3xl">
-                {greetingFor()}{firstName ? `, ${firstName}` : ''}
-              </h1>
-              {isLoading ? (
-                <Skeleton className="mt-2 h-4 w-64" />
-              ) : (
-                <p className="mt-1 text-sm text-slate-300">
-                  {waiting || a.overdueBooks
-                    ? `${plural(waiting, 'request')} waiting · ${plural(a.overdueBooks || 0, 'loan')} overdue`
-                    : 'No requests waiting · nothing overdue'}
-                </p>
-              )}
-            </div>
-            <div className="flex flex-shrink-0 flex-wrap gap-2">
-              <Button fullWidth={false} onClick={() => navigate(`${base}/books/add`)}>
-                {DASH_ICONS.plus}
-                Add book
-              </Button>
-              <Button fullWidth={false} variant="secondary" onClick={() => setIssueOpen(true)}>
-                {DASH_ICONS.book}
-                Issue book
-              </Button>
-            </div>
-          </div>
-        </DashboardHero>
+        {/* Hero: status, what needs attention, loans issued per day */}
+        <StaffHero
+          base={base}
+          firstName={firstName}
+          loading={isLoading}
+          waiting={waiting}
+          waitingTab={firstQueueTab}
+          overdue={a.overdueBooks ?? 0}
+          dueToday={a.dueToday ?? 0}
+          issuedDaily={a.issuedDaily || []}
+          onAddBook={() => navigate(`${base}/books/add`)}
+          onIssue={() => setIssueOpen(true)}
+        />
 
         {error && !analytics ? (
           <EmptyState
@@ -186,16 +195,18 @@ export const StaffDashboard = ({ role }) => {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5" aria-busy={isLoading || undefined}>
               <KpiLink to={`${base}/books`} label="Total books" value={a.totalBooks ?? 0} hint="active titles" icon={DASH_ICONS.library} tone="indigo" loading={isLoading} />
               <KpiLink to={`${base}/issue-return`} label="Issued" value={a.issuedBooks ?? 0} hint={`${a.issuedToday ?? 0} issued today`} icon={DASH_ICONS.book} tone="emerald" loading={isLoading} />
-              <KpiLink to={`${base}/reports`} label="Overdue" value={a.overdueBooks ?? 0} hint={fines.accruing ? `${formatRupees(fines.accruing)} accruing` : 'nothing overdue'} icon={DASH_ICONS.clock} tone="rose" alert={(a.overdueBooks || 0) > 0} loading={isLoading} />
-              <KpiLink to={`${base}/pending`} label="Pending requests" value={waiting} hint={waiting ? 'issue, return and payment' : 'all caught up'} icon={DASH_ICONS.inbox} tone="cyan" loading={isLoading} />
+              {/* Overdue and waiting requests are in the hero pills, so the row shows other figures */}
+              <KpiLink to={`${base}/pending?tab=reservations`} label="Active reservations" value={a.activeReservations ?? 0} hint={`${a.readyReservations ?? 0} ready for pickup`} icon={DASH_ICONS.clock} tone="violet" loading={isLoading} />
+              <KpiLink to={`${base}/users`} label="Active members" value={a.activeMembers ?? 0} hint="borrowed in 30 days" icon={DASH_ICONS.userPlus} tone="cyan" loading={isLoading} />
               <KpiLink to={`${base}/reports`} label="Fines outstanding" value={formatRupees(fines.outstanding)} hint={`${formatRupees(fines.collected)} collected`} icon={DASH_ICONS.card} tone="amber" loading={isLoading} />
             </div>
 
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-              {/* Requests queue */}
+              {/* Requests queue with "Today at a glance" under it; the column ends level with Recent activity */}
+              <div className="flex min-w-0 flex-col gap-5 xl:col-span-8">
               <SectionCard
                 id="requests-queue"
-                className="xl:col-span-8"
+                className="flex-1"
                 title="Requests queue"
                 subtitle="Approve here or open the full list"
                 action={<SectionLink to={`${base}/pending?tab=${queueTab}`}>Open all requests</SectionLink>}
@@ -205,7 +216,9 @@ export const StaffDashboard = ({ role }) => {
                   {isLoading ? (
                     <div className="pt-2"><Skeleton lines={3} className="h-12 w-full" /></div>
                   ) : queueRows.length === 0 ? (
-                    <EmptyState bare icon="✅" title="All caught up" message={queueEmpty} />
+                    <div className="pt-2">
+                      <CompactEmpty title="All caught up" message={queueEmpty} role="status" />
+                    </div>
                   ) : (
                     <ul className="divide-y divide-border">
                       {queueRows.slice(0, QUEUE_LIMIT).map((req) => {
@@ -270,26 +283,39 @@ export const StaffDashboard = ({ role }) => {
                 </div>
               </SectionCard>
 
+              {/* Today at a glance: real counts, each opens the matching list */}
+              <SectionCard id="today-glance" title="Today at a glance">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <GlanceLink to={`${base}/issue-return?tab=return`} icon={DASH_ICONS.clock} tone="amber" label="Due today" value={a.dueToday} hint="issued loans due back today" loading={isLoading} />
+                  <GlanceLink to={`${base}/reports#rep-overdue`} icon={DASH_ICONS.alert} tone="rose" label="Overdue now" value={a.overdueBooks} hint={fines.accruing ? `${formatRupees(fines.accruing)} in fines growing` : 'past their due date'} loading={isLoading} />
+                  <GlanceLink to={`${base}/pending?tab=reservations`} icon={DASH_ICONS.book} tone="emerald" label="Ready for pickup" value={a.readyReservations} hint="reserved copies on hold" loading={isLoading} />
+                </div>
+              </SectionCard>
+              </div>
+
               {/* Recent activity */}
               <SectionCard id="recent-activity" className="xl:col-span-4" title="Recent activity" subtitle="Latest loan updates">
                 {isLoading ? (
                   <Skeleton lines={4} className="h-11 w-full" />
                 ) : activities.length === 0 ? (
-                  <EmptyState bare icon="🕘" title="No activity yet" message="Issues, returns and requests show up here." />
+                  <CompactEmpty icon={DASH_ICONS.clock} tone="slate" title="No activity yet" message="Issues, returns and requests show up here." />
                 ) : (
-                  <ul className="space-y-3">
+                  <ul className="-my-2.5 divide-y divide-border">
                     {activities.map((act, i) => {
                       const style = ACTIVITY_STYLE[act.status] || { icon: DASH_ICONS.bell, tone: 'slate', badge: 'neutral' };
                       return (
-                        <li key={act._id || i} className="flex items-start gap-3">
+                        // Same height for every row: the text always takes two lines' space, then time + badge on one line
+                        <li key={act._id || i} className="flex items-start gap-3 py-2.5">
                           <IconTile icon={style.icon} tone={style.tone} className="h-9 w-9 !rounded-xl" />
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm leading-snug text-slate-200 line-clamp-2">
+                            <p className="activity-text h-10 text-sm leading-5 text-slate-200 line-clamp-2 [overflow-wrap:anywhere]" title={`${act.name} ${act.action} “${act.book}”`}>
                               <span className="font-semibold text-slate-100">{act.name}</span> {act.action} “{act.book}”
                             </p>
-                            <p className="mt-0.5 text-[11px] text-muted">{act.time}</p>
+                            <div className="activity-meta mt-1 flex items-center justify-between gap-2">
+                              <span className="min-w-0 truncate text-[11px] text-muted">{act.time}</span>
+                              <Badge variant={style.badge} className="flex-shrink-0 whitespace-nowrap">{act.status}</Badge>
+                            </div>
                           </div>
-                          <Badge variant={style.badge} className="flex-shrink-0">{act.status}</Badge>
                         </li>
                       );
                     })}
@@ -301,6 +327,7 @@ export const StaffDashboard = ({ role }) => {
               <SectionCard
                 id="books-by-genre"
                 className="xl:col-span-7"
+                bodyClassName="flex flex-col"
                 title="Books by genre"
                 subtitle="Active titles or real loans · select a genre to manage it"
                 action={<SectionLink to={`${base}/books`}>All books</SectionLink>}
@@ -311,7 +338,7 @@ export const StaffDashboard = ({ role }) => {
                     <Skeleton lines={6} className="h-5 w-full" />
                   </div>
                 ) : (a.booksByGenre || []).every((g) => !g.count) ? (
-                  <EmptyState bare icon="📚" title="No books yet" message="Add books to see the genre mix." />
+                  <CompactEmpty icon={DASH_ICONS.library} tone="indigo" title="No books yet" message="Add books to see the genre mix." />
                 ) : (
                   <GenreDoughnut catalogue={a.booksByGenre} borrowed={a.borrowedByGenre} onSelect={(g) => navigate(`${base}/books?genre=${encodeURIComponent(g)}`)} />
                 )}
@@ -319,11 +346,11 @@ export const StaffDashboard = ({ role }) => {
 
               <div className="flex min-w-0 flex-col gap-5 xl:col-span-5">
               {/* Fines summary */}
-              <SectionCard id="fines-summary" title="Fines" subtitle="Collected, still owed and growing" action={<SectionLink to={`${base}/reports`}>Reports</SectionLink>}>
+              <SectionCard id="fines-summary" bodyClassName="fines-wrap" title="Fines" subtitle="Collected, still owed and growing" action={<SectionLink to={`${base}/reports`}>Reports</SectionLink>}>
                 {isLoading ? (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
+                  <div className="fines-stats">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="fines-stats">
                     <AmountStat label="Collected" value={formatRupees(fines.collected)} tone="text-emerald-300" hint="verified payments, net of waivers" />
                     <AmountStat label="Outstanding" value={formatRupees(fines.outstanding)} tone="text-rose-300"
                       hint={`${formatRupees(fines.outstandingFixed)} fixed · ${formatRupees(fines.accruing)} accruing`} />
@@ -333,8 +360,9 @@ export const StaffDashboard = ({ role }) => {
               </SectionCard>
 
               {/* Quick actions */}
-              <SectionCard id="quick-actions" className="flex-1" title="Quick actions">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <SectionCard id="quick-actions" className="flex-1" bodyClassName="flex flex-col" title="Quick actions">
+                {/* Tiles share the card's height (equal rows), so the column ends level with the genre card */}
+                <div className="grid flex-1 auto-rows-fr grid-cols-1 gap-3 sm:grid-cols-2">
                   <QuickTile icon={DASH_ICONS.plus} label="Add book" hint="New title in the catalogue" to={`${base}/books/add`} tone="indigo" />
                   <QuickTile icon={DASH_ICONS.book} label="Issue book" hint="Desk issue to a student" onClick={() => setIssueOpen(true)} tone="emerald" />
                   {role === 'admin' && <QuickTile icon={DASH_ICONS.userPlus} label="Add user" hint="Student, librarian or admin" to="/admin/users" tone="violet" />}

@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Book = require('../models/Book');
 const Transaction = require('../models/Transaction');
+const Reservation = require('../models/Reservation');
 const { getUserNotifications } = require('./notificationController');
 const { runReminders } = require('../jobs/reminders');
 const { calculateFine, getDaysOverdue, startOfDay, payableFineOf } = require('../utils/fineCalculator');
@@ -405,6 +406,35 @@ exports.getDashboard = async (req, res, next) => {
       });
     }
 
+    // 7b. Staff hero: loans issued per day for the last 14 days (local days, oldest first),
+    //     issued loans due today, and reservations holding a copy for pickup
+    const DAILY_DAYS = 14;
+    const dailyStart = startOfDay(now);
+    dailyStart.setDate(dailyStart.getDate() - (DAILY_DAYS - 1));
+    // KPI row: reservations still active (waiting + ready) and students with a loan issued in the last 30 days
+    const memberSince = startOfDay(now);
+    memberSince.setDate(memberSince.getDate() - 30);
+    const [dailyLoans, dueToday, readyReservations, activeReservations, recentBorrowerIds] = await Promise.all([
+      Transaction.find({ issueDate: { $gte: dailyStart }, status: { $in: LOAN_STATUSES } })
+        .select('issueDate')
+        .lean(),
+      Transaction.countDocuments({ status: 'issued', dueDate: { $gte: startOfToday, $lte: endOfToday } }),
+      Reservation.countDocuments({ status: 'ready' }),
+      Reservation.countDocuments({ status: { $in: Reservation.ACTIVE_STATUSES } }),
+      Transaction.distinct('userId', { issueDate: { $gte: memberSince }, status: { $in: LOAN_STATUSES } }),
+    ]);
+    const activeMembers = await User.countDocuments({ _id: { $in: recentBorrowerIds }, role: 'student' });
+    const issuedDaily = Array.from({ length: DAILY_DAYS }, (_, i) => {
+      const d = new Date(dailyStart);
+      d.setDate(d.getDate() + i);
+      return { date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, count: 0, start: d.getTime() };
+    });
+    dailyLoans.forEach((t) => {
+      const i = Math.floor((startOfDay(t.issueDate).getTime() - dailyStart.getTime()) / 86400000 + 0.5); // DST-safe
+      if (issuedDaily[i]) issuedDaily[i].count += 1;
+    });
+    issuedDaily.forEach((d) => delete d.start);
+
     // 8. Fines summary (server values): paid fines (minus waivers), fixed fines still payable
     //    after waivers, fines waived, and fines still growing on issued overdue loans
     const NET_FINE = { $max: [0, { $subtract: ['$fineAmount', { $ifNull: ['$fineWaived', 0] }] }] };
@@ -451,6 +481,11 @@ exports.getDashboard = async (req, res, next) => {
         booksByGenre,
         borrowedByGenre,
         weeklyData,
+        issuedDaily,
+        dueToday,
+        readyReservations,
+        activeReservations,
+        activeMembers,
       },
     });
   } catch (error) {

@@ -9,7 +9,7 @@ import { CoverImage } from '../components/CoverImage';
 import { Badge, EmptyState, Skeleton } from '../components/UI';
 import { DashboardHero } from '../components/dashboard/DashboardHero';
 import {
-  AmountStat, DASH_ICONS, DashTabs, KpiLink, QuickTile, SectionCard, SectionLink, formatRupees,
+  AmountStat, CompactEmpty, DASH_ICONS, DashTabs, KpiLink, QuickTile, SectionCard, SectionLink, formatRupees,
 } from '../components/dashboard/DashboardKit';
 import { formatDate } from '../utils/dateUtils';
 import { ACTIVE_LOAN_STATUSES } from '../hooks/useActiveBookIds';
@@ -47,6 +47,31 @@ const LoanBadge = ({ t }) => {
   if (d <= DUE_SOON_DAYS) return <Badge variant="warning">Due in {plural(d, 'day')}</Badge>;
   return <Badge variant="primary">Issued</Badge>;
 };
+
+const UP_NEXT_LIMIT = 4;
+const dueWhen = (d) => (d < 0 ? `${plural(-d, 'day')} overdue` : d === 0 ? 'due today' : `in ${plural(d, 'day')}`);
+
+/** "Up next": issued loans by due date, nearest (or most overdue) first, on a dotted line */
+const UpNext = ({ loans }) => (
+  <ol className="relative ml-1.5 border-l border-white/10 pl-5" aria-label="Upcoming due dates">
+    {loans.map((t) => {
+      const d = num(t.daysRemaining);
+      const tone = d < 0 ? 'bg-rose-400 ring-rose-400/25' : d <= DUE_SOON_DAYS ? 'bg-amber-300 ring-amber-300/25' : 'bg-indigo-300 ring-indigo-300/20';
+      const book = bookOf(t);
+      return (
+        <li key={t._id} className="relative py-2 first:pt-0.5 last:pb-0.5">
+          <span className={`absolute -left-[26px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full ring-4 ${tone}`} aria-hidden="true" />
+          <Link to={book._id ? `/student/books/${book._id}` : '/student/my-books?tab=issued'} className="block min-w-0 rounded-lg transition-colors hover:text-white">
+            <span className="block truncate text-sm font-semibold text-slate-100">{book.title || 'A book'}</span>
+            <span className={`block text-[11px] ${d < 0 ? 'font-semibold text-rose-300' : 'text-slate-400'}`}>
+              {formatDate(t.dueDate)} · {dueWhen(d)}
+            </span>
+          </Link>
+        </li>
+      );
+    })}
+  </ol>
+);
 
 const BookRowSkeleton = () => (
   <div className="dash-book-row" aria-hidden="true">
@@ -149,7 +174,11 @@ export const Dashboard = () => {
       .filter((t) => LOAN_STATUSES.includes(t.status))
       .sort((x, y) => new Date(y.issueDate || y.createdAt) - new Date(x.issueDate || x.createdAt))
       .slice(0, 5);
+    // Up next: books with the student now, most overdue / nearest due date first
+    const upNext = [...issued].sort((x, y) => num(x.daysRemaining) - num(y.daysRemaining)).slice(0, UP_NEXT_LIMIT);
     return {
+      upNext,
+      hasLoans: transactions.some((t) => LOAN_STATUSES.includes(t.status) || t.status === 'pending'),
       issued: issued.length,
       pendingRequests: transactions.filter((t) => t.status === 'pending').length,
       overdue,
@@ -226,7 +255,7 @@ export const Dashboard = () => {
             {loading ? (
               <Skeleton lines={3} className="h-5 w-full" />
             ) : txError ? (
-              <EmptyState bare icon="⚠️" title="Couldn't load your loans" message={txError} />
+              <CompactEmpty icon={DASH_ICONS.alert} tone="rose" title="Couldn't load your loans" message={txError} role="alert" />
             ) : (
               <div className="space-y-3">
                 {readyReservations.map((r) => (
@@ -307,11 +336,11 @@ export const Dashboard = () => {
               {current.loading ? (
                 <BookRowSkeleton />
               ) : current.error ? (
-                <EmptyState bare icon="⚠️" title="Couldn't load books" message={current.error} />
+                <CompactEmpty icon={DASH_ICONS.alert} tone="rose" title="Couldn't load books" message={current.error} role="alert" />
               ) : current.books.length === 0 ? (
-                <EmptyState
-                  bare
-                  icon={discoverTab === 'popular' ? '📈' : '✨'}
+                <CompactEmpty
+                  icon={discoverTab === 'popular' ? DASH_ICONS.chart : DASH_ICONS.search}
+                  tone="slate"
                   title={genre ? `Nothing here for ${genre}` : 'Nothing to show yet'}
                   message={discoverTab === 'picked'
                     ? 'Add favourite genres in Settings to get picks.'
@@ -342,12 +371,13 @@ export const Dashboard = () => {
             </div>
           </SectionCard>
 
-          {/* My loans */}
-          <SectionCard id="my-loans" className="xl:col-span-4" title="My loans" subtitle="Latest 5" action={<SectionLink to="/student/my-books">View all</SectionLink>}>
+          {/* My loans + Up next: the column ends level with Discover */}
+          <div className="flex min-w-0 flex-col gap-5 xl:col-span-4">
+          <SectionCard id="my-loans" title="My loans" subtitle="Latest 5" action={<SectionLink to="/student/my-books">View all</SectionLink>}>
             {loading ? (
               <Skeleton lines={4} className="h-14 w-full" />
             ) : s.loans.length === 0 ? (
-              <EmptyState bare icon="📚" title="No loans yet" message="Request a book and it shows up here." />
+              <CompactEmpty icon={DASH_ICONS.book} tone="indigo" title="No loans yet" message="Request a book and it shows up here." />
             ) : (
               <ul className="divide-y divide-border">
                 {s.loans.map((t) => {
@@ -373,12 +403,33 @@ export const Dashboard = () => {
             )}
           </SectionCard>
 
-          {/* Fines */}
-          <SectionCard id="fine-summary" className="xl:col-span-6" title="Fines" subtitle="₹5 per day late" action={<SectionLink to="/student/fines">Details</SectionLink>}>
+          <SectionCard id="up-next" className="flex-1" title="Up next" subtitle="Due dates, nearest first" action={<SectionLink to="/student/my-books?tab=issued">My books</SectionLink>}>
             {loading ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
+              <Skeleton lines={3} className="h-9 w-full" />
+            ) : txError ? (
+              <CompactEmpty icon={DASH_ICONS.alert} tone="rose" title="Couldn't load your due dates" message={txError} role="alert" />
+            ) : !s.hasLoans ? (
+              <EmptyState
+                bare
+                icon={<span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-indigo-400/25 bg-indigo-500/10 text-indigo-300">{DASH_ICONS.library}</span>}
+                title="Your shelf is empty"
+                message="Borrow a book and its due date shows up here."
+                action={<Link to="/student/books" className="btn-primary min-h-[40px] px-4 text-sm">Browse books</Link>}
+              />
+            ) : s.upNext.length === 0 ? (
+              <CompactEmpty title="Nothing due right now" message="You have no books out. Due dates appear here when you borrow." />
             ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <UpNext loans={s.upNext} />
+            )}
+          </SectionCard>
+          </div>
+
+          {/* Fines */}
+          <SectionCard id="fine-summary" className="xl:col-span-6" bodyClassName="fines-wrap" title="Fines" subtitle="₹5 per day late" action={<SectionLink to="/student/fines">Details</SectionLink>}>
+            {loading ? (
+              <div className="fines-stats">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
+            ) : (
+              <div className="fines-stats">
                 <AmountStat label="Total charged" value={formatRupees(s.paid + s.pending + s.waived)} hint={s.waived ? `incl. ${formatRupees(s.waived)} waived` : 'paid + pending'} />
                 <AmountStat label="Paid" value={formatRupees(s.paid)} tone="text-emerald-300" hint="verified by the library" />
                 <AmountStat

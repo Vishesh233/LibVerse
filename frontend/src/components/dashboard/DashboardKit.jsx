@@ -52,7 +52,7 @@ export const IconTile = ({ icon, tone = 'indigo', className = 'h-11 w-11' }) => 
 
 /** A dashboard block: glass card with a title row (optional subtitle and action) */
 export const SectionCard = ({ title, subtitle, action, children, className = '', bodyClassName = '', id }) => (
-  <Card variant="glass" className={`dash-section flex min-w-0 flex-col !p-5 ${className}`} aria-labelledby={id ? `${id}-title` : undefined} role={id ? 'region' : undefined}>
+  <Card variant="glass" id={id} className={`dash-section flex min-w-0 flex-col !p-5 ${className}`} aria-labelledby={id ? `${id}-title` : undefined} role={id ? 'region' : undefined}>
     {(title || action) && (
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -147,9 +147,24 @@ export const QuickTile = ({ icon, label, hint, tone = 'indigo', onClick, to, dis
   );
 };
 
+/**
+ * Compact empty state for dashboard cards: an inline SVG icon in a tinted tile, a title and one
+ * line of text, side by side (no tall empty card, no emoji). tone: a TONES key (emerald = success).
+ */
+export const CompactEmpty = ({ icon = DASH_ICONS.check, tone = 'emerald', title, message, action, role }) => (
+  <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border px-3 py-3.5" role={role}>
+    <IconTile icon={icon} tone={tone} className="h-10 w-10" />
+    <div className="min-w-0 flex-1">
+      <p className="text-sm font-semibold text-slate-100">{title}</p>
+      {message && <p className="text-xs leading-snug text-slate-400">{message}</p>}
+    </div>
+    {action && <div className="flex-shrink-0">{action}</div>}
+  </div>
+);
+
 /** Amount row for fine summaries */
 export const AmountStat = ({ label, value, tone = 'text-slate-50', hint }) => (
-  <div className="min-w-0 rounded-2xl border border-border bg-white/[0.03] p-3">
+  <div className="amount-stat min-w-0 rounded-2xl border border-border bg-white/[0.03] p-3">
     <p className="text-[11px] font-semibold uppercase leading-tight tracking-[0.12em] text-muted">{label}</p>
     <p className={`mt-1 font-display text-xl font-bold leading-tight ${tone}`}>{value}</p>
     {hint && <p className="mt-0.5 text-[11px] leading-snug text-slate-400">{hint}</p>}

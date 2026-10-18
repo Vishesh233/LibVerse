@@ -227,7 +227,9 @@ export const PendingRequests = () => {
           {ALL_TABS.map((t) => (
             <button
               key={t.key}
+              type="button"
               onClick={() => setActiveTab(t.key)}
+              aria-pressed={activeTab === t.key}
               className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
                 activeTab === t.key
                   ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'

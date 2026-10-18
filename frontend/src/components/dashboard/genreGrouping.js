@@ -1,27 +1,33 @@
 /**
- * Groups genre counts for the doughnut: at most MAX_SHOWN genres by count (ties by name),
- * everything else in "Others". A genre under MIN_SHARE of the total always goes to Others,
- * even when it would be in the top MAX_SHOWN, unless it would be the only genre in Others
- * (then it gets its own slice). Genres with 0 are left out entirely.
- * Returns { total, shown, others, othersTotal }; others is [] when nothing is grouped.
+ * Groups genre counts for the doughnut (genres with 0 are left out entirely):
+ * - A genre goes to "Others" only when its share is under MIN_SHARE of the total.
+ * - Only if that still leaves more than MAX_SLICES slices are the MAX_SLICES - 1 largest kept and
+ *   the rest grouped into Others too.
+ * - Never an "Others" with a single genre: a lone leftover gets its own slice.
+ * Order: by count, ties by name. Returns { total, shown, others, othersTotal }; others is [] when
+ * nothing is grouped.
  */
-export const MAX_SHOWN = 7;
 export const MIN_SHARE = 0.03;
+export const MAX_SLICES = 18; // the catalogue's genre list; grouping by size only starts beyond it
+
+const byCount = (a, b) => b.count - a.count || a.genre.localeCompare(b.genre);
 
 export const groupGenres = (data = []) => {
-  const sorted = data
-    .filter((d) => d.count > 0)
-    .sort((a, b) => b.count - a.count || a.genre.localeCompare(b.genre));
+  const sorted = data.filter((d) => d.count > 0).sort(byCount);
   const total = sorted.reduce((sum, d) => sum + d.count, 0);
 
-  const shown = [];
-  const others = [];
-  sorted.forEach((d) => {
-    if (shown.length < MAX_SHOWN && d.count / total >= MIN_SHARE) shown.push(d);
-    else others.push(d);
-  });
-  // Never an "Others (1 genre)": a lone leftover genre gets its own slice
-  if (others.length === 1) shown.push(others.pop());
+  let shown = sorted.filter((d) => d.count / total >= MIN_SHARE);
+  let others = sorted.filter((d) => d.count / total < MIN_SHARE);
+
+  if (shown.length + (others.length ? 1 : 0) > MAX_SLICES) {
+    others = [...shown.slice(MAX_SLICES - 1), ...others];
+    shown = shown.slice(0, MAX_SLICES - 1);
+  }
+  // A lone leftover genre gets its own slice (only possible when nothing was capped)
+  if (others.length === 1) {
+    shown = [...shown, ...others].sort(byCount);
+    others = [];
+  }
 
   return { total, shown, others, othersTotal: others.reduce((sum, d) => sum + d.count, 0) };
 };

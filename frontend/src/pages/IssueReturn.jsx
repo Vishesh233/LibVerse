@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminAPI, booksAPI, transactionsAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
@@ -7,7 +8,9 @@ import { CoverImage } from '../components/CoverImage';
 import { Avatar } from '../components/Avatar';
 
 export const IssueReturn = () => {
-  const [activeTab, setActiveTab] = useState('issue'); // 'issue' or 'return'
+  // 'issue' or 'return'; ?tab=return opens the return list (dashboard "Due today")
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => (searchParams.get('tab') === 'return' ? 'return' : 'issue'));
   const [students, setStudents] = useState([]);
   const [books, setBooks] = useState([]);
   const [issuedTransactions, setIssuedTransactions] = useState([]);

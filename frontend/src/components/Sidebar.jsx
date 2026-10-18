@@ -1,13 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useNotification } from '../hooks/useNotification';
-import { transactionsAPI } from '../services/api';
 import { LogoMark } from './LogoMark';
-
-// Statuses that need staff action; their sum is shown on the "Requests" menu item
-const REQUEST_STATUSES = ['pending', 'return_requested', 'payment_pending'];
-const REQUEST_COUNT_REFRESH_MS = 60 * 1000;
 
 const SCAN_ICON = (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -16,43 +10,11 @@ const SCAN_ICON = (
   </svg>
 );
 
-const useRequestCount = (enabled) => {
-  const [count, setCount] = useState(null);
-  const location = useLocation();
-
-  useEffect(() => {
-    if (!enabled) return undefined;
-    let cancelled = false;
-
-    const load = async () => {
-      try {
-        // limit 1: only the pagination total is needed, not the lists
-        const responses = await Promise.all(
-          REQUEST_STATUSES.map((status) => transactionsAPI.getAllTransactions({ status, limit: 1 }))
-        );
-        const total = responses.reduce((sum, res) => sum + (res.data?.total ?? res.data?.transactions?.length ?? 0), 0);
-        if (!cancelled) setCount(total);
-      } catch (err) {
-        if (!cancelled) setCount(null); // hide the badge rather than show a wrong number
-      }
-    };
-
-    load();
-    const timer = setInterval(load, REQUEST_COUNT_REFRESH_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [enabled, location.pathname]);
-
-  return count;
-};
-
 export const Sidebar = ({ onNavigate }) => {
   const { user, isAdmin, isLibrarian, logout } = useAuth();
   const navigate = useNavigate();
-  const requestCount = useRequestCount(isAdmin || isLibrarian);
-  const { unreadCount } = useNotification();
+  // Not in the menu: Notifications (the header bell shows the unread count and opens the panel)
+  // and Requests (the staff dashboard hero shows what is waiting and links to it)
 
   const handleLogoClick = () => {
     if (user?.role === 'student') {
@@ -112,15 +74,6 @@ export const Sidebar = ({ onNavigate }) => {
       ),
     },
     {
-      label: 'Notifications',
-      to: '/student/notifications',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
-      ),
-    },
-    {
       label: 'Settings',
       to: '/student/profile',
       icon: (
@@ -175,15 +128,6 @@ export const Sidebar = ({ onNavigate }) => {
       ),
     },
     {
-      label: 'Requests',
-      to: '/librarian/pending',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M16 17l-4 4m0 0l-4-4m4 4V3" />
-        </svg>
-      ),
-    },
-    {
       label: 'Analytics',
       to: '/librarian/analytics',
       icon: (
@@ -198,15 +142,6 @@ export const Sidebar = ({ onNavigate }) => {
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Notifications',
-      to: '/librarian/notifications',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
       ),
     },
@@ -256,15 +191,6 @@ export const Sidebar = ({ onNavigate }) => {
       icon: SCAN_ICON,
     },
     {
-      label: 'Requests',
-      to: '/admin/pending',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M16 17l-4 4m0 0l-4-4m4 4V3" />
-        </svg>
-      ),
-    },
-    {
       label: 'Users',
       to: '/admin/users',
       icon: (
@@ -301,15 +227,6 @@ export const Sidebar = ({ onNavigate }) => {
       ),
     },
     {
-      label: 'Notifications',
-      to: '/admin/notifications',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
-      ),
-    },
-    {
       label: 'Settings',
       to: '/admin/profile',
       icon: (
@@ -342,8 +259,6 @@ export const Sidebar = ({ onNavigate }) => {
 
         <nav className="space-y-1" aria-label="Main">
           {navItems.map((item) => {
-            const badge = item.to.endsWith('/pending') ? requestCount : item.to.endsWith('/notifications') ? unreadCount : 0;
-            const showCount = badge > 0;
             return (
               <NavLink
                 key={item.to}
@@ -363,14 +278,6 @@ export const Sidebar = ({ onNavigate }) => {
                   <>
                     <span className={`grid h-5 w-5 flex-shrink-0 place-items-center ${isActive ? 'text-indigo-300' : 'text-slate-400'}`}>{item.icon}</span>
                     <span className="flex-1 truncate">{item.label}</span>
-                    {showCount && (
-                      <span
-                        className="min-w-[1.5rem] rounded-full border border-cyan-400/30 bg-cyan-400/15 px-2 py-0.5 text-center text-xs font-bold text-cyan-200"
-                        aria-label={item.to.endsWith('/notifications') ? `${badge} unread` : `${badge} waiting`}
-                      >
-                        {badge > 99 ? '99+' : badge}
-                      </span>
-                    )}
                   </>
                 )}
               </NavLink>

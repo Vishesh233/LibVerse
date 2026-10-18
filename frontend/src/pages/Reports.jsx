@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { adminAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
 import { Badge, Button, EmptyState, PageHeader } from '../components/UI';
@@ -65,6 +65,15 @@ export const Reports = () => {
       });
     return () => controller.abort();
   }, [canAccess, range.from, range.to, reloadKey]);
+
+  // #rep-overdue (dashboard "Overdue now") etc.: scroll to that section once the data is shown
+  const hashScrolled = useRef(false);
+  useEffect(() => {
+    if (!data || hashScrolled.current || !window.location.hash) return;
+    hashScrolled.current = true;
+    const el = document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ block: 'start' }));
+  }, [data]);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
   const fileName = (name) => `libverse-${name}-${range.from}-to-${range.to}.csv`;

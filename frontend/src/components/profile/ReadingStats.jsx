@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { EmptyState, Skeleton } from '../UI';
-import { AmountStat } from '../dashboard/DashboardKit';
+import { AmountStat, CompactEmpty, DASH_ICONS } from '../dashboard/DashboardKit';
 import { EChart, CHART_THEME, axisDefaults } from '../analytics/EChart';
 import { getGenreAccent } from '../../constants/genres';
 
@@ -22,12 +22,12 @@ const monthSummary = (stats) => {
   } ${months.map((m) => `${m.label}: ${m.count}`).join(', ')}.`;
 };
 
-const NothingRead = ({ compact }) => (
+const NothingRead = () => (
   <EmptyState
     bare
     icon="📖"
     title="No books read yet"
-    message={compact ? 'Return a book and your reading stats start here.' : 'Your reading stats appear once you return your first book.'}
+    message="Your reading stats appear once you return your first book."
     action={<Link to="/student/books" className="btn-secondary min-h-[36px] px-3 text-xs">Browse books</Link>}
   />
 );
@@ -53,8 +53,18 @@ const MonthBars = ({ months }) => {
 /** Dashboard card body */
 export const ReadingStatsCompact = ({ stats, loading, error }) => {
   if (loading) return <div className="grid grid-cols-3 gap-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>;
-  if (error) return <EmptyState bare icon="⚠️" title="Couldn't load your reading stats" message={error} />;
-  if (!stats || stats.totalRead === 0) return <NothingRead compact />;
+  if (error) return <CompactEmpty icon={DASH_ICONS.alert} tone="rose" title="Couldn't load your reading stats" message={error} role="alert" />;
+  if (!stats || stats.totalRead === 0) {
+    return (
+      <CompactEmpty
+        icon={DASH_ICONS.book}
+        tone="indigo"
+        title="No books read yet"
+        message="Return a book and your reading stats start here."
+        action={<Link to="/student/books" className="btn-secondary min-h-[36px] px-3 text-xs">Browse</Link>}
+      />
+    );
+  }
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
