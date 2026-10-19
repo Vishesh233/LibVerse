@@ -1,0 +1,1930 @@
+[
+  {
+    "_id": "6a789c8817be87536c3a052c",
+    "title": "1776",
+    "author": "David McCullough",
+    "isbn": "9780743226721",
+    "publicationYear": 2005,
+    "description": "McCullough follows the American Revolution through a single pivotal year, tracing George Washington's untested army from the siege of Boston through defeats in New York to the surprise victory at Trenton. British commanders and ordinary soldiers on both sides receive close attention alongside the generals. Readers who enjoy narrative history built on letters and diaries will find a vivid, well-paced account of how near the cause came to collapse."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e4e",
+    "title": "1984",
+    "author": "George Orwell",
+    "isbn": "9780451524935",
+    "publicationYear": 1949,
+    "description": "Winston Smith works at the Ministry of Truth in Oceania, a totalitarian state where the Party rewrites history, monitors citizens constantly and polices even private thought. His quiet rebellion, including a forbidden love affair, sets him against a regime that demands total loyalty. Orwell's dystopian novel remains a key reference point for discussions of surveillance, propaganda and the manipulation of language and truth."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e5f",
+    "title": "21 Lessons for the 21st Century",
+    "author": "Yuval Noah Harari",
+    "isbn": "9780525512172",
+    "publicationYear": 2018,
+    "description": "Harari turns from the distant past to the present, examining the pressing questions facing humanity now. Chapters cover artificial intelligence and automation, the erosion of liberal democracy, nationalism, religion, terrorism, fake news and how to educate children for an uncertain future. Written as a series of short essays, it suits general readers who want a broad, provocative framework for thinking about current global challenges."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e59",
+    "title": "A Brief History of Time",
+    "author": "Stephen Hawking",
+    "isbn": "9780553380163",
+    "publicationYear": 1988,
+    "description": "Hawking's popular account of cosmology traces how human understanding of the universe developed, from early models of the heavens through Newton and Einstein to modern ideas about the Big Bang and black holes. Along the way it explains how scientific thinking about space and time changed over centuries. Readers interested in the history of ideas will find an accessible overview written with almost no mathematics."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e68",
+    "title": "A Brief History of Time",
+    "author": "Stephen Hawking",
+    "isbn": "9780553380164",
+    "publicationYear": 1988,
+    "description": "Written for non-specialists, Hawking's book explains major concepts in modern physics, including relativity, quantum mechanics, black holes, the expanding universe and the search for a unified theory. Equations are kept to a minimum, with ideas conveyed through clear explanation and analogy. It suits curious readers who want to understand the big questions about the origin, structure and possible fate of the cosmos."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0532",
+    "title": "A People's History of the United States",
+    "author": "Howard Zinn",
+    "isbn": "9780062397348",
+    "publicationYear": 2015,
+    "description": "Zinn retells American history from the viewpoint of groups often left out of standard textbooks, including Indigenous peoples, enslaved Africans, women, workers and immigrants. The narrative runs from Columbus to the modern era, emphasising protest movements, labour struggles and resistance to power. It offers a deliberately critical counterpoint to traditional accounts and suits readers who want to examine history from the bottom up."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e83",
+    "title": "A Random Walk Down Wall Street",
+    "author": "Burton G. Malkiel",
+    "isbn": "9781324002186",
+    "publicationYear": 2019,
+    "description": "Malkiel makes the case that stock prices are hard to predict and that most investors are better served by low-cost, broadly diversified index funds than by trying to beat the market. He reviews technical and fundamental analysis, market bubbles, behavioural finance and asset allocation across life stages. Individual investors looking for a reasoned, long-term approach to building wealth will find practical guidance here."
+  },
+  {
+    "_id": "6a789c8817be87536c3a054e",
+    "title": "A Short History of Nearly Everything",
+    "author": "Bill Bryson",
+    "isbn": "9780767908184",
+    "publicationYear": 2003,
+    "description": "Bryson sets out to understand how scientists know what they know, covering the origins of the universe, the age of the Earth, atoms, evolution, geology and the emergence of human beings. Much of the appeal lies in the stories of the often eccentric researchers behind major discoveries. Written with humour and curiosity, it works well for general readers wanting a wide-ranging introduction to science."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04ea",
+    "title": "Accelerate",
+    "author": "Nicole Forsgren",
+    "isbn": "9781942788331",
+    "publicationYear": 2018,
+    "description": "Drawing on several years of survey research into software delivery, Forsgren, Humble and Kim identify the practices that distinguish high-performing technology organisations. The book explains measures such as deployment frequency, lead time, change failure rate and time to restore service, and links them to capabilities in architecture, culture and continuous delivery. Engineering leaders and DevOps practitioners will find evidence-based guidance for improving delivery performance."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0574",
+    "title": "Alexander Hamilton",
+    "author": "Ron Chernow",
+    "isbn": "9780143034759",
+    "publicationYear": 2005,
+    "description": "Chernow traces the life of Alexander Hamilton from his difficult childhood in the Caribbean to his role as Washington's aide, co-author of the Federalist Papers and first Secretary of the Treasury. The biography examines his financial system, political rivalries with Jefferson and Adams, personal scandals and fatal duel with Aaron Burr. Readers interested in the founding of the United States will find a detailed, richly documented portrait."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0488",
+    "title": "Algorithms",
+    "author": "Robert Sedgewick",
+    "isbn": "9780321573513",
+    "publicationYear": 2011,
+    "description": "Sedgewick and Wayne present the essential algorithms and data structures every programmer should know, including sorting, searching, symbol tables, graphs and string processing. Implementations are given in Java, with an emphasis on performance analysis and scientific study of running times. Undergraduate students and self-taught developers will find a practical, well-illustrated textbook that connects theory to real code."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e57",
+    "title": "Animal Farm",
+    "author": "George Orwell",
+    "isbn": "9780451526342",
+    "publicationYear": 1945,
+    "description": "Orwell's short allegorical fable tells of farm animals who overthrow their human owner hoping to create a society of equals. Over time the pigs take control, and the revolution's ideals are gradually twisted into a new form of tyranny. Read as a satire of the Russian Revolution and Stalinism, it suits readers of all ages interested in power, propaganda and political corruption."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e74",
+    "title": "Artificial Intelligence: A Modern Approach",
+    "author": "Stuart Russell",
+    "isbn": "9780134610993",
+    "publicationYear": 2020,
+    "description": "Russell and Norvig provide a comprehensive textbook on artificial intelligence built around the idea of rational agents. Topics include search, logic, planning, probabilistic reasoning, machine learning, deep learning, natural language processing, robotics and the ethics of AI. Widely used in university courses, it suits students and practitioners who want a rigorous, broad grounding in both classical and modern approaches to the field."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0556",
+    "title": "Astrophysics for People in a Hurry",
+    "author": "Neil deGrasse Tyson",
+    "isbn": "9780393609394",
+    "publicationYear": 2017,
+    "description": "Tyson offers a compact tour of the universe in a series of short chapters on the Big Bang, gravity, light, dark matter, dark energy, galaxies and the search for exoplanets. Each topic is explained in plain language with occasional humour. Busy readers who want a quick, accessible overview of what modern astrophysics has discovered will find it easy to read in short sittings."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e60",
+    "title": "Atomic Habits",
+    "author": "James Clear",
+    "isbn": "9780735211292",
+    "publicationYear": 2018,
+    "description": "Clear argues that small, consistent improvements compound over time into significant results. He presents a practical framework for building good habits and breaking bad ones by making cues obvious, cravings attractive, responses easy and rewards satisfying, and stresses the role of identity in lasting change. Readers seeking concrete, actionable techniques for personal growth, productivity or health will find clear examples throughout."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04fe",
+    "title": "Awaken the Giant Within",
+    "author": "Tony Robbins",
+    "isbn": "9780671791544",
+    "publicationYear": 1992,
+    "description": "Robbins presents strategies for taking control of emotions, finances, relationships and physical health. Central themes include the power of decisions, changing limiting beliefs, the questions people habitually ask themselves and conditioning new emotional patterns. Structured with exercises and practical steps, it suits readers looking for a structured self-improvement programme focused on goal setting and personal change."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e7b",
+    "title": "Becoming",
+    "author": "Michelle Obama",
+    "isbn": "9781524763138",
+    "publicationYear": 2018,
+    "description": "Michelle Obama recounts her life from a working-class childhood on Chicago's South Side through Princeton, Harvard Law School and a career in law and public service. She describes balancing family with her husband's political rise and her eight years as First Lady. The memoir offers a personal perspective on identity, ambition, motherhood and public life, appealing to readers of biography and contemporary American history."
+  },
+  {
+    "_id": "6a789c8817be87536c3a05ac",
+    "title": "Blink",
+    "author": "Malcolm Gladwell",
+    "isbn": "9780316010665",
+    "publicationYear": 2007,
+    "description": "Gladwell explores rapid cognition, the snap judgements people make in the first moments of encountering something. Using examples from art authentication, speed dating, military exercises and emergency medicine, he examines when quick intuitive decisions outperform careful analysis and when they lead to bias and error. General readers interested in psychology and decision-making will find an engaging, story-driven introduction to the topic."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e76",
+    "title": "Blockchain Basics",
+    "author": "Daniel Drescher",
+    "isbn": "9781484226032",
+    "publicationYear": 2017,
+    "description": "Drescher explains how blockchain technology works without requiring a background in mathematics or programming. Concepts such as hashing, cryptographic signatures, distributed ledgers, consensus and mining are introduced step by step in short, focused chapters. Managers, students and curious readers who want to understand the underlying ideas behind cryptocurrencies and distributed ledgers will find a clear, non-technical starting point."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0566",
+    "title": "Blue Ocean Strategy",
+    "author": "W. Chan Kim",
+    "isbn": "9781625274496",
+    "publicationYear": 2015,
+    "description": "Kim and Mauborgne argue that companies grow most successfully not by fighting rivals in crowded markets but by creating uncontested market space where competition becomes irrelevant. They offer analytical tools such as the strategy canvas and the four actions framework, illustrated with case studies across many industries. Business leaders, entrepreneurs and strategy students will find a structured method for pursuing innovation in value."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e54",
+    "title": "Brave New World",
+    "author": "Aldous Huxley",
+    "isbn": "9780060850524",
+    "publicationYear": 1932,
+    "description": "Huxley imagines a future World State where people are engineered in laboratories, conditioned into fixed social castes and kept content through consumerism, casual sex and a drug called soma. Stability is achieved at the cost of art, family, individuality and deep feeling. When an outsider raised on a reservation enters this society, the novel questions what is lost in the pursuit of comfort and control."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04b2",
+    "title": "CCNA Routing and Switching",
+    "author": "Wendell Odom",
+    "isbn": "9781587205798",
+    "publicationYear": 2013,
+    "description": "Odom's certification guide prepares candidates for the Cisco CCNA Routing and Switching exams. It covers Ethernet LANs, switching, VLANs, IPv4 and IPv6 addressing and subnetting, routing protocols, access control lists and network troubleshooting. Practice questions, review exercises and configuration examples support structured study, making it suitable for networking students and IT professionals pursuing Cisco certification."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0502",
+    "title": "Can't Hurt Me",
+    "author": "David Goggins",
+    "isbn": "9781544512273",
+    "publicationYear": 2018,
+    "description": "Goggins describes his journey from a childhood marked by poverty, abuse and racism to becoming a Navy SEAL and endurance athlete. He argues that most people use only a fraction of their capacity and sets out mental strategies for pushing past discomfort and self-imposed limits. Each chapter ends with a personal challenge, aimed at readers seeking motivation built on discipline and resilience."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04e2",
+    "title": "Clean Agile",
+    "author": "Robert C. Martin",
+    "isbn": "9780135781869",
+    "publicationYear": 2019,
+    "description": "Martin revisits the original intentions behind agile software development, drawing on his involvement with its early days. He explains core practices such as short iterations, test-driven development, refactoring, pair programming and simple design, and explains how business and technical roles should work together. Developers and managers who want to understand agile principles beyond certifications and frameworks will find a direct, opinionated guide."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e4a",
+    "title": "Clean Architecture",
+    "author": "Robert C. Martin",
+    "isbn": "9780134494166",
+    "publicationYear": 2017,
+    "description": "Martin sets out principles for structuring software systems so that they remain flexible, testable and maintainable as they grow. Topics include the SOLID principles, component cohesion and coupling, dependency rules, boundaries and keeping business logic independent of frameworks, databases and user interfaces. Software developers and architects seeking a principled approach to long-term system design will find practical guidance and examples."
+  },
+  {
+    "_id": "6a799a496ae0f7abeb500fc7",
+    "title": "Clean Architecture",
+    "author": "Robert C. Martin",
+    "isbn": "9780134494166",
+    "publicationYear": 2017,
+    "description": "Good architecture, in Martin's view, allows key decisions about frameworks, databases and delivery mechanisms to be deferred while protecting core business rules. The book works from programming paradigms and SOLID design up to components, layers and boundaries, with case studies showing how the ideas apply. It suits experienced programmers moving into design and architecture responsibilities."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e44",
+    "title": "Clean Code",
+    "author": "Robert C. Martin",
+    "isbn": "9780132350884",
+    "publicationYear": 2008,
+    "description": "Martin presents practices for writing code that is easy to read, understand and change. Chapters address meaningful naming, small focused functions, comments, formatting, error handling, unit testing and class design, followed by case studies that refactor messy code step by step. Programmers at any stage who want to improve the quality and craftsmanship of their everyday code will find concrete, example-driven advice."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e4d",
+    "title": "Code Complete",
+    "author": "Steve McConnell",
+    "isbn": "9780735619678",
+    "publicationYear": 2004,
+    "description": "McConnell gathers research and practical experience on the construction phase of software development into a single comprehensive handbook. It covers design in construction, variable naming, routines, control structures, defensive programming, debugging, refactoring, code tuning and collaborative practices such as reviews. Developers of all levels will find a language-independent reference for writing better code, supported by checklists and many examples."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0494",
+    "title": "Compilers: Principles, Techniques, and Tools",
+    "author": "Alfred V. Aho",
+    "isbn": "9780321547989",
+    "publicationYear": 2006,
+    "description": "Commonly known as the Dragon Book, Aho and colleagues' text is a standard reference on compiler design. It covers lexical analysis, parsing, syntax-directed translation, type checking, intermediate code generation, runtime environments, code generation and optimisation. Computer science students and engineers working on programming languages or tools will find a thorough treatment of both theory and implementation techniques."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0496",
+    "title": "Computer Architecture: A Quantitative Approach",
+    "author": "John L. Hennessy",
+    "isbn": "9780128119051",
+    "publicationYear": 2017,
+    "description": "Hennessy and Patterson analyse computer design using quantitative measures of performance, cost and power. Topics include instruction-level parallelism, memory hierarchy, data-level and thread-level parallelism, warehouse-scale computers and domain-specific architectures. Aimed at graduate students and practising engineers, it offers an in-depth, data-driven view of how modern processors and systems are designed and evaluated."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e8b",
+    "title": "Computer Networking",
+    "author": "Andrew S. Tanenbaum",
+    "isbn": "9780132126953",
+    "publicationYear": 2016,
+    "description": "Tanenbaum's networking text works through the layers of a computer network from the physical medium up to applications. It explains data link protocols, medium access, routing, congestion control, transport protocols such as TCP and UDP, and application services, with attention to wireless networks and security. Students and professionals wanting a thorough, systematic grounding in how networks operate will find clear explanations and many real-world examples."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04ac",
+    "title": "Computer Networking: A Top-Down Approach",
+    "author": "James F. Kurose",
+    "isbn": "9780133594140",
+    "publicationYear": 2016,
+    "description": "Kurose and Ross introduce computer networking by starting at the application layer and working down through transport, network, link and physical layers. Familiar examples such as the web, email and DNS lead into deeper topics including TCP congestion control, routing algorithms, wireless and mobile networks and network security. Undergraduates and self-learners will find an approachable textbook with exercises and hands-on labs."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e8e",
+    "title": "Computer Organization and Design",
+    "author": "David A. Patterson",
+    "isbn": "9780124077263",
+    "publicationYear": 2013,
+    "description": "Patterson and Hennessy explain how computers work at the boundary between hardware and software. The book covers instruction sets, computer arithmetic, processor datapath and control, pipelining, memory hierarchy and parallel processors, using a real instruction set architecture throughout. It is well suited to undergraduate students in computer science and engineering who are taking a first course in computer architecture."
+  },
+  {
+    "_id": "6a789c8817be87536c3a048e",
+    "title": "Computer Systems: A Programmer's Perspective",
+    "author": "Randal E. Bryant",
+    "isbn": "9780134092669",
+    "publicationYear": 2015,
+    "description": "Bryant and O'Hallaron describe computer systems from the viewpoint of a programmer rather than a hardware designer. Topics include data representation, machine-level code, processor architecture, program optimisation, memory hierarchy, linking, exceptional control flow, virtual memory, system-level I/O, network programming and concurrency. Students and developers who want to write faster, more reliable programs by understanding what happens beneath their code will find it valuable."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04e6",
+    "title": "Continuous Delivery",
+    "author": "Jez Humble",
+    "isbn": "9780321601919",
+    "publicationYear": 2010,
+    "description": "Humble and Farley explain how to make software releases reliable, repeatable and low-risk through automation. The book introduces the deployment pipeline and covers version control, automated testing, continuous integration, configuration management, infrastructure and database changes. Developers, testers and operations staff looking to shorten the path from code commit to production will find a detailed and practical guide."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e69",
+    "title": "Cosmos",
+    "author": "Carl Sagan",
+    "isbn": "9780345539434",
+    "publicationYear": 1980,
+    "description": "Sagan takes readers on a journey through space and time, exploring the evolution of the universe, the formation of stars and planets, the origins of life and the history of scientific discovery. He links astronomy to human culture, philosophy and the future of civilisation. Written with warmth and wonder, it suits general readers who want a thoughtful introduction to our place in the cosmos."
+  },
+  {
+    "_id": "6a789c8817be87536c3a048c",
+    "title": "Cracking the Coding Interview",
+    "author": "Gayle Laakmann McDowell",
+    "isbn": "9780984782857",
+    "publicationYear": 2015,
+    "description": "McDowell, a former software engineering interviewer, prepares candidates for technical interviews at technology companies. The book reviews core data structures, algorithms and problem-solving strategies, and includes many programming questions with detailed solutions. Advice on behavioural questions, resumes and the hiring process is also included, making it useful for students and developers preparing for coding interviews."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04b4",
+    "title": "DNS and BIND",
+    "author": "Paul Albitz",
+    "isbn": "9780596100575",
+    "publicationYear": 2006,
+    "description": "Albitz and Liu explain the Domain Name System and how to run it using BIND, the widely used name server software. Topics include zone files, name server configuration, delegation, security, troubleshooting, dynamic updates and DNSSEC. System and network administrators responsible for maintaining DNS infrastructure will find a detailed reference combining conceptual explanation with practical configuration examples."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0540",
+    "title": "Daring Greatly",
+    "author": "Brené Brown",
+    "isbn": "9781592408412",
+    "publicationYear": 2012,
+    "description": "Brown draws on her research into shame and vulnerability to argue that willingness to be seen, take risks and face uncertainty is a source of courage, connection and creativity rather than weakness. She examines how shame shapes behaviour in families, schools and workplaces and suggests ways to build resilience against it. Readers interested in emotional wellbeing, parenting or leadership will find research-based insight."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04a0",
+    "title": "Database Design for Mere Mortals",
+    "author": "Michael J. Hernandez",
+    "isbn": "9780321884497",
+    "publicationYear": 2013,
+    "description": "Hernandez offers a practical introduction to relational database design that does not depend on any particular database product. He walks through gathering requirements, defining tables and fields, keys, relationships, business rules and views, with emphasis on sound structure and data integrity. Beginners, developers and business users who need to design reliable databases without heavy theory will find it approachable."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e8c",
+    "title": "Database System Concepts",
+    "author": "Abraham Silberschatz",
+    "isbn": "9780073523323",
+    "publicationYear": 2019,
+    "description": "Silberschatz, Korth and Sudarshan provide a comprehensive textbook on database systems. It covers the relational model, SQL, entity-relationship design, normalisation, storage and indexing, query processing and optimisation, transactions, concurrency control, recovery and distributed databases. Widely used in university courses, it suits students and professionals who want a solid grounding in both database theory and the internals of database management systems."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e73",
+    "title": "Deep Learning",
+    "author": "Ian Goodfellow",
+    "isbn": "9780262035613",
+    "publicationYear": 2016,
+    "description": "Goodfellow, Bengio and Courville present a rigorous treatment of deep learning, beginning with the necessary linear algebra, probability and numerical computation. The core chapters cover feedforward networks, regularisation, optimisation, convolutional and recurrent networks, followed by research topics such as autoencoders and generative models. Graduate students and researchers seeking the mathematical foundations of modern neural networks will find a thorough reference."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04d4",
+    "title": "Deep Learning with Python",
+    "author": "François Chollet",
+    "isbn": "9781617294433",
+    "publicationYear": 2017,
+    "description": "Chollet, the creator of Keras, introduces deep learning through hands-on Python code. Readers move from the basics of neural networks to computer vision, text and sequence processing, and generative models, with intuitive explanations in place of heavy mathematics. Programmers with some Python experience who want to build practical deep learning applications will find clear examples and sensible advice on model development."
+  },
+  {
+    "_id": "6a789c8817be87536c3a050a",
+    "title": "Deep Work",
+    "author": "Cal Newport",
+    "isbn": "9781455586691",
+    "publicationYear": 2016,
+    "description": "Newport argues that the ability to concentrate without distraction on cognitively demanding tasks is increasingly rare and increasingly valuable. He explains why focused work matters and offers strategies for building it, such as scheduling deep work, embracing boredom, limiting social media and reducing shallow tasks. Knowledge workers and students wanting to produce better work in less time will find practical rules to adopt."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e47",
+    "title": "Design Patterns",
+    "author": "Erich Gamma",
+    "isbn": "9780201633610",
+    "publicationYear": 1994,
+    "description": "Gamma, Helm, Johnson and Vlissides catalogue twenty-three reusable solutions to recurring problems in object-oriented software design. Patterns are grouped as creational, structural and behavioural, and each is described with its intent, structure, participants, consequences and sample code. Developers and software architects seeking a shared vocabulary for designing flexible, maintainable object-oriented systems will find it a foundational reference."
+  },
+  {
+    "_id": "6a789c8817be87536c3a049a",
+    "title": "Designing Data-Intensive Applications",
+    "author": "Martin Kleppmann",
+    "isbn": "9781449373320",
+    "publicationYear": 2017,
+    "description": "Kleppmann examines the principles behind the systems used to store and process data at scale. Topics include data models, storage engines, encoding, replication, partitioning, transactions, consistency and consensus, along with batch and stream processing. Software engineers and architects who need to understand the trade-offs among databases and distributed data tools will find a clear, carefully reasoned guide grounded in real systems."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0492",
+    "title": "Distributed Systems",
+    "author": "Maarten van Steen",
+    "isbn": "9781543057386",
+    "publicationYear": 2017,
+    "description": "Van Steen and Tanenbaum explain the principles and paradigms of distributed systems, where independent computers cooperate to appear as a single coherent system. Chapters cover architectures, processes, communication, naming, coordination, consistency and replication, fault tolerance and security. Students and engineers seeking a structured introduction to how distributed systems are designed and why they behave as they do will find balanced coverage of theory and practice."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e91",
+    "title": "Dune",
+    "author": "Frank Herbert",
+    "isbn": "9780441172719",
+    "publicationYear": 1965,
+    "description": "On the desert planet Arrakis, the only source of a valuable spice, young Paul Atreides and his family become entangled in a deadly struggle between noble houses. Forced into the deep desert, Paul joins the native Fremen and confronts questions of destiny and power. Herbert's science fiction novel blends politics, religion and ecology, and suits readers who enjoy richly built worlds."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e86",
+    "title": "Educated",
+    "author": "Tara Westover",
+    "isbn": "9780399590504",
+    "publicationYear": 2018,
+    "description": "Westover recounts growing up in a survivalist family in rural Idaho, where she did not attend school and was kept away from doctors. Through self-teaching she gained entry to university and eventually earned a doctorate from Cambridge. The memoir explores family loyalty, memory and the cost of education that changes who one is, and appeals to readers of personal narrative and resilience."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0476",
+    "title": "Effective Java",
+    "author": "Joshua Bloch",
+    "isbn": "9780134685991",
+    "publicationYear": 2018,
+    "description": "Bloch presents best practices for writing robust, efficient and maintainable Java, organised as a series of focused items. Guidance covers object creation, classes and interfaces, generics, enums, lambdas and streams, methods, exceptions, concurrency and serialisation. Intermediate and experienced Java programmers who want to use the language and its libraries more effectively will find concise, well-reasoned advice."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e78",
+    "title": "Einstein: His Life and Universe",
+    "author": "Walter Isaacson",
+    "isbn": "9780743264747",
+    "publicationYear": 2007,
+    "description": "Isaacson traces Albert Einstein's life from his youth in Germany through his remarkable work on relativity and quantum theory to his later years in the United States. The biography draws on Einstein's personal letters to portray his relationships, politics, religious views and nonconformist character. Readers interested in science and its history will find the physics explained accessibly alongside a full human portrait."
+  },
+  {
+    "_id": "6a789c8817be87536c3a056c",
+    "title": "Elon Musk",
+    "author": "Ashlee Vance",
+    "isbn": "9780062301239",
+    "publicationYear": 2015,
+    "description": "Vance profiles Elon Musk, following his upbringing in South Africa, move to North America and early internet ventures through to the founding of SpaceX and his leadership of Tesla. Based on extensive interviews, it examines Musk's ambitions, demanding management style and the risks he took. Readers interested in entrepreneurship and the modern technology industry will find a detailed look at his career."
+  },
+  {
+    "_id": "6a789c8817be87536c3a047a",
+    "title": "Eloquent JavaScript",
+    "author": "Marijn Haverbeke",
+    "isbn": "9781593279509",
+    "publicationYear": 2018,
+    "description": "Haverbeke teaches programming through JavaScript, starting with values, functions and data structures and moving on to higher-order functions, objects, asynchronous programming and modules. Later chapters apply the language in the browser and with Node.js, including several project chapters. Beginners and those wanting a deeper understanding of JavaScript will find exercises that build genuine programming skill rather than just syntax."
+  },
+  {
+    "_id": "6a789c8817be87536c3a057e",
+    "title": "Emotional Intelligence",
+    "author": "Daniel Goleman",
+    "isbn": "9780553383713",
+    "publicationYear": 2006,
+    "description": "Goleman argues that abilities such as self-awareness, self-control, empathy and social skill can matter as much as conventional intelligence for success and wellbeing. Drawing on psychology and brain research, he explains how emotions shape thinking and how these capacities can be learned and strengthened. Parents, educators, managers and general readers interested in human behaviour will find the ideas widely applicable."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0546",
+    "title": "Essentialism",
+    "author": "Greg McKeown",
+    "isbn": "9780804137386",
+    "publicationYear": 2014,
+    "description": "McKeown advocates a disciplined pursuit of less, focusing time and energy only on what is truly important. He explains how to distinguish the vital few from the trivial many, say no gracefully, eliminate non-essential commitments and build routines that make important work easier. Professionals feeling overcommitted or stretched thin will find a practical approach to prioritisation and decision-making."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0580",
+    "title": "Flow: The Psychology of Optimal Experience",
+    "author": "Mihaly Csikszentmihalyi",
+    "isbn": "9780061339202",
+    "publicationYear": 2008,
+    "description": "Csikszentmihalyi describes flow, a state of deep absorption in which people feel fully engaged and lose track of time. Based on years of research, he explores the conditions that produce it, such as clear goals, immediate feedback and a balance between challenge and skill, and how it applies to work, leisure and relationships. Readers interested in happiness and positive psychology will find it insightful."
+  },
+  {
+    "_id": "6a789c8817be87536c3a05a6",
+    "title": "Freakonomics",
+    "author": "Steven D. Levitt",
+    "isbn": "9780060731335",
+    "publicationYear": 2006,
+    "description": "Economist Levitt and journalist Dubner apply economic thinking and data analysis to unexpected questions, such as cheating among teachers and sumo wrestlers, the finances of drug gangs and the influence of parenting choices. The book shows how incentives shape behaviour and how conventional wisdom can be misleading. Curious readers who enjoy counterintuitive ideas will find it an entertaining introduction to economic reasoning."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0534",
+    "title": "Genghis Khan and the Making of the Modern World",
+    "author": "Jack Weatherford",
+    "isbn": "9780609809648",
+    "publicationYear": 2005,
+    "description": "Weatherford reassesses Genghis Khan and the Mongol Empire, tracing his rise from a harsh childhood on the steppe to the conquest of vast territories. He argues that Mongol rule opened trade routes, spread technology and ideas, and encouraged religious tolerance in ways that shaped later Eurasian history. Readers interested in world history will find a lively narrative that challenges common stereotypes."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04ca",
+    "title": "Ghost in the Wires",
+    "author": "Kevin Mitnick",
+    "isbn": "9780316037723",
+    "publicationYear": 2011,
+    "description": "Mitnick recounts his years as one of the most wanted computer hackers in the United States, describing how he broke into phone networks and corporate systems while evading the FBI. Much of his success relied on social engineering, manipulating people into revealing information. Readers interested in cybersecurity, hacking culture or true crime will find a first-person account with useful lessons about human vulnerabilities."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e6e",
+    "title": "Good to Great",
+    "author": "Jim Collins",
+    "isbn": "9780066620992",
+    "publicationYear": 2001,
+    "description": "Collins and his research team compared companies that made a sustained leap from average to outstanding performance with similar firms that did not. Their findings include humble yet determined leadership, getting the right people in place, confronting hard facts, focusing on a core concept and building a culture of discipline. Managers and business readers interested in long-term organisational success will find research-based lessons."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0506",
+    "title": "Grit: The Power of Passion and Perseverance",
+    "author": "Angela Duckworth",
+    "isbn": "9781501111105",
+    "publicationYear": 2016,
+    "description": "Psychologist Duckworth argues that a combination of passion and sustained persistence, which she calls grit, often predicts achievement better than talent alone. Drawing on her research with cadets, students, spelling contestants and professionals, she explains how grit develops and how parents, teachers and organisations can foster it. Readers interested in motivation, education and long-term goals will find practical, research-based insight."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e5a",
+    "title": "Guns, Germs, and Steel",
+    "author": "Jared Diamond",
+    "isbn": "9780393354324",
+    "publicationYear": 1997,
+    "description": "Diamond asks why societies from Eurasia came to conquer and dominate so much of the world, and argues that the answer lies in geography and environment rather than any innate difference between peoples. Drawing on biology, archaeology and linguistics, he traces how domesticable crops and animals led to farming, dense populations, technology, states and epidemic disease. It suits readers who enjoy sweeping, big-picture world history."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04be",
+    "title": "Hacking: The Art of Exploitation",
+    "author": "Jon Erickson",
+    "isbn": "9781593271442",
+    "publicationYear": 2008,
+    "description": "Erickson explains how software exploits really work by grounding the reader first in C programming, assembly and memory layout. From there the chapters move through buffer overflows, format string vulnerabilities, shellcode, network attacks and an introduction to cryptography, with hands-on code to run and debug. Programmers who want a technical, low-level understanding of offensive security will get the most from it."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04cc",
+    "title": "Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow",
+    "author": "Aurélien Géron",
+    "isbn": "9781492032649",
+    "publicationYear": 2019,
+    "description": "Géron offers a practical route into machine learning, beginning with classic techniques in Scikit-Learn such as regression, support vector machines, decision trees, ensembles and clustering. The second half builds deep neural networks with Keras and TensorFlow, covering convolutional and recurrent models, autoencoders and more. Worked examples and notebooks make it well suited to programmers who learn by building."
+  },
+  {
+    "_id": "6a789c8817be87536c3a047c",
+    "title": "Head First Design Patterns",
+    "author": "Eric Freeman",
+    "isbn": "9780596007126",
+    "publicationYear": 2004,
+    "description": "Using a highly visual, conversational style full of diagrams, puzzles and humour, Freeman and his co-authors teach the classic object-oriented design patterns. Readers meet Strategy, Observer, Decorator, Factory, Singleton, Command, Adapter and others through Java examples, alongside the design principles that motivate them. It works well for developers who find conventional pattern catalogues too dry."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04aa",
+    "title": "High Performance MySQL",
+    "author": "Baron Schwartz",
+    "isbn": "9781449332471",
+    "publicationYear": 2012,
+    "description": "Written by experienced MySQL consultants, this guide explains how to make MySQL fast and dependable under real workloads. Topics include schema and index design, query optimisation, server configuration, the InnoDB storage engine, replication, scaling strategies and backup and recovery. Database administrators and developers running MySQL in production will find detailed, experience-based advice throughout."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04f2",
+    "title": "Hooked: How to Build Habit-Forming Products",
+    "author": "Nir Eyal",
+    "isbn": "9781591847786",
+    "publicationYear": 2014,
+    "description": "Eyal sets out a four-stage model of trigger, action, variable reward and investment to explain why some products become part of users' daily routines. Examples from well-known apps and web services illustrate each stage, and a closing section considers the ethics of designing for habit. Product managers, designers and founders are the main audience."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e64",
+    "title": "How to Win Friends and Influence People",
+    "author": "Dale Carnegie",
+    "isbn": "9780671027032",
+    "publicationYear": 1936,
+    "description": "Carnegie presents practical principles for getting along with people, earning their goodwill, persuading them and leading them without causing resentment. Each idea is illustrated with anecdotes about public figures and ordinary people, emphasising genuine interest, appreciation and seeing things from another's point of view. Readers looking to improve everyday communication at work or at home will find it approachable."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0570",
+    "title": "I Am Malala",
+    "author": "Malala Yousafzai",
+    "isbn": "9780316322409",
+    "publicationYear": 2013,
+    "description": "Written with journalist Christina Lamb, Yousafzai's memoir describes her childhood in Pakistan's Swat Valley, where her father ran a school and she spoke out for girls' right to education. She recounts life under growing Taliban control, the attack on her as a schoolgirl and her recovery abroad. It suits readers interested in human rights, education and modern Pakistan."
+  },
+  {
+    "_id": "6a789c8817be87536c3a05b0",
+    "title": "In Cold Blood",
+    "author": "Truman Capote",
+    "isbn": "9780679745587",
+    "publicationYear": 1994,
+    "description": "Capote reconstructs the murder of a farming family in Holcomb, Kansas, and follows the two drifters responsible, the investigation that tracked them down and the long legal process that followed. Built from extensive interviews and told with the techniques of a novel, it helped shape the modern true crime genre. Readers interested in crime, justice and narrative non-fiction will find it absorbing."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e80",
+    "title": "Influence: The Psychology of Persuasion",
+    "author": "Robert B. Cialdini",
+    "isbn": "9780061241895",
+    "publicationYear": 2006,
+    "description": "Cialdini identifies six principles that drive compliance: reciprocity, commitment and consistency, social proof, liking, authority and scarcity. Drawing on experimental research and his own time observing salespeople, fundraisers and advertisers, he shows how each one works and how to recognise it being used against you. It appeals to readers in marketing and sales as well as anyone curious about persuasion."
+  },
+  {
+    "_id": "6a789c8817be87536c3a05a2",
+    "title": "Into the Wild",
+    "author": "Jon Krakauer",
+    "isbn": "9780385486804",
+    "publicationYear": 1997,
+    "description": "Krakauer investigates the story of Christopher McCandless, a young college graduate who gave away his savings, travelled across America under an assumed name and walked alone into the Alaskan wilderness. Interviews, letters and journal entries reconstruct his journey, while the author reflects on his own risky climbing ventures. It suits readers drawn to adventure, idealism and questions about why people seek isolation."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e46",
+    "title": "Introduction to Algorithms",
+    "author": "Thomas H. Cormen",
+    "isbn": "9780262033848",
+    "publicationYear": 2009,
+    "description": "Widely used in university courses, Cormen and his co-authors provide a comprehensive treatment of algorithms and data structures. Coverage ranges from sorting, hashing and trees to graph algorithms, dynamic programming, greedy methods, amortised analysis and NP-completeness, all presented with pseudocode and rigorous analysis. Students and practising engineers use it both as a textbook and as a long-term reference."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e8f",
+    "title": "Introduction to the Theory of Computation",
+    "author": "Michael Sipser",
+    "isbn": "9781133187790",
+    "publicationYear": 2012,
+    "description": "Sipser introduces the mathematical foundations of computer science in three parts: automata and formal languages, computability and complexity. Readers work through finite automata, regular expressions, context-free grammars, Turing machines, decidability and classes such as P and NP. Clear explanations of proofs make it a common choice for undergraduate and early graduate theory courses."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e48",
+    "title": "JavaScript: The Good Parts",
+    "author": "Douglas Crockford",
+    "isbn": "9780596517748",
+    "publicationYear": 2008,
+    "description": "Crockford argues that JavaScript contains a reliable, expressive subset hidden among its poorly designed features. In a compact format he covers functions, closures, objects, prototypal inheritance, arrays and regular expressions, and lists the parts of the language he recommends avoiding. Developers who already know some JavaScript and want to write cleaner, safer code will benefit most."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0576",
+    "title": "Leonardo da Vinci",
+    "author": "Walter Isaacson",
+    "isbn": "9781501139154",
+    "publicationYear": 2017,
+    "description": "Drawing heavily on Leonardo's surviving notebooks, Isaacson portrays the Renaissance figure as painter, engineer, anatomist and relentless observer of nature. The biography links his scientific curiosity to works such as the Mona Lisa and The Last Supper, and also examines his unfinished projects and personal life. Readers interested in art history, creativity or the connection between art and science will enjoy it."
+  },
+  {
+    "_id": "6a789c8817be87536c3a051a",
+    "title": "Life of Pi",
+    "author": "Yann Martel",
+    "isbn": "9780156027328",
+    "publicationYear": 2003,
+    "description": "Pi Patel, the son of a zookeeper in Pondicherry, survives a shipwreck only to find himself adrift in a lifeboat with a Bengal tiger. Martel's novel follows his long struggle to stay alive on the Pacific while exploring faith, storytelling and the stories people choose to believe. It appeals to readers who like adventure combined with philosophical questions."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e7a",
+    "title": "Long Walk to Freedom",
+    "author": "Nelson Mandela",
+    "isbn": "9780316548182",
+    "publicationYear": 1994,
+    "description": "Mandela's autobiography traces his life from a rural childhood in the Transkei to legal practice in Johannesburg and leadership in the African National Congress. He describes the struggle against apartheid, his trial, decades of imprisonment including years on Robben Island, and the negotiations that ended white minority rule. It offers a first-hand account of South African history and political conviction."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e56",
+    "title": "Lord of the Flies",
+    "author": "William Golding",
+    "isbn": "9780399501487",
+    "publicationYear": 1954,
+    "description": "After a plane crash leaves a group of British schoolboys stranded on an uninhabited island, they try to organise themselves with rules and an elected leader. Tensions between Ralph and Jack grow as order gives way to fear and violence. Golding's novel is widely studied for what it suggests about human nature, power and the fragility of civilisation."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04d0",
+    "title": "Machine Learning Yearning",
+    "author": "Andrew Ng",
+    "isbn": "9781999579500",
+    "publicationYear": 2018,
+    "description": "Ng offers practical guidance on the strategic decisions behind machine learning projects rather than on algorithms or code. Short chapters cover setting up development and test sets, choosing a single evaluation metric, error analysis, diagnosing bias and variance, comparing against human-level performance and deciding when end-to-end learning makes sense. It suits engineers and team leads who already know the basics."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e7d",
+    "title": "Man's Search for Meaning",
+    "author": "Viktor E. Frankl",
+    "isbn": "9780807014295",
+    "publicationYear": 1946,
+    "description": "Frankl, a psychiatrist, recounts his experiences as a prisoner in Nazi concentration camps, including Auschwitz, and reflects on how inmates coped with extreme suffering. The second part outlines logotherapy, his approach to psychotherapy built on the idea that the search for meaning is a central human drive. Readers interested in psychology, philosophy and resilience often return to it."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0562",
+    "title": "Measure What Matters",
+    "author": "John Doerr",
+    "isbn": "9780525536222",
+    "publicationYear": 2018,
+    "description": "Doerr explains objectives and key results, the goal-setting method he learned from Andy Grove at Intel and later introduced to Google. Case studies from companies and non-profits show how OKRs help organisations focus, align teams, track progress and set ambitious targets, and the book also covers ongoing conversations, feedback and recognition. Managers, founders and team leads are the intended readers."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04c2",
+    "title": "Metasploit: The Penetration Tester's Guide",
+    "author": "David Kennedy",
+    "isbn": "9781593272883",
+    "publicationYear": 2011,
+    "description": "Kennedy and his co-authors show how to use the Metasploit Framework to carry out authorised penetration tests. The chapters move from intelligence gathering and vulnerability scanning through exploitation, Meterpreter post-exploitation, client-side and social engineering attacks, to writing custom modules. It is aimed at security professionals and students who want structured, practical experience with the tool."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e66",
+    "title": "Mindset: The New Psychology of Success",
+    "author": "Carol S. Dweck",
+    "isbn": "9780345472328",
+    "publicationYear": 2006,
+    "description": "Dweck contrasts a fixed mindset, which treats ability as unchangeable, with a growth mindset, which sees skills as something developed through effort and learning. Drawing on her psychological research, she shows how these beliefs affect achievement in school, sport, business, parenting and relationships. Teachers, parents, managers and anyone hoping to handle setbacks differently will find it useful."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e94",
+    "title": "Mistborn: The Final Empire",
+    "author": "Brandon Sanderson",
+    "isbn": "9780765311788",
+    "publicationYear": 2006,
+    "description": "In a world where ash falls from the sky and an immortal emperor has ruled for a thousand years, a young street thief named Vin is drawn into a crew planning an audacious heist against him. Sanderson builds the story around Allomancy, a magic system in which people draw powers from ingested metals. Fantasy readers who enjoy intricate magic and caper plots will appreciate it."
+  },
+  {
+    "_id": "6a789c8817be87536c3a049c",
+    "title": "MongoDB: The Definitive Guide",
+    "author": "Kristina Chodorow",
+    "isbn": "9781449344689",
+    "publicationYear": 2013,
+    "description": "Chodorow provides a thorough introduction to MongoDB and its document-oriented data model. Readers learn to create, query and update documents, design indexes, use the aggregation framework, and manage replica sets, sharding and day-to-day administration. Developers building applications on MongoDB and administrators responsible for running it in production are the main audience."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04b8",
+    "title": "Network Security Essentials",
+    "author": "William Stallings",
+    "isbn": "9780134527338",
+    "publicationYear": 2016,
+    "description": "Stallings surveys the main tools and protocols used to protect networks and data. Coverage includes symmetric and public-key cryptography, authentication and key distribution, transport-layer and wireless security, email security, IP security, intrusion detection, malware and firewalls. Organised as a textbook, it suits students in networking or security courses as well as practitioners wanting a structured overview."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04b0",
+    "title": "Network Warrior",
+    "author": "Gary A. Donahue",
+    "isbn": "9781449387860",
+    "publicationYear": 2011,
+    "description": "Donahue draws on years of field experience to explain how enterprise networks behave in practice rather than for certification exams. Topics include switching, routing, VLANs, spanning tree, routing protocols, firewalls, quality of service and the Cisco equipment commonly found in data centres. Network engineers moving from study into real-world jobs will find it a practical companion."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e92",
+    "title": "Neuromancer",
+    "author": "William Gibson",
+    "isbn": "9780441569595",
+    "publicationYear": 1984,
+    "description": "Case, a burned-out hacker no longer able to access cyberspace, is hired by a mysterious employer for one last job alongside the augmented mercenary Molly. Gibson's novel moves from Chiba City to orbital colonies as the crew becomes entangled with powerful artificial intelligences. A foundational work of cyberpunk, it suits readers of science fiction about technology, corporations and virtual worlds."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e53",
+    "title": "One Hundred Years of Solitude",
+    "author": "Gabriel García Márquez",
+    "isbn": "9780060883287",
+    "publicationYear": 1967,
+    "description": "García Márquez follows seven generations of the Buendía family in Macondo, a fictional Colombian town that grows from an isolated settlement into a place shaken by civil war and foreign commerce. Everyday life and the miraculous sit side by side in this landmark of magical realism. Readers who enjoy rich, multigenerational storytelling and Latin American literature will find much to explore."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e85",
+    "title": "One Up On Wall Street",
+    "author": "Peter Lynch",
+    "isbn": "9780743200403",
+    "publicationYear": 2000,
+    "description": "Lynch, who managed Fidelity's Magellan Fund, argues that ordinary investors can spot promising companies through products and businesses they encounter in daily life. He sorts stocks into categories such as slow growers, stalwarts, fast growers, cyclicals, turnarounds and asset plays, and explains how to research each before buying. It suits individual investors wanting a practical approach to choosing stocks."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e8d",
+    "title": "Operating System Concepts",
+    "author": "Abraham Silberschatz",
+    "isbn": "9781119456339",
+    "publicationYear": 2018,
+    "description": "Silberschatz and his co-authors present the core ideas behind modern operating systems in a widely adopted course text. Chapters cover processes and threads, CPU scheduling, synchronisation, deadlocks, memory and virtual memory, file systems, storage, protection and security, with examples drawn from Linux, Windows and other systems. Computer science students and developers wanting conceptual grounding will benefit."
+  },
+  {
+    "_id": "6a789c8817be87536c3a05a8",
+    "title": "Outliers",
+    "author": "Malcolm Gladwell",
+    "isbn": "9780316017930",
+    "publicationYear": 2008,
+    "description": "Gladwell argues that exceptional success depends less on individual talent than on opportunity, timing, cultural background and accumulated practice. Case studies range from the birth months of professional hockey players to the Beatles, software pioneers and the role of cultural habits in airline safety. Readers who enjoy accessible social science and counterintuitive explanations will find it engaging."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04ce",
+    "title": "Pattern Recognition and Machine Learning",
+    "author": "Christopher M. Bishop",
+    "isbn": "9780387310732",
+    "publicationYear": 2006,
+    "description": "Bishop presents machine learning from a probabilistic and largely Bayesian perspective. The text covers probability distributions, linear models for regression and classification, neural networks, kernel methods and support vector machines, graphical models, mixture models and expectation maximisation, approximate inference and sampling methods. Its mathematical depth makes it best suited to graduate students and researchers comfortable with calculus and linear algebra."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04a4",
+    "title": "PostgreSQL: Up and Running",
+    "author": "Regina O. Obe",
+    "isbn": "9781449366339",
+    "publicationYear": 2017,
+    "description": "Obe and Hsu give a concise, practical tour of PostgreSQL for people who need to get productive quickly. Readers learn installation and administration, the psql and pgAdmin tools, data types, advanced SQL features, writing functions, query tuning and replication. Developers and administrators coming from other databases, or new to PostgreSQL, will find it a compact starting point."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04c4",
+    "title": "Practical Malware Analysis",
+    "author": "Michael Sikorski",
+    "isbn": "9781593272906",
+    "publicationYear": 2012,
+    "description": "Sikorski and Honig teach the techniques used to dissect malicious software, from basic static and dynamic analysis to disassembly and debugging with tools such as IDA Pro and OllyDbg. Later chapters address Windows internals, anti-disassembly and anti-debugging tricks, and packed code. Hands-on labs with real samples make it valuable for aspiring malware analysts and incident responders."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04ba",
+    "title": "Practical Packet Analysis",
+    "author": "Chris Sanders",
+    "isbn": "9781593278021",
+    "publicationYear": 2017,
+    "description": "Sanders shows how to capture and interpret network traffic using Wireshark. After explaining how packet sniffing works, he walks through common protocols such as TCP, IP, DNS and HTTP, then applies these skills to troubleshooting slow networks, investigating security incidents and examining wireless traffic. Network administrators, support staff and security beginners will find it a practical introduction."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e7f",
+    "title": "Predictably Irrational",
+    "author": "Dan Ariely",
+    "isbn": "9780061353239",
+    "publicationYear": 2008,
+    "description": "Ariely uses inventive experiments to show that people make irrational decisions in consistent, predictable ways. Chapters explore relative comparisons, anchoring, the pull of free offers, the clash between social and market norms, procrastination, ownership and dishonesty. Written in an accessible style, it appeals to readers curious about behavioural economics and the hidden forces behind everyday choices."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e51",
+    "title": "Pride and Prejudice",
+    "author": "Jane Austen",
+    "isbn": "9780141439518",
+    "publicationYear": 1813,
+    "description": "Elizabeth Bennet, the sharp-witted second of five daughters in a family of modest means, clashes with the proud and wealthy Mr Darcy in Regency-era England. Austen's novel examines marriage, money, social class and the danger of judging too quickly, with much of its humour coming from dialogue and character. It suits readers who enjoy classic romance and social comedy."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0480",
+    "title": "Programming Pearls",
+    "author": "Jon Bentley",
+    "isbn": "9780201657883",
+    "publicationYear": 1999,
+    "description": "Bentley gathers essays on the craft of programming, focusing on how careful problem definition and clever thinking lead to simple, efficient solutions. Topics include algorithm design, back-of-the-envelope estimates, data structures, verifying correctness, code tuning, sorting, searching and sampling, each supported by exercises. Working programmers who want to sharpen their problem-solving skills will benefit most."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e49",
+    "title": "Python Crash Course",
+    "author": "Eric Matthes",
+    "isbn": "9781593279288",
+    "publicationYear": 2019,
+    "description": "Matthes teaches Python from the ground up, beginning with variables, lists, dictionaries, loops, functions, classes, files and testing. The second half applies these skills in three projects: an arcade-style game built with Pygame, data visualisations, and a web application using Django. Complete beginners and those switching from another language will find a clear, project-based path."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04d8",
+    "title": "Python Machine Learning",
+    "author": "Sebastian Raschka",
+    "isbn": "9781789955750",
+    "publicationYear": 2019,
+    "description": "Raschka combines machine learning theory with working Python code, explaining how algorithms operate before showing how to apply them with libraries such as scikit-learn and TensorFlow. Coverage runs from classifiers, preprocessing and model evaluation through ensembles, regression and clustering to neural networks and deep learning. It suits readers with some Python experience who want both intuition and implementation."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0584",
+    "title": "Quiet: The Power of Introverts",
+    "author": "Susan Cain",
+    "isbn": "9780307352156",
+    "publicationYear": 2012,
+    "description": "Cain examines how modern Western culture came to favour outgoing, talkative personalities and what is lost when introverts are overlooked. Drawing on psychology, neuroscience and interviews, she looks at schools, workplaces and relationships, and offers suggestions for introverts and the people who work or live with them. Readers who identify as quiet, or who manage or teach them, will find it relevant."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0520",
+    "title": "Ready Player One",
+    "author": "Ernest Cline",
+    "isbn": "9780307887443",
+    "publicationYear": 2011,
+    "description": "In a bleak near future, teenager Wade Watts spends most of his life inside the OASIS, a vast virtual reality world. When its creator dies and leaves a fortune hidden behind a series of puzzles, Wade joins a global hunt that leans heavily on 1980s films, games and music, while a powerful corporation competes for the prize. Fans of fast-paced science fiction and pop culture will enjoy it."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04a6",
+    "title": "Redis in Action",
+    "author": "Josiah L. Carlson",
+    "isbn": "9781617290855",
+    "publicationYear": 2013,
+    "description": "Carlson teaches Redis through realistic application problems rather than abstract reference material. After introducing strings, lists, sets, hashes and sorted sets, he builds features such as caching, session storage, counters, search, job queues and messaging, then covers persistence, replication, sharding and Lua scripting. Developers looking to use Redis beyond simple caching will find it practical."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e4b",
+    "title": "Refactoring",
+    "author": "Martin Fowler",
+    "isbn": "9780134757599",
+    "publicationYear": 2018,
+    "description": "Fowler explains how to improve the structure of existing code through small, behaviour-preserving changes backed by tests. Alongside guidance on recognising code smells and deciding when to refactor, the book provides a detailed catalogue of named refactorings with motivation, mechanics and examples in JavaScript. Professional developers working on long-lived codebases will find it a lasting reference."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04d6",
+    "title": "Reinforcement Learning: An Introduction",
+    "author": "Richard S. Sutton",
+    "isbn": "9780262039246",
+    "publicationYear": 2018,
+    "description": "Sutton and Barto present the foundations of reinforcement learning, in which an agent learns to act by interacting with an environment and receiving rewards. Chapters cover multi-armed bandits, Markov decision processes, dynamic programming, Monte Carlo methods, temporal-difference learning, function approximation and policy gradient methods, with links to psychology and neuroscience. It serves students and researchers as the standard introduction to the field."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e82",
+    "title": "Rich Dad Poor Dad",
+    "author": "Robert T. Kiyosaki",
+    "isbn": "9781612680019",
+    "publicationYear": 2017,
+    "description": "Kiyosaki contrasts the money habits of his highly educated father with those of a friend's entrepreneurial father, using the comparison to argue for financial literacy. He stresses the difference between assets and liabilities, building income that does not depend on a salary, and thinking like an owner or investor. Readers beginning to think about personal finance often use it as a motivational starting point."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e5c",
+    "title": "SPQR: A History of Ancient Rome",
+    "author": "Mary Beard",
+    "isbn": "9780871404237",
+    "publicationYear": 2015,
+    "description": "Beard tells the story of Rome from its legendary origins to the early third century CE, when citizenship was extended across the empire. She examines how historians know what they know, questions familiar myths, and gives attention to ordinary Romans as well as emperors and senators. General readers wanting a thoughtful, up-to-date account of Roman history will find it rewarding."
+  },
+  {
+    "_id": "6a789c8817be87536c3a049e",
+    "title": "SQL Performance Explained",
+    "author": "Markus Winand",
+    "isbn": "9783950307825",
+    "publicationYear": 2012,
+    "description": "Winand explains database indexing from a developer's perspective, showing how B-tree indexes work and how to write SQL that uses them well. Topics include where clauses, multi-column indexes, functions, joins, sorting, grouping, fetching partial results and the cost of writes, with examples across Oracle, MySQL, PostgreSQL and SQL Server. Application developers who write SQL will find it short and practical."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e58",
+    "title": "Sapiens",
+    "author": "Yuval Noah Harari",
+    "isbn": "9780062316097",
+    "publicationYear": 2011,
+    "description": "Harari surveys the history of Homo sapiens through a series of revolutions: cognitive, agricultural and scientific. He argues that the human capacity to believe in shared stories such as money, religion, nations and empires allowed large-scale cooperation, and he questions whether progress has made people happier. History readers seeking a broad, provocative overview of the human past will find plenty to discuss."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e88",
+    "title": "Sapiens: A Brief History of Humankind",
+    "author": "Yuval Noah Harari",
+    "isbn": "9780062316098",
+    "publicationYear": 2015,
+    "description": "Ranging across biology, anthropology and economics, Harari asks how a once-insignificant ape came to dominate the planet. Central ideas include the role of collective fictions in organising society, the mixed consequences of farming, the unifying power of money and empire, and the rise of modern science and capitalism. It suits curious non-specialists who enjoy big questions and debate-provoking arguments."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e5e",
+    "title": "Sapiens: A Graphic History",
+    "author": "Yuval Noah Harari",
+    "isbn": "9780063051321",
+    "publicationYear": 2020,
+    "description": "Harari's account of early human history is retold here as a graphic novel, created with artist Daniel Casanave and co-writer David Vandermeulen. Through illustrated panels, recurring characters and humour, it follows early humans, the spread of Homo sapiens and its encounters with other species. The format makes the ideas accessible to younger readers and anyone who prefers visual storytelling."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04a2",
+    "title": "Seven Databases in Seven Weeks",
+    "author": "Eric Redmond",
+    "isbn": "9781937786120",
+    "publicationYear": 2012,
+    "description": "Redmond and Wilson guide readers through seven different databases, including PostgreSQL, Riak, HBase, MongoDB, CouchDB, Neo4j and Redis, spending a few focused sessions on each. Comparing relational, key-value, column, document and graph models shows the trade-offs each design makes. Developers and architects choosing a data store, or wanting to broaden their perspective, will benefit from the hands-on survey."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e6b",
+    "title": "Silent Spring",
+    "author": "Rachel Carson",
+    "isbn": "9780618249060",
+    "publicationYear": 1962,
+    "description": "Carson documents the harm caused by the widespread use of synthetic pesticides such as DDT, tracing their effects on birds, fish, wildlife, soil, water and human health. She challenges indiscriminate spraying and the claims of the chemical industry while explaining the underlying science in accessible prose. Readers interested in ecology, environmental history and public policy will find it highly relevant."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04de",
+    "title": "Site Reliability Engineering",
+    "author": "Niall Richard Murphy",
+    "isbn": "9781491929124",
+    "publicationYear": 2016,
+    "description": "Engineers from Google describe how the company runs large production systems using a discipline it calls site reliability engineering. Chapters cover service level objectives, error budgets, reducing toil, monitoring, on-call work, incident response, blameless postmortems, release engineering and load balancing. Operations staff, software engineers and managers responsible for reliable services will find concrete practices to adapt."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04c8",
+    "title": "Social Engineering: The Art of Human Hacking",
+    "author": "Christopher Hadnagy",
+    "isbn": "9780470639535",
+    "publicationYear": 2010,
+    "description": "Hadnagy examines how attackers manipulate people rather than machines to gain access to information and systems. He covers information gathering, elicitation, pretexting, psychological principles of influence, body language and the tools used by professional testers, and explains how organisations can defend against these techniques. Security practitioners and anyone responsible for staff awareness training will find it informative."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04fa",
+    "title": "Sprint",
+    "author": "Jake Knapp",
+    "isbn": "9781501121746",
+    "publicationYear": 2016,
+    "description": "Knapp, with colleagues from Google Ventures, describes a five-day process for answering critical business questions quickly. A small team maps the problem, sketches solutions, decides on the strongest idea, builds a realistic prototype and tests it with real customers by the end of the week. Startup teams, product managers and designers can follow the step-by-step instructions directly."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e77",
+    "title": "Steve Jobs",
+    "author": "Walter Isaacson",
+    "isbn": "9781451648539",
+    "publicationYear": 2011,
+    "description": "Based on many interviews with Jobs and the people around him, Isaacson's biography follows the Apple co-founder from his adoption and youth through the founding of Apple, his departure, NeXT and Pixar, and his return. It covers the creation of products such as the iPod and iPhone and presents both his vision and his difficult temperament. Readers interested in technology and business leadership will find it detailed."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0484",
+    "title": "Structure and Interpretation of Computer Programs",
+    "author": "Harold Abelson",
+    "isbn": "9780262510875",
+    "publicationYear": 1996,
+    "description": "Originally developed for an introductory course at MIT, Abelson and Sussman use the Scheme language to teach the fundamental ideas of programming. Readers build abstractions with procedures and data, explore higher-order functions, state and streams, write interpreters for new languages and finally model computation at the level of register machines and compilers. It rewards motivated students willing to work through challenging exercises."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0588",
+    "title": "Stumbling on Happiness",
+    "author": "Daniel Gilbert",
+    "isbn": "9781400077427",
+    "publicationYear": 2007,
+    "description": "Gilbert, a Harvard psychologist, explores why people are surprisingly poor at predicting what will make them happy in the future. Using research from psychology, neuroscience and behavioural economics, he shows how imagination fills in details, projects the present onto the future and underestimates our ability to adapt. Written with humour, it suits general readers curious about happiness and decision-making."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04ae",
+    "title": "TCP/IP Illustrated, Volume 1",
+    "author": "W. Richard Stevens",
+    "isbn": "9780321336316",
+    "publicationYear": 2011,
+    "description": "Stevens explains the TCP/IP protocol suite by showing the protocols in action through real packet traces rather than by summarising specifications. Coverage includes the link layer, IP addressing, ARP, ICMP, UDP, DNS and an extended treatment of TCP connection management, timeouts, flow control and congestion control. Network engineers, system programmers and advanced students use it as a detailed reference."
+  },
+  {
+    "_id": "6a789c8817be87536c3a052e",
+    "title": "Team of Rivals",
+    "author": "Doris Kearns Goodwin",
+    "isbn": "9780743270755",
+    "publicationYear": 2006,
+    "description": "Goodwin examines Abraham Lincoln's presidency through his relationships with the men who had competed against him for the 1860 Republican nomination and later served in his cabinet. Drawing on letters and diaries, she shows how Lincoln managed strong personalities during the Civil War. Readers interested in American history, political leadership and group biography will find a detailed, character-driven account."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04f8",
+    "title": "The $100 Startup",
+    "author": "Chris Guillebeau",
+    "isbn": "9780307951526",
+    "publicationYear": 2012,
+    "description": "Guillebeau collects stories of people who built small, profitable businesses with very little starting money, often around skills or interests they already had. The book distils their experiences into practical steps for testing an idea, setting a price, launching quickly and growing without outside funding. It suits aspiring side-hustlers, freelancers and anyone considering self-employment."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0560",
+    "title": "The 4-Hour Workweek",
+    "author": "Timothy Ferriss",
+    "isbn": "9780307465351",
+    "publicationYear": 2007,
+    "description": "Ferriss challenges the conventional path of working long hours until retirement and proposes designing a life around time and mobility instead. He covers eliminating low-value tasks, outsourcing, automating income through small online businesses and negotiating remote work. Readers curious about productivity shortcuts, lifestyle design and unconventional career choices will find a provocative set of tactics and case examples."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0544",
+    "title": "The 48 Laws of Power",
+    "author": "Robert Greene",
+    "isbn": "9780140280197",
+    "publicationYear": 2000,
+    "description": "Greene organises lessons about influence, status and manipulation into forty-eight principles, each illustrated with episodes from history involving courtiers, rulers, generals and con artists. The tone is amoral and analytical, describing how power tends to operate rather than how it should. Readers interested in strategy, historical anecdote and the darker side of social dynamics often use it as a study of human behaviour."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0500",
+    "title": "The 5 AM Club",
+    "author": "Robin Sharma",
+    "isbn": "9781443456623",
+    "publicationYear": 2018,
+    "description": "Told largely as a fable about a mentor and two struggling students, Sharma's book argues for starting the day early with a structured routine. Its core method divides the first hour into periods of exercise, reflection and learning. It is aimed at readers seeking motivation, better habits and a more deliberate approach to personal productivity and wellbeing."
+  },
+  {
+    "_id": "6a789c8817be87536c3a054a",
+    "title": "The 5 Love Languages",
+    "author": "Gary Chapman",
+    "isbn": "9780802412706",
+    "publicationYear": 2015,
+    "description": "Chapman, a marriage counsellor, proposes that people tend to give and receive affection in five main ways: words of affirmation, quality time, gifts, acts of service and physical touch. Misunderstandings arise, he suggests, when partners express love in different ways. Couples and anyone wanting to improve close relationships will find practical examples and exercises for identifying their own preferences."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e63",
+    "title": "The 7 Habits of Highly Effective People",
+    "author": "Stephen R. Covey",
+    "isbn": "9781451639612",
+    "publicationYear": 1989,
+    "description": "Covey presents a principle-based framework for personal and professional effectiveness, moving from self-mastery toward cooperation with others. The seven habits include being proactive, beginning with the end in mind, putting first things first and seeking mutual benefit. Widely used in leadership training, it suits readers who want a structured approach to character, priorities and working relationships."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e55",
+    "title": "The Alchemist",
+    "author": "Paulo Coelho",
+    "isbn": "9780062315007",
+    "publicationYear": 1988,
+    "description": "Coelho tells the story of Santiago, an Andalusian shepherd boy who leaves home after a recurring dream and travels across North Africa toward the Egyptian pyramids in search of treasure. Along the way he meets a king, a merchant and an alchemist who teach him about following one's purpose. Written in a simple parable style, the novel appeals to readers who enjoy philosophical, spiritual fiction."
+  },
+  {
+    "_id": "6a789c8817be87536c3a048a",
+    "title": "The Algorithm Design Manual",
+    "author": "Steven S. Skiena",
+    "isbn": "9781848000698",
+    "publicationYear": 2008,
+    "description": "Skiena's guide to algorithms combines a practical explanation of design techniques with a large catalogue of common computational problems and approaches for solving them. Real-world war stories show how problems are recognised and modelled in practice. Students, interview candidates and working programmers use it both as a textbook and as a reference for choosing suitable algorithms and data structures."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e4c",
+    "title": "The Art of Computer Programming",
+    "author": "Donald E. Knuth",
+    "isbn": "9780201896831",
+    "publicationYear": 1997,
+    "description": "Knuth's multi-volume work offers a rigorous, mathematical treatment of fundamental algorithms, including topics such as information structures, random numbers, arithmetic, sorting and searching. Examples are expressed in an assembly language for a hypothetical machine, and the exercises range from routine to research level. It suits serious students and computer scientists who want deep analytical understanding rather than a quick introduction."
+  },
+  {
+    "_id": "6a789c8817be87536c3a056a",
+    "title": "The Art of War",
+    "author": "Sun Tzu",
+    "isbn": "9781590302255",
+    "publicationYear": 2003,
+    "description": "Attributed to the ancient Chinese general Sun Tzu, this short treatise on military strategy covers planning, deception, terrain, the use of spies and the value of winning without battle. Its compact chapters have long been read outside warfare as lessons in competition and leadership. Business readers often apply its ideas to negotiation, management and market strategy."
+  },
+  {
+    "_id": "6a789c8817be87536c3a056e",
+    "title": "The Autobiography of Benjamin Franklin",
+    "author": "Benjamin Franklin",
+    "isbn": "9780486290737",
+    "publicationYear": 1996,
+    "description": "Franklin recounts his own life, from a modest Boston childhood and printing apprenticeship to success in Philadelphia as a businessman, writer and civic organiser. He describes his methods for self-improvement, including a plan for cultivating thirteen virtues. Left unfinished at his death, the memoir gives readers a first-hand view of colonial American life and an influential model of self-made ambition."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0598",
+    "title": "The Automatic Millionaire",
+    "author": "David Bach",
+    "isbn": "9780767923781",
+    "publicationYear": 2005,
+    "description": "Bach argues that ordinary earners can build wealth by deciding once and then automating good financial decisions. He recommends paying yourself first through automatic retirement contributions, building an emergency fund and paying down a mortgage and debt systematically. The book suits beginners who want a simple, low-effort savings plan rather than active money management."
+  },
+  {
+    "_id": "6a789c8817be87536c3a059e",
+    "title": "The Barefoot Investor",
+    "author": "Scott Pape",
+    "isbn": "9780730327000",
+    "publicationYear": 2016,
+    "description": "Pape, an Australian finance columnist, sets out a step-by-step plan for managing household money, from organising bank accounts into buckets to clearing debt, buying a home and preparing for retirement. Advice is framed around Australian accounts and superannuation, though many principles apply elsewhere. Written in a conversational style, it suits individuals and families seeking an uncomplicated money system."
+  },
+  {
+    "_id": "6a789c8817be87536c3a057c",
+    "title": "The Body Keeps the Score",
+    "author": "Bessel van der Kolk",
+    "isbn": "9780143127741",
+    "publicationYear": 2015,
+    "description": "Van der Kolk, a psychiatrist, draws on decades of clinical work and research to explain how trauma affects the brain, the body and relationships. He reviews developments in neuroscience and describes a range of treatments, including therapy, yoga, neurofeedback and EMDR. Survivors, clinicians and general readers interested in mental health will find an accessible account of trauma and recovery."
+  },
+  {
+    "_id": "6a789c8817be87536c3a059a",
+    "title": "The Bogleheads' Guide to Investing",
+    "author": "Taylor Larimore",
+    "isbn": "9781118921289",
+    "publicationYear": 2014,
+    "description": "Written by Larimore and co-authors from the online community inspired by Vanguard founder John Bogle, this guide promotes a simple, low-cost approach to investing. Topics include saving early, diversifying with index funds, keeping fees and taxes low, and staying the course through market swings. It suits beginners and do-it-yourself investors who want a clear, long-term plan."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0514",
+    "title": "The Book Thief",
+    "author": "Markus Zusak",
+    "isbn": "9780375842207",
+    "publicationYear": 2007,
+    "description": "Set in a small town in Nazi Germany, Zusak's novel follows Liesel, a foster girl who steals books and learns to read while her adoptive family hides a Jewish man in their basement. The story is narrated by Death, which gives it an unusual, reflective voice. It suits older teens and adults interested in historical fiction about ordinary lives during the Second World War."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0474",
+    "title": "The C Programming Language",
+    "author": "Brian W. Kernighan",
+    "isbn": "9780131103627",
+    "publicationYear": 1988,
+    "description": "Kernighan and Ritchie, the latter one of the language's creators, provide a compact introduction to C covering types, operators, control flow, functions, pointers, structures and input and output. Concise examples and exercises build toward practical programs, and a reference manual appears at the end. Programmers learning C or seeking a precise understanding of the language still use it as a standard text."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e52",
+    "title": "The Catcher in the Rye",
+    "author": "J.D. Salinger",
+    "isbn": "9780316769488",
+    "publicationYear": 1951,
+    "description": "Holden Caulfield, a teenager expelled from his boarding school, spends several days wandering New York City before returning home to face his parents. Through his restless, sardonic narration, Salinger explores alienation, grief, and the difficulty of growing up in a world Holden sees as false. The novel remains widely studied and suits readers interested in coming-of-age stories and classic American fiction."
+  },
+  {
+    "_id": "6a789c8817be87536c3a047e",
+    "title": "The Clean Coder",
+    "author": "Robert C. Martin",
+    "isbn": "9780137081073",
+    "publicationYear": 2011,
+    "description": "Martin turns from code quality to the conduct of software developers, discussing what professional behaviour looks like in a programming career. He covers saying no to unrealistic demands, making commitments, estimating, managing time and pressure, testing practices and collaboration. Developers at any stage who want to work more responsibly and communicate better with colleagues and managers will find practical guidance."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0510",
+    "title": "The Da Vinci Code",
+    "author": "Dan Brown",
+    "isbn": "9780307474278",
+    "publicationYear": 2003,
+    "description": "Harvard symbologist Robert Langdon is drawn into a murder investigation at the Louvre and, with cryptologist Sophie Neveu, follows a trail of codes hidden in art and history. The chase across France and England involves secret societies and alternative theories about Christian history. Brown's fast-paced thriller suits readers who enjoy puzzles, conspiracies and short, cliffhanger chapters."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04a8",
+    "title": "The Data Warehouse Toolkit",
+    "author": "Ralph Kimball",
+    "isbn": "9781118530801",
+    "publicationYear": 2013,
+    "description": "Kimball and Ross explain dimensional modelling, the approach of organising data warehouse tables into facts and dimensions for analysis and reporting. Case studies from industries such as retail, insurance and finance demonstrate design patterns, slowly changing dimensions and best practices. Data engineers, analysts and architects building business intelligence systems use it as a practical design reference."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04e0",
+    "title": "The DevOps Handbook",
+    "author": "Gene Kim",
+    "isbn": "9781942788003",
+    "publicationYear": 2016,
+    "description": "Kim and co-authors describe how organisations can deliver software faster and more reliably by improving the flow of work between development and operations. Chapters address continuous integration and deployment, telemetry, feedback loops and a culture of learning, with case studies from real companies. Engineering leaders, developers and operations staff will find a practical roadmap for adopting DevOps practices."
+  },
+  {
+    "_id": "6a789c8817be87536c3a05a4",
+    "title": "The Devil in the White City",
+    "author": "Erik Larson",
+    "isbn": "9780375725609",
+    "publicationYear": 2004,
+    "description": "Larson interweaves two true stories from 1890s Chicago: architect Daniel Burnham's effort to build the 1893 World's Columbian Exposition, and the crimes of H. H. Holmes, a killer who used the fair to find victims. Built from historical sources and written with the pacing of a novel, it suits readers who enjoy narrative history and true crime."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e79",
+    "title": "The Diary of a Young Girl",
+    "author": "Anne Frank",
+    "isbn": "9780553296983",
+    "publicationYear": 1947,
+    "description": "Anne Frank's diary records the two years she and her family spent hiding from the Nazis in a concealed annex of an Amsterdam building. Writing between the ages of thirteen and fifteen, she describes life in close quarters, tensions among the residents, her hopes to become a writer and her growing self-awareness. It offers a personal, first-hand perspective on the Holocaust."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e6c",
+    "title": "The Double Helix",
+    "author": "James D. Watson",
+    "isbn": "9780743216302",
+    "publicationYear": 1968,
+    "description": "Watson gives his personal account of the race to determine the structure of DNA in the early 1950s, centred on his collaboration with Francis Crick in Cambridge. The memoir describes rivalries, mistakes and the role of other researchers, including Rosalind Franklin. Candid and often opinionated, it suits readers interested in how scientific discovery happens and the people behind it."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e71",
+    "title": "The E-Myth Revisited",
+    "author": "Michael E. Gerber",
+    "isbn": "9780887307287",
+    "publicationYear": 1995,
+    "description": "Gerber argues that many small businesses fail because they are started by technicians who are good at their craft but not at running a company. He recommends working on the business rather than in it, by building documented systems in the manner of a franchise. Owners and would-be entrepreneurs will find a practical framework for creating a business that can run without them."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0568",
+    "title": "The Effective Executive",
+    "author": "Peter F. Drucker",
+    "isbn": "9780060833459",
+    "publicationYear": 2006,
+    "description": "Drucker contends that effectiveness is a set of practices any knowledge worker can learn rather than an innate talent. He discusses managing time, focusing on contribution, building on strengths, setting priorities and making sound decisions. Concise and practical, it suits managers, professionals and anyone whose work requires them to direct their own efforts toward results."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0550",
+    "title": "The Elegant Universe",
+    "author": "Brian Greene",
+    "isbn": "9780393338101",
+    "publicationYear": 2010,
+    "description": "Greene, a physicist, introduces string theory and the search for a single framework that reconciles general relativity with quantum mechanics. He builds up from Einstein's ideas about space and time and the strangeness of the quantum world before explaining vibrating strings and extra dimensions. Using analogies instead of equations, it suits general readers curious about modern theoretical physics."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0490",
+    "title": "The Elements of Computing Systems",
+    "author": "Noam Nisan",
+    "isbn": "9780262640688",
+    "publicationYear": 2005,
+    "description": "Nisan and Schocken guide readers through building a complete computer system from first principles, starting with simple logic gates and progressing through hardware, an assembler, a virtual machine, a compiler and a basic operating system. Each chapter is a hands-on project using supplied simulation tools. Students and self-learners wanting to understand how computers work end to end will benefit."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0554",
+    "title": "The Emperor of All Maladies",
+    "author": "Siddhartha Mukherjee",
+    "isbn": "9781439170915",
+    "publicationYear": 2010,
+    "description": "Mukherjee, an oncologist, traces the history of cancer from ancient descriptions to modern genetics and targeted therapies. He follows the surgeons, researchers, activists and patients who shaped treatment, including the development of chemotherapy and debates over prevention. Combining science, history and clinical stories, it suits general readers who want to understand the disease and the long effort to fight it."
+  },
+  {
+    "_id": "6a789c8817be87536c3a055e",
+    "title": "The Fabric of the Cosmos",
+    "author": "Brian Greene",
+    "isbn": "9780375727207",
+    "publicationYear": 2005,
+    "description": "Greene explores what physics reveals about the nature of space and time, examining questions such as why time seems to flow in one direction and whether space is a real entity. He covers relativity, quantum entanglement, cosmology and ideas from string theory. Written for non-specialists with analogies and minimal mathematics, it suits readers curious about the foundations of reality."
+  },
+  {
+    "_id": "6a789c8817be87536c3a053c",
+    "title": "The Four Agreements",
+    "author": "Don Miguel Ruiz",
+    "isbn": "9781878424310",
+    "publicationYear": 1997,
+    "description": "Ruiz draws on Toltec spiritual ideas to offer four principles for personal freedom: being impeccable with your word, not taking things personally, not making assumptions and always doing your best. He explains how beliefs absorbed in childhood can create suffering and how these commitments can replace them. Short and accessible, it suits readers interested in practical spirituality and self-reflection."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0552",
+    "title": "The Gene: An Intimate History",
+    "author": "Siddhartha Mukherjee",
+    "isbn": "9781476733500",
+    "publicationYear": 2016,
+    "description": "Mukherjee recounts the history of genetics, from Mendel and Darwin through the discovery of DNA to gene editing and the sequencing of the human genome. He also discusses the misuse of genetic ideas in eugenics and the ethical questions raised by new technologies. Personal reflections on mental illness in his own family run through this accessible account for general readers."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0542",
+    "title": "The Gifts of Imperfection",
+    "author": "Brené Brown",
+    "isbn": "9781592858491",
+    "publicationYear": 2010,
+    "description": "Brown, a researcher on shame and vulnerability, offers guidance on letting go of perfectionism and the need to please others. She outlines ten guideposts for what she calls wholehearted living, covering self-compassion, resilience, gratitude, creativity, rest and play. Readers seeking a gentle, research-informed approach to self-acceptance and emotional wellbeing will find practical reflections."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0578",
+    "title": "The Glass Castle",
+    "author": "Jeannette Walls",
+    "isbn": "9780743247542",
+    "publicationYear": 2005,
+    "description": "Walls recounts growing up with a brilliant but alcoholic father and an artistic, unpredictable mother who moved the family between desert towns and a poor West Virginia mining community. The memoir describes poverty, neglect and the children's self-reliance without bitterness, and follows Walls's eventual move to New York. It suits readers interested in family memoirs and stories of resilience."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0486",
+    "title": "The Go Programming Language",
+    "author": "Alan A. A. Donovan",
+    "isbn": "9780134190440",
+    "publicationYear": 2015,
+    "description": "Donovan and Kernighan present the Go language through practical, carefully chosen examples, covering basic syntax, composite types, functions, methods, interfaces and packages. Later chapters address goroutines and channels for concurrency, testing, reflection and low-level programming. Programmers with experience in another language who want a thorough, idiomatic introduction to Go will find it a solid tutorial and reference."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04e8",
+    "title": "The Goal",
+    "author": "Eliyahu M. Goldratt",
+    "isbn": "9780884271956",
+    "publicationYear": 2004,
+    "description": "Written as a novel, Goldratt's book follows Alex Rogo, a manager trying to rescue a failing manufacturing plant within a few months. Guided by a former teacher, he learns to identify bottlenecks and focus improvement on them, ideas that became known as the theory of constraints. It suits managers, engineers and students of operations who prefer learning through story."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0528",
+    "title": "The Goldfinch",
+    "author": "Donna Tartt",
+    "isbn": "9780316055444",
+    "publicationYear": 2013,
+    "description": "After surviving an explosion at a New York museum that kills his mother, thirteen-year-old Theo Decker keeps a small Dutch painting taken from the wreckage. Tartt follows him into adulthood through New York, Las Vegas and Amsterdam as the painting draws him into the art underworld. This long, richly detailed novel suits readers who enjoy literary fiction about loss and obsession."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e50",
+    "title": "The Great Gatsby",
+    "author": "F. Scott Fitzgerald",
+    "isbn": "9780743273565",
+    "publicationYear": 1925,
+    "description": "Narrated by Nick Carraway, the novel follows his mysterious neighbour Jay Gatsby, a wealthy man who throws lavish parties on Long Island in pursuit of Daisy Buchanan, the woman he once loved. Fitzgerald portrays the glamour and moral emptiness of the Jazz Age and the limits of the American Dream. It is a staple of classrooms and suits readers of classic literature."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0530",
+    "title": "The Guns of August",
+    "author": "Barbara W. Tuchman",
+    "isbn": "9780345476098",
+    "publicationYear": 2004,
+    "description": "Tuchman narrates the opening month of the First World War, beginning with the diplomatic and military plans that preceded it and following the early campaigns on the Western Front and in East Prussia. She examines the decisions and miscalculations of leaders on all sides. Readers interested in military history and the origins of the war will find a vivid, detailed account."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04c0",
+    "title": "The Hacker Playbook 3",
+    "author": "Peter Kim",
+    "isbn": "9781980901754",
+    "publicationYear": 2018,
+    "description": "Kim presents penetration testing from a red team perspective, walking through realistic attack scenarios against corporate networks. Topics include reconnaissance, web exploitation, compromising networks, moving laterally, escalating privileges and evading detection. Intended for security professionals and students with some technical background, it emphasises hands-on labs and should be used only for authorised testing and learning."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0516",
+    "title": "The Handmaid's Tale",
+    "author": "Margaret Atwood",
+    "isbn": "9780385490818",
+    "publicationYear": 1998,
+    "description": "In the Republic of Gilead, a theocratic regime that has replaced part of the United States, Offred is a Handmaid assigned to bear children for a powerful Commander and his wife. Atwood's novel tells her story through memories of her former life and the restricted present. It explores power, control over women's bodies and resistance, and suits readers of dystopian and literary fiction."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0548",
+    "title": "The Happiness Advantage",
+    "author": "Shawn Achor",
+    "isbn": "9780307591548",
+    "publicationYear": 2010,
+    "description": "Achor draws on positive psychology research to argue that happiness tends to fuel success at work, rather than simply following it. He outlines seven principles, such as training the brain to notice opportunities, making small manageable changes and investing in social support. Professionals, managers and readers interested in workplace wellbeing will find practical, research-based suggestions."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04ee",
+    "title": "The Hard Thing About Hard Things",
+    "author": "Ben Horowitz",
+    "isbn": "9780062273208",
+    "publicationYear": 2014,
+    "description": "Horowitz, a venture capitalist and former chief executive, writes about the hardest parts of building and running a company, drawing on his experience leading a struggling technology business. He discusses layoffs, firing executives, managing through crises, building culture and the psychological strain on leaders. Founders and managers facing difficult decisions will find candid advice grounded in real situations."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0558",
+    "title": "The Hidden Life of Trees",
+    "author": "Peter Wohlleben",
+    "isbn": "9781771642481",
+    "publicationYear": 2016,
+    "description": "Wohlleben, a German forester, describes how trees in a forest interact, drawing on scientific research and his own observations. He explains how trees may share nutrients through root and fungal networks, respond to threats and support their offspring. Written in an approachable, sometimes personal style, it suits nature lovers and general readers curious about forest ecology."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e5b",
+    "title": "The History of the Ancient World",
+    "author": "Susan Wise Bauer",
+    "isbn": "9780393059748",
+    "publicationYear": 2007,
+    "description": "Bauer surveys the ancient world from the earliest written records through the fall of Rome, moving between Mesopotamia, Egypt, India, China, Greece and other regions. She focuses on rulers, wars and the stories societies told about themselves, presented in short chronological chapters. It suits general readers and homeschool families wanting a readable narrative overview of ancient history."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e90",
+    "title": "The Hobbit",
+    "author": "J.R.R. Tolkien",
+    "isbn": "9780547928227",
+    "publicationYear": 1937,
+    "description": "Bilbo Baggins, a comfort-loving hobbit, is recruited by the wizard Gandalf to join thirteen dwarves on a quest to reclaim their treasure from the dragon Smaug. The journey takes him through encounters with trolls, goblins, elves and giant spiders, and he gains courage along the way. Tolkien's fantasy adventure suits younger readers and adults alike."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04d2",
+    "title": "The Hundred-Page Machine Learning Book",
+    "author": "Andriy Burkov",
+    "isbn": "9781999579517",
+    "publicationYear": 2019,
+    "description": "Burkov condenses the core ideas of machine learning into a short book, covering supervised and unsupervised learning, key algorithms, neural networks, model evaluation and practical issues such as feature engineering. Explanations use mathematical notation but stay brief. It suits practitioners wanting a quick refresher and students seeking a compact map of the field before moving to deeper texts."
+  },
+  {
+    "_id": "6a789c8817be87536c3a050e",
+    "title": "The Hunger Games",
+    "author": "Suzanne Collins",
+    "isbn": "9780439023481",
+    "publicationYear": 2008,
+    "description": "In the nation of Panem, a ruling Capitol forces each district to send two young people to fight to the death in a televised contest. Sixteen-year-old Katniss Everdeen volunteers to take her younger sister's place. Collins's dystopian novel explores survival, inequality and media spectacle, and suits teens and adults who enjoy fast-paced speculative fiction."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e87",
+    "title": "The Immortal Life of Henrietta Lacks",
+    "author": "Rebecca Skloot",
+    "isbn": "9781400052189",
+    "publicationYear": 2010,
+    "description": "Skloot tells the story of Henrietta Lacks, a Black woman whose cancer cells were taken without her knowledge in 1951 and became the first human cell line to grow indefinitely in a laboratory. She traces the cells' role in medical research alongside the experiences of the Lacks family. The book raises questions about consent, race and ethics in science."
+  },
+  {
+    "_id": "6a789c8817be87536c3a05a0",
+    "title": "The Index Card",
+    "author": "Helaine Olen",
+    "isbn": "9781591847687",
+    "publicationYear": 2016,
+    "description": "Olen and Pollack argue that sound personal finance advice is simple enough to fit on an index card. They expand on a short list of rules, such as saving a meaningful share of income, paying off credit cards, using low-cost index funds and being wary of financial salespeople. The book suits readers wanting straightforward guidance without complex strategies."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e6f",
+    "title": "The Innovator's Dilemma",
+    "author": "Clayton M. Christensen",
+    "isbn": "9781633691780",
+    "publicationYear": 1997,
+    "description": "Christensen examines why well-managed, successful companies often lose their leading positions when new technologies emerge. He distinguishes sustaining innovations from disruptive ones that start in small or low-end markets and later overtake incumbents, using industries such as disk drives as case studies. Managers, strategists and business students will find an influential framework for thinking about technological change."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e72",
+    "title": "The Innovators",
+    "author": "Walter Isaacson",
+    "isbn": "9781476708690",
+    "publicationYear": 2014,
+    "description": "Isaacson traces the history of the digital revolution, from Ada Lovelace's ideas about computing machines through the invention of the computer, transistor, microchip, personal computer, internet and web. He emphasises that innovation usually came from collaboration among teams rather than lone geniuses. Readers interested in technology history and the people behind it will find an engaging group portrait."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e81",
+    "title": "The Intelligent Investor",
+    "author": "Benjamin Graham",
+    "isbn": "9780060555665",
+    "publicationYear": 2006,
+    "description": "Graham sets out the philosophy of value investing, stressing the difference between investing and speculation, the importance of a margin of safety and the need to control emotions during market swings. He contrasts defensive and enterprising investors and explains how to analyse securities. Later editions add commentary relating his ideas to modern markets, making it useful for long-term investors."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0512",
+    "title": "The Kite Runner",
+    "author": "Khaled Hosseini",
+    "isbn": "9781594480003",
+    "publicationYear": 2003,
+    "description": "Amir, a boy from a wealthy family in Kabul, betrays his loyal friend Hassan, a servant's son, and carries the guilt into adulthood after fleeing to the United States. Years later he returns to a Taliban-ruled Afghanistan seeking redemption. Hosseini's novel explores friendship, fathers and sons, and a country's upheavals, and suits readers of contemporary literary fiction."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04e4",
+    "title": "The Lean Mindset",
+    "author": "Mary Poppendieck",
+    "isbn": "9780321896896",
+    "publicationYear": 2013,
+    "description": "Mary and Tom Poppendieck apply lean thinking to software and product development, emphasising purpose, customer focus, energised teams and learning through experimentation. Drawing on examples from various organisations, they discuss how teams can deliver value quickly while staying aligned with real needs. Product managers, engineering leaders and agile practitioners will find ideas for building effective, motivated teams."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04f4",
+    "title": "The Lean Product Playbook",
+    "author": "Dan Olsen",
+    "isbn": "9781118960875",
+    "publicationYear": 2015,
+    "description": "Olsen offers a step-by-step process for building products customers want, organised around achieving product-market fit. Stages include identifying target customers and their unmet needs, defining a value proposition, specifying a minimum viable product, prototyping and testing with users. Product managers, founders and designers will find concrete frameworks and examples for reducing risk when developing new products."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e6d",
+    "title": "The Lean Startup",
+    "author": "Eric Ries",
+    "isbn": "9780307887894",
+    "publicationYear": 2011,
+    "description": "Ries proposes a scientific approach to building new ventures under conditions of uncertainty. Central ideas include the build-measure-learn loop, minimum viable products, validated learning, actionable metrics and deciding when to pivot or persevere. Founders, product teams and managers launching new initiatives inside larger organisations will find a practical method for testing ideas before investing heavily."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0592",
+    "title": "The Little Book of Common Sense Investing",
+    "author": "John C. Bogle",
+    "isbn": "9781119404507",
+    "publicationYear": 2017,
+    "description": "Bogle, founder of Vanguard, makes the case for buying and holding a low-cost fund that tracks the whole stock market. He explains how fees, trading costs and taxes erode returns for active investors, and why most fund managers fail to beat the market over time. Concise and data-driven, it suits new and experienced investors seeking a simple long-term strategy."
+  },
+  {
+    "_id": "6a789c8817be87536c3a050c",
+    "title": "The Lord of the Rings",
+    "author": "J.R.R. Tolkien",
+    "isbn": "9780544003415",
+    "publicationYear": 2004,
+    "description": "Frodo Baggins inherits a powerful ring created by the Dark Lord Sauron and sets out with a fellowship of companions to destroy it before it can be reclaimed. Tolkien's epic follows their journey across Middle-earth through war, friendship and sacrifice. With its invented languages, histories and detailed world-building, it suits readers who enjoy immersive high fantasy."
+  },
+  {
+    "_id": "6a789c8817be87536c3a058a",
+    "title": "The Lucifer Effect",
+    "author": "Philip Zimbardo",
+    "isbn": "9781400064113",
+    "publicationYear": 2007,
+    "description": "Zimbardo examines how ordinary people come to commit cruel acts, drawing heavily on his 1971 Stanford Prison Experiment, which he recounts in detail. He links its lessons to the abuses at Abu Ghraib prison and argues that situations and systems shape behaviour more than is often assumed. The final chapters turn to resisting harmful social pressure and to everyday heroism, making it useful for students of social psychology and ethics."
+  },
+  {
+    "_id": "6a789c8817be87536c3a051e",
+    "title": "The Martian",
+    "author": "Andy Weir",
+    "isbn": "9780553418026",
+    "publicationYear": 2014,
+    "description": "Stranded alone on Mars after his crew leaves him for dead during a dust storm, astronaut Mark Watney must find ways to survive with limited food, air and equipment. The story alternates his wry log entries with efforts on Earth and aboard his crew's ship to bring him home. Readers who enjoy problem-solving, real science and dry humour will find it an engaging survival thriller."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04da",
+    "title": "The Master Algorithm",
+    "author": "Pedro Domingos",
+    "isbn": "9780465065707",
+    "publicationYear": 2015,
+    "description": "Domingos surveys the main schools of machine learning, which he calls the five tribes: symbolists, connectionists, evolutionaries, Bayesians and analogizers. He explains each approach's core ideas without heavy mathematics and makes the case for a single universal learning algorithm that could combine them. It suits general readers, students and professionals wanting a conceptual map of how computers learn from data."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0596",
+    "title": "The Millionaire Next Door",
+    "author": "Thomas J. Stanley",
+    "isbn": "9781589795471",
+    "publicationYear": 2010,
+    "description": "Based on surveys and interviews with wealthy Americans, Stanley and Danko find that many millionaires live modestly, spend below their means and build wealth steadily over decades. The authors contrast these savers with high earners who display success through consumption but accumulate little. Readers interested in personal finance and the habits behind long-term wealth will find practical lessons here."
+  },
+  {
+    "_id": "6a789c8817be87536c3a053e",
+    "title": "The Miracle Morning",
+    "author": "Hal Elrod",
+    "isbn": "9780979019715",
+    "publicationYear": 2012,
+    "description": "Elrod proposes a structured early-morning routine as a way to improve health, focus and personal growth. His approach combines six practices: silence, affirmations, visualization, exercise, reading and scribing, or journaling. The book draws on his own recovery from a serious car accident and suits readers looking for a simple framework for building daily habits."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04f0",
+    "title": "The Mom Test",
+    "author": "Rob Fitzpatrick",
+    "isbn": "9781492180746",
+    "publicationYear": 2013,
+    "description": "Fitzpatrick offers a practical guide to talking with potential customers without being misled by polite but useless feedback. He shows how to ask about people's real past behaviour and problems rather than pitching an idea and seeking approval. Short and direct, it is aimed at founders, product managers and anyone validating a business idea through customer conversations."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0482",
+    "title": "The Mythical Man-Month",
+    "author": "Frederick P. Brooks Jr.",
+    "isbn": "9780201835953",
+    "publicationYear": 1995,
+    "description": "Drawing on his experience managing IBM's System/360 and OS/360 projects, Brooks examines why large software projects run late and over budget. His essays cover the problems of adding staff to late projects, the value of conceptual integrity and the absence of any single silver bullet for software productivity. Project managers, engineers and students of software engineering still consult it for its insights into team and schedule dynamics."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e93",
+    "title": "The Name of the Wind",
+    "author": "Patrick Rothfuss",
+    "isbn": "9780756404741",
+    "publicationYear": 2007,
+    "description": "Kvothe, a legendary figure now living quietly as an innkeeper, begins telling the true story of his life to a travelling chronicler. His account follows a childhood with a troupe of performers, a hard stretch as an orphan on city streets and his entry into a university where magic is studied as a science. Fans of richly detailed epic fantasy with a strong first-person voice will enjoy this first volume of the Kingkiller Chronicle."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0526",
+    "title": "The Night Circus",
+    "author": "Erin Morgenstern",
+    "isbn": "9780307744432",
+    "publicationYear": 2012,
+    "description": "A mysterious circus that opens only at night becomes the arena for a long contest between two young magicians, Celia and Marco, bound to it by their mentors. As the competition unfolds over years, the pair fall in love and the stakes grow for everyone connected to the circus. Notable for its atmospheric, visual writing and nonlinear structure, the novel suits readers of literary fantasy and romance."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0504",
+    "title": "The Obstacle Is the Way",
+    "author": "Ryan Holiday",
+    "isbn": "9781591846352",
+    "publicationYear": 2014,
+    "description": "Holiday applies the ideas of Stoic philosophy, especially those of Marcus Aurelius, to modern setbacks and difficulties. He organizes the book around three disciplines, perception, action and will, and illustrates them with stories of historical figures who turned adversity into advantage. It suits readers looking for an accessible introduction to Stoicism and a practical way of handling problems at work and in life."
+  },
+  {
+    "_id": "6a789c8817be87536c3a05ae",
+    "title": "The Omnivore's Dilemma",
+    "author": "Michael Pollan",
+    "isbn": "9780143038580",
+    "publicationYear": 2007,
+    "description": "Pollan traces four food chains from source to plate: industrial agriculture built on corn, large-scale organic farming, a small pasture-based farm, and a meal he hunts and gathers himself. Along the way he examines the ecological, economic and ethical consequences of how Americans eat. Readers curious about where their food comes from and the choices behind it will find it informative and thought-provoking."
+  },
+  {
+    "_id": "6a789c8817be87536c3a055c",
+    "title": "The Order of Time",
+    "author": "Carlo Rovelli",
+    "isbn": "9780735216105",
+    "publicationYear": 2018,
+    "description": "Rovelli, a theoretical physicist, explores what modern physics says about the nature of time. He explains how relativity, thermodynamics and quantum gravity undermine everyday ideas of a universal present and a steady flow of time, and considers why we nevertheless experience time as passing. Written in short, lyrical chapters with little mathematics, it suits curious general readers interested in physics and philosophy."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0586",
+    "title": "The Paradox of Choice",
+    "author": "Barry Schwartz",
+    "isbn": "9780060005696",
+    "publicationYear": 2005,
+    "description": "Schwartz argues that an abundance of options, often seen as a sign of freedom, can leave people anxious, indecisive and less satisfied. Drawing on psychological research, he distinguishes maximizers, who seek the best possible option, from satisficers, who settle for good enough. He closes with practical suggestions for reducing the burden of decisions, making it useful for readers interested in consumer behaviour and wellbeing."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0564",
+    "title": "The Personal MBA",
+    "author": "Josh Kaufman",
+    "isbn": "9781591845577",
+    "publicationYear": 2010,
+    "description": "Kaufman condenses the core ideas of business education into a broad set of concise mental models for self-directed learners. Topics range across value creation, marketing, sales, finance, systems and human psychology, each explained briefly with practical examples. Aspiring entrepreneurs, managers and anyone weighing the cost of a formal MBA can use it as an accessible overview and reference."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04dc",
+    "title": "The Phoenix Project",
+    "author": "Gene Kim",
+    "isbn": "9780988262591",
+    "publicationYear": 2013,
+    "description": "Told as a novel, the story follows Bill, an IT manager suddenly put in charge of rescuing a failing, overdue project at a struggling manufacturing company. With guidance from a mentor, he learns to apply lean manufacturing ideas such as flow, feedback and continual learning to IT operations. Written by Kim with co-authors, it introduces DevOps principles in an accessible way for engineers, managers and business leaders."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e7e",
+    "title": "The Power of Habit",
+    "author": "Charles Duhigg",
+    "isbn": "9780812981605",
+    "publicationYear": 2012,
+    "description": "Duhigg explains the science of how habits form and how they can be changed, centred on a loop of cue, routine and reward. He applies this framework to individuals, companies and social movements, using case studies from sports, business and medicine. Readers who want to understand their own behaviour or lead change in organizations will find practical ideas grounded in research."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e61",
+    "title": "The Power of Now",
+    "author": "Eckhart Tolle",
+    "isbn": "9781577314806",
+    "publicationYear": 1999,
+    "description": "Tolle presents a spiritual teaching centred on living fully in the present moment rather than being ruled by thoughts about the past and future. Drawing on elements of Buddhism, Christianity and other traditions, he describes how identification with the mind creates suffering and how awareness can loosen it. Written largely in question-and-answer form, it suits readers interested in mindfulness and spiritual growth."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04fc",
+    "title": "The Power of Positive Thinking",
+    "author": "Norman Vincent Peale",
+    "isbn": "9780743234801",
+    "publicationYear": 2003,
+    "description": "Peale, a Protestant minister, combines Christian faith with practical advice on building confidence, overcoming worry and pursuing goals with optimism. Each chapter offers techniques such as prayer, affirmations and visualization, illustrated with stories from people he counselled. It suits readers looking for an inspirational, faith-based approach to self-improvement and gives insight into a long-influential strand of American self-help."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e45",
+    "title": "The Pragmatic Programmer",
+    "author": "Andrew Hunt",
+    "isbn": "9780201616224",
+    "publicationYear": 1999,
+    "description": "Hunt and Thomas offer a collection of practical tips on the craft of software development, from writing flexible code to managing a career. Ideas such as not repeating yourself, orthogonality, tracer bullets and automation are explained in short, focused sections that can be read independently. Programmers of any experience level who want to improve their habits and professional judgment will find it a lasting reference."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0498",
+    "title": "The Pragmatic Programmer: 20th Anniversary Edition",
+    "author": "David Thomas",
+    "isbn": "9780135957059",
+    "publicationYear": 2019,
+    "description": "Thomas and Hunt revise their guide to software craftsmanship for a new generation of developers, updating examples and adding material on topics such as concurrency, security and modern development practices. The core advice remains, covering code design, testing, debugging, estimation and taking responsibility for one's work. It suits both newcomers and experienced programmers who want practical guidance on writing maintainable software and developing their careers."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e84",
+    "title": "The Psychology of Money",
+    "author": "Morgan Housel",
+    "isbn": "9780857197689",
+    "publicationYear": 2020,
+    "description": "Housel argues that success with money depends more on behaviour than on technical knowledge. Through short, story-driven chapters, he explores ideas such as the power of compounding, the role of luck and risk, the value of saving without a specific goal and the meaning of having enough. Readers at any stage of their financial lives will find a thoughtful look at how emotions and personal history shape money decisions."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0582",
+    "title": "The Psychology of Selling",
+    "author": "Brian Tracy",
+    "isbn": "9780814474561",
+    "publicationYear": 2006,
+    "description": "Tracy focuses on the mental side of sales, arguing that a salesperson's self-concept and attitude strongly affect results. Alongside this, he offers practical techniques for prospecting, presenting, handling objections and closing. Aimed at sales professionals and anyone whose work involves persuasion, it combines motivational advice with step-by-step methods for improving performance."
+  },
+  {
+    "_id": "6a789c8817be87536c3a059c",
+    "title": "The Richest Man in Babylon",
+    "author": "George S. Clason",
+    "isbn": "9780451532366",
+    "publicationYear": 2004,
+    "description": "Set in ancient Babylon, a series of parables follows characters who learn simple rules for building and protecting wealth. Lessons include saving a portion of all earnings, controlling spending, avoiding risky schemes and putting money to work through sound investment. Originally issued as separate pamphlets, the stories offer an easy introduction to personal finance principles for readers of any age."
+  },
+  {
+    "_id": "6a789c8817be87536c3a058e",
+    "title": "The Righteous Mind",
+    "author": "Jonathan Haidt",
+    "isbn": "9780307455772",
+    "publicationYear": 2013,
+    "description": "Haidt, a social psychologist, examines why people divide so strongly over politics and religion. He argues that moral judgments arise mainly from intuition, with reasoning following afterwards, and uses moral foundations theory to explain how liberals and conservatives prioritize different values. Readers interested in moral psychology, political polarization and understanding opposing viewpoints will find it a clear, research-based account."
+  },
+  {
+    "_id": "6a789c8817be87536c3a052a",
+    "title": "The Rise and Fall of the Third Reich",
+    "author": "William L. Shirer",
+    "isbn": "9781451651683",
+    "publicationYear": 2011,
+    "description": "Shirer, an American journalist who reported from Berlin in the 1930s, traces Nazi Germany from Hitler's rise to the regime's defeat in 1945. The narrative combines his own observations with captured German documents, diaries and records presented at the Nuremberg trials. Detailed and comprehensive, it suits readers seeking a thorough single-volume history of the Third Reich and the Second World War in Europe."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0518",
+    "title": "The Road",
+    "author": "Cormac McCarthy",
+    "isbn": "9780307387899",
+    "publicationYear": 2006,
+    "description": "A father and his young son travel on foot across a burned, ash-covered America in the years after an unexplained catastrophe. Pushing a shopping cart of supplies toward the coast, they face cold, hunger and the threat of other survivors who have turned to violence. McCarthy writes in sparse prose about love, survival and moral endurance, suiting readers of literary fiction prepared for a bleak setting."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e6a",
+    "title": "The Selfish Gene",
+    "author": "Richard Dawkins",
+    "isbn": "9780199291151",
+    "publicationYear": 1976,
+    "description": "Dawkins presents evolution from the perspective of the gene, arguing that organisms can be understood as vehicles built by genes to ensure their own replication. He uses this view to explain behaviours such as altruism, cooperation and family conflict, drawing on game theory and the work of other evolutionary biologists. The book also introduces the meme as a unit of cultural transmission and suits readers interested in biology and evolution."
+  },
+  {
+    "_id": "6a789c8817be87536c3a051c",
+    "title": "The Shining",
+    "author": "Stephen King",
+    "isbn": "9780307743657",
+    "publicationYear": 2012,
+    "description": "Jack Torrance, a recovering alcoholic and struggling writer, takes a winter caretaker job at the isolated Overlook Hotel in the Colorado mountains, bringing his wife Wendy and young son Danny. Danny has psychic abilities, and the hotel's dark history begins to work on the family as snow cuts them off from the world. King's novel combines supernatural horror with a study of addiction and family breakdown."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0522",
+    "title": "The Silent Patient",
+    "author": "Alex Michaelides",
+    "isbn": "9781250301697",
+    "publicationYear": 2019,
+    "description": "Alicia Berenson, a painter, shoots her husband and then stops speaking entirely, refusing to explain what happened. Years later, psychotherapist Theo Faber takes a job at the secure unit where she is held, determined to get her to talk and uncover the truth. This psychological thriller suits readers who enjoy unreliable narrators, mental health themes and plots built around a central mystery."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e5d",
+    "title": "The Silk Roads",
+    "author": "Peter Frankopan",
+    "isbn": "9781101912379",
+    "publicationYear": 2015,
+    "description": "Frankopan retells world history by placing the regions linking Europe and Asia, from the Middle East to Central Asia, at the centre rather than the periphery. He follows the movement of goods, religions, ideas, diseases and armies along these routes from antiquity to the present. The broad narrative suits readers who want a fresh perspective on global history beyond a Western-centred account."
+  },
+  {
+    "_id": "6a789c8817be87536c3a053a",
+    "title": "The Silk Roads: A New History of the World",
+    "author": "Peter Frankopan",
+    "isbn": "9781101912379",
+    "publicationYear": 2017,
+    "description": "Rather than viewing the past from Western Europe, Frankopan shows how the lands between the Mediterranean and China shaped the growth of empires and the exchange of trade and beliefs. Chapters are organized around themes such as faith, slaves, oil and wheat, tracing connections from ancient Persia to modern geopolitics. History readers and students looking for a wide-ranging global account will find it informative."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0594",
+    "title": "The Simple Path to Wealth",
+    "author": "JL Collins",
+    "isbn": "9781533667924",
+    "publicationYear": 2016,
+    "description": "Collins developed this guide from letters to his daughter about money and investing. He advocates avoiding debt, saving a large share of income and investing in low-cost, broad stock market index funds, then holding through market downturns. Readers who want a straightforward, low-maintenance strategy toward financial independence will find clear explanations without jargon."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e75",
+    "title": "The Singularity Is Near",
+    "author": "Ray Kurzweil",
+    "isbn": "9780143037880",
+    "publicationYear": 2005,
+    "description": "Kurzweil argues that technological progress is accelerating exponentially and predicts a point, which he calls the Singularity, when machine intelligence will surpass and merge with human intelligence. He discusses advances in genetics, nanotechnology and robotics and considers their implications for health, longevity and society. Readers interested in futurism, artificial intelligence and debates about the long-term direction of technology will find it a key reference."
+  },
+  {
+    "_id": "6a789c8817be87536c3a055a",
+    "title": "The Sixth Extinction",
+    "author": "Elizabeth Kolbert",
+    "isbn": "9780805092998",
+    "publicationYear": 2014,
+    "description": "Kolbert, a journalist, investigates the idea that Earth is undergoing a mass extinction driven by human activity. Visiting scientists in places such as the Amazon, the Great Barrier Reef and Panama, she examines species loss linked to climate change, ocean acidification, habitat destruction and invasive species. The book combines field reporting with scientific history and suits readers concerned about biodiversity and the environment."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0536",
+    "title": "The Splendid and the Vile",
+    "author": "Erik Larson",
+    "isbn": "9780385348713",
+    "publicationYear": 2020,
+    "description": "Larson recounts Winston Churchill's first year as British prime minister, from May 1940 through the Blitz. Using diaries, letters and official records, he portrays Churchill alongside his family, advisers and staff as London endured German bombing. Readers of narrative history interested in the Second World War and leadership under pressure will find an intimate, closely observed account."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04ec",
+    "title": "The Startup Owner's Manual",
+    "author": "Steve Blank",
+    "isbn": "9780984999309",
+    "publicationYear": 2012,
+    "description": "Blank and Dorf present a detailed, step-by-step guide to the customer development process for building a startup. The manual explains how to test business model hypotheses by talking directly with customers, then validate the model, create demand and scale. Its workbook-style checklists suit founders, entrepreneurship students and teams launching new products in both web and physical markets."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0572",
+    "title": "The Story of My Life",
+    "author": "Helen Keller",
+    "isbn": "9780486292496",
+    "publicationYear": 1996,
+    "description": "Keller tells her own story of growing up deaf and blind after an illness in infancy, and of the arrival of her teacher Anne Sullivan. She describes learning language through touch, her schooling and her studies at Radcliffe College. The autobiography offers readers of all ages a firsthand account of determination, learning and the bond between student and teacher."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e65",
+    "title": "The Subtle Art of Not Giving a F*ck",
+    "author": "Mark Manson",
+    "isbn": "9780062457714",
+    "publicationYear": 2016,
+    "description": "Manson offers a blunt, humorous take on self-help, arguing that a good life comes from choosing carefully what to care about rather than trying to feel positive all the time. He discusses accepting limits, taking responsibility, embracing uncertainty and valuing meaningful struggles. Readers tired of conventional upbeat advice will find a direct, conversational approach to values and personal priorities."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04b6",
+    "title": "The TCP/IP Guide",
+    "author": "Charles M. Kozierok",
+    "isbn": "9781593270476",
+    "publicationYear": 2005,
+    "description": "Kozierok provides an extensive reference to the TCP/IP protocol suite and the technologies behind the internet. Starting with networking fundamentals and the OSI reference model, it covers addressing, routing, IPv4 and IPv6, TCP and UDP, and application protocols such as DNS, HTTP and email. Network engineers, students and IT professionals can use it both for study and as a detailed reference."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04c6",
+    "title": "The Tangled Web",
+    "author": "Michal Zalewski",
+    "isbn": "9781593273880",
+    "publicationYear": 2011,
+    "description": "Zalewski, a security researcher, explains how modern web browsers work and why their design makes web applications hard to secure. He covers URLs, HTTP, HTML, scripting, the same-origin policy and other browser security mechanisms, highlighting their inconsistencies and pitfalls. Web developers and security professionals will gain a deeper understanding of the browser environment their applications depend on."
+  },
+  {
+    "_id": "6a789c8817be87536c3a05aa",
+    "title": "The Tipping Point",
+    "author": "Malcolm Gladwell",
+    "isbn": "9780316346627",
+    "publicationYear": 2002,
+    "description": "Gladwell explores how ideas, products and behaviours spread through society in ways similar to epidemics. He introduces concepts such as the Law of the Few, the stickiness factor and the power of context, illustrating them with case studies from fashion, crime and public health. Readers interested in social trends, marketing and how small changes can produce large effects will find it accessible."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0590",
+    "title": "The Total Money Makeover",
+    "author": "Dave Ramsey",
+    "isbn": "9781595555274",
+    "publicationYear": 2013,
+    "description": "Ramsey sets out a step-by-step plan for getting out of debt and building wealth, organized around a sequence he calls the Baby Steps. The programme includes building an emergency fund, paying off debts from smallest to largest with the debt snowball, and later investing for retirement and paying off the home. Readers struggling with debt who want a firm, structured plan will find direct guidance."
+  },
+  {
+    "_id": "6a789c8817be87536c3a054c",
+    "title": "The Untethered Soul",
+    "author": "Michael A. Singer",
+    "isbn": "9781572245372",
+    "publicationYear": 2007,
+    "description": "Singer explores consciousness and the inner self, encouraging readers to observe their thoughts and emotions rather than identify with them. Drawing on meditation and spiritual traditions, he discusses letting go of fear and past pain and choosing to remain open instead of closing down. It suits readers interested in mindfulness, spirituality and inner peace."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0508",
+    "title": "The War of Art",
+    "author": "Steven Pressfield",
+    "isbn": "9781936891023",
+    "publicationYear": 2002,
+    "description": "Pressfield identifies an internal force he calls Resistance that keeps writers, artists and others from doing their creative work. In short sections, he describes how it appears as procrastination, fear and self-doubt, and argues for overcoming it by approaching work as a professional rather than an amateur. Creators and anyone struggling to begin or finish ambitious projects will find practical encouragement."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0538",
+    "title": "The Warmth of Other Suns",
+    "author": "Isabel Wilkerson",
+    "isbn": "9780679763888",
+    "publicationYear": 2011,
+    "description": "Wilkerson chronicles the Great Migration, in which millions of Black Americans left the South for cities in the North and West between roughly 1915 and 1970. She follows three people who made the journey in different decades, weaving their stories together with broader historical research. Readers interested in American history, race and migration will find a deeply researched and personal account."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04bc",
+    "title": "The Web Application Hacker's Handbook",
+    "author": "Dafydd Stuttard",
+    "isbn": "9781118026472",
+    "publicationYear": 2011,
+    "description": "Stuttard and Pinto walk through how attackers probe web applications and turn weaknesses into working exploits. Topics include attacking authentication, session management and access controls, injection flaws, cross-site scripting and logic errors, with a structured methodology for testing. Penetration testers, security students and developers who want to understand attacks in order to build safer applications will find it a thorough reference."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e89",
+    "title": "The Wright Brothers",
+    "author": "David McCullough",
+    "isbn": "9781476728742",
+    "publicationYear": 2015,
+    "description": "McCullough tells the story of Wilbur and Orville Wright, two bicycle makers from Dayton, Ohio, who achieved the first powered airplane flight. Drawing on family papers and letters, he follows their experiments at Kitty Hawk, their persistence through failure and their later demonstrations in Europe and America. Readers interested in aviation, invention and American history will find a well-researched biography."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e62",
+    "title": "Think and Grow Rich",
+    "author": "Napoleon Hill",
+    "isbn": "9781599869772",
+    "publicationYear": 1937,
+    "description": "Hill presents principles for achieving success and wealth, which he says he drew from studying prominent figures of his era. Chapters cover ideas such as desire, faith, autosuggestion, persistence and the mastermind group. Considered a foundational text of the self-help genre, it suits readers interested in motivation, goal-setting and the history of success literature."
+  },
+  {
+    "_id": "6a789c8817be87536c3a058c",
+    "title": "Thinking in Bets",
+    "author": "Annie Duke",
+    "isbn": "9780735216358",
+    "publicationYear": 2018,
+    "description": "Duke, a former professional poker player, applies lessons from poker to making decisions under uncertainty. She warns against judging decisions only by their outcomes and encourages thinking in probabilities, acknowledging luck and seeking honest feedback from others. Professionals, investors and anyone making choices without complete information will find practical tools for improving judgment."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e7c",
+    "title": "Thinking, Fast and Slow",
+    "author": "Daniel Kahneman",
+    "isbn": "9780374533557",
+    "publicationYear": 2011,
+    "description": "Kahneman describes two modes of thinking: a fast, intuitive System 1 and a slower, deliberate System 2. Drawing on decades of research, much of it with Amos Tversky, he explains biases such as anchoring, loss aversion and overconfidence, along with prospect theory. Readers interested in psychology, economics and why people make predictable errors in judgment will find a detailed, research-based guide."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e4f",
+    "title": "To Kill a Mockingbird",
+    "author": "Harper Lee",
+    "isbn": "9780061120084",
+    "publicationYear": 1960,
+    "description": "In a small Alabama town during the Depression, young Scout Finch watches her father Atticus, a lawyer, defend a Black man wrongly accused of raping a white woman. Told through Scout's eyes, the novel follows her and her brother Jem as they confront racism, injustice and the mystery of their reclusive neighbour Boo Radley. It suits readers of all ages and is widely studied in schools."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e8a",
+    "title": "Unbroken",
+    "author": "Laura Hillenbrand",
+    "isbn": "9780812974492",
+    "publicationYear": 2010,
+    "description": "Hillenbrand tells the life story of Louis Zamperini, an Olympic runner who became a bomber crewman in the Second World War. After his plane crashed into the Pacific, he survived weeks adrift at sea before being captured and held in Japanese prisoner-of-war camps. The book follows his endurance and his difficult postwar recovery, suiting readers of war history and survival stories."
+  },
+  {
+    "_id": "6a789c8817be87536c3a04f6",
+    "title": "Venture Deals",
+    "author": "Brad Feld",
+    "isbn": "9781119259756",
+    "publicationYear": 2016,
+    "description": "Feld and Mendelson explain how venture capital financing works, from the people involved to the terms that appear in a term sheet. They cover valuation, liquidation preferences, control provisions, convertible notes and negotiation tactics in plain language. Founders raising money, aspiring investors and lawyers new to startups will find a practical reference for understanding deals."
+  },
+  {
+    "_id": "6a789c8817be87536c3a057a",
+    "title": "When Breath Becomes Air",
+    "author": "Paul Kalanithi",
+    "isbn": "9780812988406",
+    "publicationYear": 2016,
+    "description": "Kalanithi, a neurosurgeon in training, wrote this memoir after being diagnosed with stage IV lung cancer in his mid-thirties. He reflects on his path from literature to medicine, his work with patients and what makes life meaningful in the face of death. Published after his death with an epilogue by his wife Lucy, it suits readers interested in medicine, mortality and memoir."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0524",
+    "title": "Where the Crawdads Sing",
+    "author": "Delia Owens",
+    "isbn": "9780735219090",
+    "publicationYear": 2018,
+    "description": "Abandoned by her family as a child, Kya Clark grows up alone in the marshes of coastal North Carolina, where townspeople dismiss her as the Marsh Girl. When a well-known local young man is found dead, suspicion falls on her. Blending a coming-of-age story, nature writing and a courtroom mystery, the novel suits readers who enjoy atmospheric fiction."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e67",
+    "title": "You Are a Badass",
+    "author": "Jen Sincero",
+    "isbn": "9780762447695",
+    "publicationYear": 2013,
+    "description": "Sincero offers an informal, humorous guide to overcoming self-doubt and changing habits that hold people back. Short chapters mix personal anecdotes with advice on self-acceptance, mindset, money and taking action toward goals. Readers who prefer a casual, irreverent voice in self-help will find it an approachable starting point."
+  },
+  {
+    "_id": "6a789c8817be87536c3a0478",
+    "title": "You Don't Know JS: Scope & Closures",
+    "author": "Kyle Simpson",
+    "isbn": "9781449335588",
+    "publicationYear": 2014,
+    "description": "Simpson explains how JavaScript handles scope, covering lexical scope, function and block scope, hoisting and how the engine looks up variables. Building on these foundations, he gives a clear account of closures and how they underpin patterns such as modules. Developers who use JavaScript but want to understand how the language actually works will find it a focused, in-depth guide."
+  },
+  {
+    "_id": "6a72ff6134ab477c585f9e70",
+    "title": "Zero to One",
+    "author": "Peter Thiel",
+    "isbn": "9780804139298",
+    "publicationYear": 2014,
+    "description": "Thiel, a co-founder of PayPal, argues that real progress comes from creating new things rather than copying what already works. Based on a course he taught at Stanford, the book discusses monopoly versus competition, the importance of secrets, the power law in venture investing and building durable companies. Entrepreneurs and readers interested in startups and innovation will find a contrarian view of business strategy."
+  }
+]

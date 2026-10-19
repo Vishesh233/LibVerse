@@ -9,6 +9,7 @@ const recommendationService = require('../services/recommendationService');
 const { armRestockAlert } = require('../utils/bookStock');
 const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
 const { audit } = require('../utils/audit');
+const { normaliseIsbn } = require('../utils/isbn');
 
 // ?sort= values for GET /api/books (anything else keeps the default order). Table columns sort by
 // <column> ascending or -<column> descending; _id breaks ties so pages never overlap.
@@ -288,9 +289,10 @@ exports.createBook = async (req, res, next) => {
       language,
     } = req.body;
 
-    // Check if book already exists
-    if (isbn) {
-      const bookExists = await Book.findOne({ isbn });
+    // Check if book already exists (ISBNs are stored as digits only)
+    const cleanIsbn = isbn ? normaliseIsbn(isbn) : undefined;
+    if (cleanIsbn) {
+      const bookExists = await Book.findOne({ isbn: cleanIsbn });
       if (bookExists) {
         return res.status(400).json({
           success: false,
@@ -303,15 +305,15 @@ exports.createBook = async (req, res, next) => {
       title,
       author,
       genre,
-      isbn,
+      isbn: cleanIsbn,
       publisher,
       totalCopies,
       availableCopies: availableCopies ?? totalCopies,
       issuedCopies: issuedCopies ?? 0,
       rating: rating ?? 0,
       description,
+      // publishedYear: older clients' name for the same field
       publicationYear: publicationYear ?? publishedYear,
-      publishedYear: publishedYear ?? publicationYear,
       location,
       coverImage,
       imageUrl,
@@ -374,15 +376,16 @@ exports.updateBook = async (req, res, next) => {
     if (title !== undefined) updateData.title = title;
     if (author !== undefined) updateData.author = author;
     if (genre !== undefined) updateData.genre = genre;
-    if (isbn !== undefined) updateData.isbn = isbn;
+    if (isbn !== undefined) updateData.isbn = isbn ? normaliseIsbn(isbn) : isbn;
     if (publisher !== undefined) updateData.publisher = publisher;
     if (totalCopies !== undefined) updateData.totalCopies = totalCopies;
     if (availableCopies !== undefined) updateData.availableCopies = availableCopies;
     if (issuedCopies !== undefined) updateData.issuedCopies = issuedCopies;
     if (rating !== undefined) updateData.rating = rating;
     if (description !== undefined) updateData.description = description;
+    // publishedYear: older clients' name for publicationYear
     if (publicationYear !== undefined) updateData.publicationYear = publicationYear;
-    if (publishedYear !== undefined) updateData.publishedYear = publishedYear;
+    else if (publishedYear !== undefined) updateData.publicationYear = publishedYear;
     if (location !== undefined) updateData.location = location;
     if (coverImage !== undefined) updateData.coverImage = coverImage;
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;

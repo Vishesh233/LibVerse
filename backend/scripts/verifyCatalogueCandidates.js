@@ -230,7 +230,6 @@ const coverOk = async (isbn) => {
           author,
           genre,
           isbn,
-          publishedYear: editionYear(ed),
           publicationYear: editionYear(ed),
           publisher: (ed.publishers || [])[0],
           pages: editionPages(ed) || (Number.isInteger(doc.number_of_pages_median) ? doc.number_of_pages_median : undefined),

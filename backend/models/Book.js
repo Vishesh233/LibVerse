@@ -37,6 +37,7 @@ const bookSchema = new mongoose.Schema(
       ],
     },
     description: String,
+    // Digits only (utils/isbn.js normaliseIsbn)
     isbn: {
       type: String,
       unique: true,
@@ -46,7 +47,7 @@ const bookSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    publishedYear: Number,
+    // Year of the edition held (the only year field; older documents also had publishedYear)
     publicationYear: Number,
     imageUrl: String,
     pages: Number,

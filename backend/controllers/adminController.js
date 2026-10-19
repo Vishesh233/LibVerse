@@ -344,7 +344,7 @@ exports.getDashboard = async (req, res, next) => {
           count: item.count,
           rating: bookDoc.rating || 0,
           publisher: bookDoc.publisher || '',
-          publishedYear: bookDoc.publicationYear || '',
+          publicationYear: bookDoc.publicationYear || '',
           pages: bookDoc.pages || '',
           language: bookDoc.language || '',
           isbn: bookDoc.isbn || '',

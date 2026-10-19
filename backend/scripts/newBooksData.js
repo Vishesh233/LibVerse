@@ -2,14 +2,13 @@
 const coverUrl = (isbn) => `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
 
 // Helper to build a complete book object
-const book = (title, author, genre, isbn, publisher, publishedYear, rating, totalCopies, availableCopies, issuedCopies, description) => ({
+const book = (title, author, genre, isbn, publisher, publicationYear, rating, totalCopies, availableCopies, issuedCopies, description) => ({
   title,
   author,
   genre,
-  isbn,
+  isbn: String(isbn).replace(/[\s-]/g, ''), // stored as digits only
   publisher,
-  publishedYear,
-  publicationYear: publishedYear,
+  publicationYear,
   rating,
   totalCopies,
   availableCopies,

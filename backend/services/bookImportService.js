@@ -8,6 +8,7 @@
  */
 const Book = require('../models/Book');
 const { parseCsv, CsvError } = require('../utils/csvParse');
+const { normaliseIsbn, isIsbn13 } = require('../utils/isbn');
 
 const GENRES = Book.schema.path('genre').enumValues;
 const COLUMNS = ['title', 'author', 'genre', 'isbn', 'year', 'publisher', 'pages', 'copies', 'description', 'location'];
@@ -35,16 +36,6 @@ const GENRE_BY_KEY = new Map(GENRES.map((g) => [genreKey(g), g]));
 const titleAuthorKey = (title, author) => {
   const norm = (s) => String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   return `${norm(title)}|${norm(author)}`;
-};
-
-/** ISBN with spaces and hyphens removed (the form stored for imported books) */
-const normaliseIsbn = (value) => String(value || '').replace(/[\s-]/g, '').toUpperCase();
-
-/** A 13-digit ISBN whose check digit is right */
-const isIsbn13 = (isbn) => {
-  if (!/^97[89]\d{10}$/.test(isbn)) return false;
-  const sum = [...isbn.slice(0, 12)].reduce((s, d, i) => s + Number(d) * (i % 2 ? 3 : 1), 0);
-  return (10 - (sum % 10)) % 10 === Number(isbn[12]);
 };
 
 // Exports from spreadsheets (and our own CSV export) put ' before text that starts like a formula
@@ -226,7 +217,6 @@ const importBooks = async (csv, { checkCovers = false } = {}) => {
     try {
       const created = await Book.create({
         ...b,
-        publishedYear: b.publicationYear,
         availableCopies: b.totalCopies,
         issuedCopies: 0,
         heldCopies: 0,

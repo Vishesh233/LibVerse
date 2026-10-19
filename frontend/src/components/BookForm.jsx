@@ -56,8 +56,6 @@ export const BookForm = ({
         publisher: initialData.publisher || '',
         publicationYear: initialData.publicationYear
           ? String(initialData.publicationYear)
-          : initialData.publishedYear
-          ? String(initialData.publishedYear)
           : '',
         description: initialData.description || '',
         totalCopies: String(initialData.totalCopies ?? initialData.availableCopies ?? ''),
