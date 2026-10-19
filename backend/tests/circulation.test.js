@@ -3,6 +3,7 @@ const { as, connect, disconnect, reset, makeUser, makeBook, makeLoan, stockIsCon
 const Book = require('../models/Book');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
+const Notification = require('../models/Notification');
 const { LOAN_DAYS, RENEWAL_DAYS, MAX_RENEWALS, FINE_PER_DAY } = require('../utils/loanRules');
 
 let s1; let s2; let lib; let admin;
@@ -192,6 +193,77 @@ test('reject a request', async () => {
   expect((await as(s1).put(`/api/transactions/${id}/reject`)).status).toBe(403);
   expect((await as(lib).put(`/api/transactions/${id}/reject`)).status).toBe(200);
   expect((await Transaction.findById(id)).status).toBe('rejected');
+});
+
+test('reject after approve -> 409, the loan stays issued and keeps its copy', async () => {
+  const book = await makeBook({ totalCopies: 3 });
+  const id = (await as(s1).post('/api/transactions/issue').send({ bookId: book._id })).body.transaction._id;
+  expect((await as(lib).put(`/api/transactions/${id}/approve`)).status).toBe(200);
+  const reject = await as(admin).put(`/api/transactions/${id}/reject`);
+  expect(reject.status).toBe(409);
+  expect(reject.body.message).toMatch(/already processed/);
+  expect((await Transaction.findById(id)).status).toBe('issued');
+  expect(await stock(book)).toEqual([2, 1]);
+  expect(await Notification.countDocuments({ userId: s1._id, type: 'ISSUE_REJECTED' })).toBe(0);
+});
+
+test('approve after reject fails, the request stays rejected and no copy is taken', async () => {
+  const book = await makeBook({ totalCopies: 3 });
+  const id = (await as(s1).post('/api/transactions/issue').send({ bookId: book._id })).body.transaction._id;
+  expect((await as(lib).put(`/api/transactions/${id}/reject`)).status).toBe(200);
+  expect((await as(admin).put(`/api/transactions/${id}/approve`)).status).toBe(400);
+  expect((await Transaction.findById(id)).status).toBe('rejected');
+  expect(await stock(book)).toEqual([3, 0]);
+});
+
+test('race: approve and reject at once -> exactly one wins and stock matches the winner', async () => {
+  const book = await makeBook({ totalCopies: 3 });
+  const id = (await as(s1).post('/api/transactions/issue').send({ bookId: book._id })).body.transaction._id;
+  const [approve, reject] = await Promise.all([as(lib).put(`/api/transactions/${id}/approve`), as(admin).put(`/api/transactions/${id}/reject`)]);
+  expect([approve.status, reject.status].filter((s) => s === 200)).toHaveLength(1);
+  const tx = await Transaction.findById(id).lean();
+  if (approve.status === 200) {
+    expect(tx.status).toBe('issued');
+    expect(await stock(book)).toEqual([2, 1]);
+  } else {
+    expect(tx.status).toBe('rejected');
+    expect(await stock(book)).toEqual([3, 0]);
+  }
+});
+
+test('submit payment after the fine was waived and the return approved -> 409, stays returned', async () => {
+  const book = await makeBook({ totalCopies: 2 });
+  const loan = await makeLoan(s1, book, { dueInDays: -3, issuedDaysAgo: 17 });
+  expect((await as(s1).put(`/api/transactions/${loan._id}/return`)).status).toBe(200);
+  expect((await as(lib).post(`/api/transactions/${loan._id}/waive`).send({ amount: 3 * FINE_PER_DAY, reason: 'Medical certificate provided' })).status).toBe(200);
+  expect((await as(lib).put(`/api/transactions/${loan._id}/approve-return`)).status).toBe(200);
+
+  const pay = await as(s1).put(`/api/transactions/${loan._id}/submit-payment`).send({ paymentScreenshot: PNG });
+  expect(pay.status).toBe(409);
+  const tx = await Transaction.findById(loan._id).lean();
+  expect(tx.status).toBe('returned');
+  expect(tx.paymentScreenshot).toBeFalsy();
+  expect(await stock(book)).toEqual([2, 0]);
+  expect(await Notification.countDocuments({ type: 'PAYMENT_PENDING', 'meta.transactionId': loan._id })).toBe(0);
+});
+
+test('race: payment submitted twice at once -> second is 409, notifications sent once', async () => {
+  const loan = await makeLoan(s1, await makeBook(), { dueInDays: -2 });
+  expect((await as(s1).put(`/api/transactions/${loan._id}/return`)).status).toBe(200);
+  const results = await Promise.all([
+    as(s1).put(`/api/transactions/${loan._id}/submit-payment`).send({ paymentScreenshot: PNG }),
+    as(s1).put(`/api/transactions/${loan._id}/submit-payment`).send({ paymentScreenshot: PNG }),
+  ]);
+  expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+  expect((await Transaction.findById(loan._id)).status).toBe('payment_pending');
+  const sent = await Notification.find({ type: 'PAYMENT_PENDING', 'meta.transactionId': loan._id }).lean();
+  // One for the student, one for each active staff member (lib and admin)
+  expect(sent.filter((n) => String(n.userId) === String(s1._id))).toHaveLength(1);
+  expect(sent).toHaveLength(3);
+
+  // And a later click on a stale page is refused too
+  expect((await as(s1).put(`/api/transactions/${loan._id}/submit-payment`).send({ paymentScreenshot: PNG })).status).toBe(409);
+  expect(await Notification.countDocuments({ type: 'PAYMENT_PENDING', 'meta.transactionId': loan._id })).toBe(3);
 });
 
 test('student transaction list only shows their own loans', async () => {

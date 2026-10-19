@@ -275,7 +275,7 @@ exports.approveReturn = async (req, res, next) => {
  */
 exports.submitPayment = async (req, res, next) => {
   try {
-    const transaction = await Transaction.findById(req.params.id).populate('bookId', 'title');
+    const transaction = await Transaction.findById(req.params.id);
 
     if (!transaction) {
       return res.status(404).json({ success: false, message: 'Transaction not found' });
@@ -285,23 +285,6 @@ exports.submitPayment = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
-    if (transaction.status !== 'return_requested') {
-      return res.status(400).json({
-        success: false,
-        message: 'Transaction must be in return_requested status to submit payment',
-      });
-    }
-
-    if (transaction.finePaid) {
-      return res.status(400).json({ success: false, message: 'Fine is already paid' });
-    }
-
-    // Nothing to pay when there is no fine or it was fully waived
-    const payable = payableFineOf(transaction);
-    if (payable <= 0) {
-      return res.status(400).json({ success: false, message: 'No fine to pay' });
-    }
-
     if (req.body.paymentScreenshot !== undefined && !isValidScreenshot(req.body.paymentScreenshot)) {
       return res.status(400).json({
         success: false,
@@ -309,39 +292,62 @@ exports.submitPayment = async (req, res, next) => {
       });
     }
 
-    // Update status
-    transaction.status = 'payment_pending';
-    transaction.paymentSubmittedAt = new Date();
-    if (req.body.paymentScreenshot) {
-      transaction.paymentScreenshot = req.body.paymentScreenshot;
+    // Nothing to pay when there is no fine or it was fully waived
+    if (transaction.status === 'return_requested' && payableFineOf(transaction) <= 0) {
+      return res.status(400).json({ success: false, message: 'No fine to pay' });
     }
 
-    await transaction.save();
+    // Atomically move return_requested -> payment_pending while a fine is still payable, so a
+    // double submit or a return processed meanwhile (paid, waived, approved) is never overwritten
+    const $set = { status: 'payment_pending', paymentSubmittedAt: new Date() };
+    if (req.body.paymentScreenshot) {
+      $set.paymentScreenshot = req.body.paymentScreenshot;
+    }
+    const submitted = await Transaction.findOneAndUpdate(
+      {
+        _id: transaction._id,
+        userId: req.user.id,
+        status: 'return_requested',
+        finePaid: { $ne: true },
+        fineAmount: { $gt: 0 },
+        $expr: { $gt: ['$fineAmount', { $ifNull: ['$fineWaived', 0] }] },
+      },
+      { $set },
+      { new: true }
+    ).populate('bookId', 'title');
 
-    const bookTitle = transaction.bookId?.title || 'Book';
+    if (!submitted) {
+      return res.status(409).json({
+        success: false,
+        message: 'Payment already submitted or the return was already processed',
+      });
+    }
+
+    const bookTitle = submitted.bookId?.title || 'Book';
+    const paid = payableFineOf(submitted);
 
     // Student: confirmation of their own payment
-    await notifyStudent(transaction.userId, {
+    await notifyStudent(submitted.userId, {
       type: 'PAYMENT_PENDING',
       title: 'Payment submitted',
-      message: `Your payment of ${rupees(payable)} for "${bookTitle}" was submitted and is waiting for verification.`,
+      message: `Your payment of ${rupees(paid)} for "${bookTitle}" was submitted and is waiting for verification.`,
       link: '/student/my-books?tab=payment_pending',
-      meta: { transactionId: transaction._id, bookId: transaction.bookId },
+      meta: { transactionId: submitted._id, bookId: submitted.bookId },
     });
 
     // Staff: one notification per active librarian/admin
     await notifyStaff({
       type: 'PAYMENT_PENDING',
       title: 'New payment to verify',
-      message: `${req.user.name || 'A student'} paid ${rupees(payable)} for "${bookTitle}". Please verify the payment.`,
+      message: `${req.user.name || 'A student'} paid ${rupees(paid)} for "${bookTitle}". Please verify the payment.`,
       path: '/pending?tab=payment',
-      meta: { transactionId: transaction._id, bookId: transaction.bookId },
+      meta: { transactionId: submitted._id, bookId: submitted.bookId },
     });
 
     res.status(200).json({
       success: true,
       message: 'Payment submitted successfully. Waiting for librarian verification.',
-      transaction,
+      transaction: submitted,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -778,19 +784,23 @@ exports.approveIssueRequest = async (req, res, next) => {
  */
 exports.rejectIssueRequest = async (req, res, next) => {
   try {
-    const transaction = await Transaction.findById(req.params.id);
+    // Atomically move pending -> rejected, so a concurrent approval cannot be overwritten
+    const transaction = await Transaction.findOneAndUpdate(
+      { _id: req.params.id, status: 'pending' },
+      { $set: { status: 'rejected', returnDate: new Date() } },
+      { new: true }
+    );
 
     if (!transaction) {
-      return res.status(404).json({ success: false, message: 'Transaction not found' });
+      const exists = await Transaction.exists({ _id: req.params.id });
+      if (!exists) {
+        return res.status(404).json({ success: false, message: 'Transaction not found' });
+      }
+      return res.status(409).json({
+        success: false,
+        message: 'Request already processed: only pending requests can be rejected',
+      });
     }
-
-    if (transaction.status !== 'pending') {
-      return res.status(400).json({ success: false, message: 'Only pending requests can be rejected' });
-    }
-
-    transaction.status = 'rejected';
-    transaction.returnDate = new Date();
-    await transaction.save();
 
     // Student: request rejected
     const rejectedBook = await Book.findById(transaction.bookId).select('title').catch(() => null);
