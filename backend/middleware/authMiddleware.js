@@ -1,5 +1,10 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { isDemoMode, demoDisabledBody } = require('../config/demo');
+const { demoWriteLimiter } = require('../config/security');
+
+const READ_METHODS = ['GET', 'HEAD', 'OPTIONS'];
+const demoWrites = demoWriteLimiter();
 
 /**
  * Middleware to protect routes - verify JWT token
@@ -36,6 +41,27 @@ exports.protect = async (req, res, next) => {
     return res.status(403).json({ success: false, message: 'Account is deactivated' });
   }
 
+  // Demo accounts are shared by every visitor: cap their writes per account
+  if (req.user.isDemo && !READ_METHODS.includes(req.method)) {
+    return demoWrites(req, res, next);
+  }
+
+  next();
+};
+
+/**
+ * Middleware (after protect): refuse the action for demo accounts
+ */
+exports.blockDemo = (req, res, next) => {
+  if (req.user?.isDemo) return res.status(403).json(demoDisabledBody);
+  next();
+};
+
+/**
+ * Middleware: refuse the route on the demo instance (DEMO_MODE=true), e.g. password login and signup
+ */
+exports.notInDemoMode = (req, res, next) => {
+  if (isDemoMode()) return res.status(403).json(demoDisabledBody);
   next();
 };
 

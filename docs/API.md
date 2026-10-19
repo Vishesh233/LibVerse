@@ -100,6 +100,8 @@ usual error shape.
 | passwordChange | `PUT /api/auth/change-password` | 15 min | 5 | `RATE_LIMIT_PASSWORD_CHANGE` | Counted before authentication |
 | forgotPassword | `POST /api/auth/forgot-password` | 15 min | 5 | `RATE_LIMIT_FORGOT_PASSWORD` | |
 | resetPassword | `POST /api/auth/reset-password` | 15 min | 10 | `RATE_LIMIT_RESET_PASSWORD` | Each code also allows only 5 guesses |
+| demoLogin | `POST /api/auth/demo-login` | 15 min | 30 | `RATE_LIMIT_DEMO_LOGIN` | Every click counts |
+| demo writes | every POST/PUT/PATCH/DELETE by a demo account | 15 min | 60 | `RATE_LIMIT_DEMO_WRITES` | Counted **per demo account**, not per IP (in `protect`) |
 
 ### Money, dates and lending rules
 
@@ -163,6 +165,8 @@ Route file: `backend/routes/authRoutes.js`. Controllers: `authController.js`,
 | `GET /api/auth/password-reset` | Public | | `{ enabled }`: whether "forgot password" by email is available |
 | `POST /api/auth/forgot-password` | Public (rate limited) | `email` | `{ message }`, same answer whether or not the account exists |
 | `POST /api/auth/reset-password` | Public (rate limited) | `email`, `code` (6 digits), `newPassword` (6-128 chars) | `{ message }` |
+| `GET /api/auth/demo` | Public | | `{ enabled }`: whether this is the live demo instance (`DEMO_MODE=true`) |
+| `POST /api/auth/demo-login` | Public (rate limited), demo instance only | `role`: `student`, `librarian` or `admin` | `200 { token, user }` for the oldest active `isDemo` account of that role; `404` unless `DEMO_MODE=true`; `503` while no demo account exists |
 | `GET /api/auth/me` | Signed in | | `{ user }` (full user document without password) |
 | `GET /api/auth/me/stats` | Signed in | | Students: `{ role, stats: { booksRead, currentlyBorrowed, finesPaid } }`. Staff: `{ role, stats: { approvalsTotal, approvalsThisMonth, issueApprovals, returnApprovals, paymentApprovals } }` |
 | `GET /api/auth/me/activity` | Signed in | | `{ role, activity: [...] }`, the last 10 items: a student's own loan events, or the approvals a staff member made |
@@ -177,13 +181,32 @@ Notes:
 
 - `user` in signup, login and profile responses is the public user object: `_id`, `name`, `email`,
   `role`, `libraryId`, `phone`, `address`, `fineAmount`, `profileImage`, `isOnboardingCompleted`,
-  `favoriteGenres`, `createdAt`.
+  `favoriteGenres`, `createdAt`, `isDemo`.
 - Signup always creates a `student`; any `role` in the body is ignored. Emails are trimmed and
   lower-cased. New users get the next sequential Library ID (`LIB-1001`, `LIB-1002`, ...) from an
   atomic counter (`backend/utils/libraryId.js`).
 - Login answers `401 "Invalid email or password"` for both an unknown email and a wrong password.
 - When a student changes their `name`, every active staff member gets a `NAME_CHANGE` notification.
 - Password change and reset create a `PASSWORD_CHANGED` notification for the user.
+
+### Live demo (`DEMO_MODE`, `isDemo`)
+
+- `isDemo` is set only by `backend/scripts/seedDemo.js --live` and `resetDemo.js`, never through the
+  API (signup, `POST/PUT /api/admin/users` and `update-profile` ignore it).
+- With `DEMO_MODE=true` (`backend/config/demo.js`): `POST /login`, `/signup`, `/forgot-password` and
+  `/reset-password` answer `403 { code: "DEMO_MODE", message: "Disabled in demo mode" }` for
+  everyone, and `GET /password-reset` reports `enabled: false`.
+- A demo account never signs in with a password (401 like a wrong password) and never gets a reset
+  code. Its token lasts `DEMO_JWT_EXPIRE` (default `2h`).
+- `blockDemo` (after `protect`) answers the same 403 to demo accounts on: `PUT /auth/change-password`,
+  `PUT /auth/update-profile` with a `profileImage`, `POST /profile/upload-avatar`,
+  `POST /admin/users`, `PUT /admin/users/:id`, `DELETE /admin/users/:id`, `POST /admin/create-admin`,
+  `POST /admin/users/:id/reissue-card`, `POST /admin/send-reminders`, `POST /books`, `PUT /books/:id`,
+  `DELETE /books/:id`, `POST /books/import` and `POST /books/upload-cover`. Everything else
+  (borrowing, approvals, returns, fines, waivers, reservations, reviews, notifications, analytics,
+  reports, the scan desk, import preview) works as usual.
+- A payment submitted by a demo account stores a generated demo receipt (`backend/utils/demoReceipt.js`),
+  never the uploaded image.
 
 ### Forgot password by emailed code
 

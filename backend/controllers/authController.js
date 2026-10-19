@@ -7,6 +7,9 @@ const invalidGenres = (genres) => genres.filter((g) => !VALID_GENRES.includes(g)
 const { createNotification, notifyStaff } = require('./notificationController');
 const { nextLibraryId } = require('../utils/libraryId');
 const jwt = require('jsonwebtoken');
+const { isDemoMode, demoDisabledBody } = require('../config/demo');
+
+const DEMO_ROLES = ['student', 'librarian', 'admin'];
 
 /**
  * The user fields sent to the client after signup, login and profile changes.
@@ -26,15 +29,17 @@ const toPublicUser = (user) => ({
   isOnboardingCompleted: user.isOnboardingCompleted,
   favoriteGenres: user.favoriteGenres,
   createdAt: user.createdAt,
+  isDemo: user.isDemo === true,
 });
 
 /**
  * Generate JWT Token
  */
-// tv = the user's tokenVersion: a token from before a password change/reset no longer works
+// tv = the user's tokenVersion: a token from before a password change/reset no longer works.
+// Demo sessions are short (DEMO_JWT_EXPIRE, default 2h): the accounts are shared and reset daily.
 const signToken = (user) => {
   return jwt.sign({ id: user._id, tv: user.tokenVersion || 0 }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || '30d',
+    expiresIn: user.isDemo ? process.env.DEMO_JWT_EXPIRE || '2h' : process.env.JWT_EXPIRE || '30d',
   });
 };
 
@@ -111,8 +116,9 @@ exports.login = async (req, res, next) => {
     // Check user exists (normalize email to lowercase to match stored format)
     const user = await User.findOne({ email: normalizedEmail }).select('+password');
 
-    // Same message for unknown email and wrong password, so accounts can't be enumerated
-    if (!user || !(await user.matchPassword(password))) {
+    // Same message for unknown email and wrong password, so accounts can't be enumerated.
+    // Demo accounts never sign in with a password (only POST /auth/demo-login on the demo instance).
+    if (!user || user.isDemo || !(await user.matchPassword(password))) {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password',
@@ -134,6 +140,41 @@ exports.login = async (req, res, next) => {
       token,
       user: toPublicUser(user),
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @route GET /api/auth/demo
+ * @desc Whether this is the demo instance (the login page then shows only the demo buttons)
+ * @access Public
+ */
+exports.getDemoStatus = (req, res) => {
+  res.status(200).json({ success: true, enabled: isDemoMode() });
+};
+
+/**
+ * @route POST /api/auth/demo-login
+ * @desc One-click sign-in as the demo account for a role: { role: 'student' | 'librarian' | 'admin' }.
+ * The account is picked on the server by its isDemo flag (the oldest active one per role), so no
+ * password is ever sent or stored in the browser. Only on the demo instance (DEMO_MODE=true).
+ * @access Public (rate limited)
+ */
+exports.demoLogin = async (req, res) => {
+  if (!isDemoMode()) return res.status(404).json({ success: false, message: 'Route not found' });
+  const role = req.body?.role;
+  if (typeof role !== 'string' || !DEMO_ROLES.includes(role)) {
+    return res.status(400).json({ success: false, message: 'Role must be student, librarian or admin' });
+  }
+
+  try {
+    const user = await User.findOne({ isDemo: true, role, isActive: { $ne: false }, isOnboardingCompleted: true })
+      .sort({ createdAt: 1, _id: 1 });
+    if (!user) {
+      return res.status(503).json({ success: false, message: 'The demo accounts are being reset. Try again in a minute.' });
+    }
+    res.status(200).json({ success: true, token: signToken(user), user: toPublicUser(user) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -271,6 +312,9 @@ exports.updateProfile = async (req, res, next) => {
         message: 'Profile image must be an http(s) URL of at most 2048 characters',
       });
     }
+
+    // Demo accounts are shared: no pictures of the visitor's choosing
+    if (profileImage && req.user.isDemo) return res.status(403).json(demoDisabledBody);
 
     const user = await User.findById(req.user.id);
     if (!user) {

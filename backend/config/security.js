@@ -88,6 +88,25 @@ const rateLimiters = () => ({
     standardHeaders: 'draft-7', legacyHeaders: false,
     handler: tooMany('Too many attempts. Try again in 15 minutes.'),
   }),
+  // One-click demo sign-in (demo instance only); every click counts
+  demoLogin: rateLimit({
+    windowMs: minutes(15), limit: limit('DEMO_LOGIN', 30),
+    standardHeaders: 'draft-7', legacyHeaders: false,
+    handler: tooMany('Too many demo sign-ins from this network. Try again in 15 minutes.'),
+  }),
 });
 
-module.exports = { cspDirectives, cspHeader, helmetOptions, rateLimiters, apiOrigins };
+/**
+ * Write requests (anything but GET/HEAD/OPTIONS) per demo account, not per IP: visitors share the
+ * demo accounts, so this caps what one account can change in 15 minutes. Used by protect().
+ * The limit is read per request (RATE_LIMIT_DEMO_WRITES), so tests can lower it.
+ */
+const demoWriteLimiter = () => rateLimit({
+  windowMs: minutes(15),
+  limit: () => limit('DEMO_WRITES', 60),
+  keyGenerator: (req) => `demo-user:${req.user._id}`,
+  standardHeaders: 'draft-7', legacyHeaders: false,
+  handler: tooMany('Too many changes from this demo account. Try again in 15 minutes.'),
+});
+
+module.exports = { cspDirectives, cspHeader, helmetOptions, rateLimiters, demoWriteLimiter, apiOrigins };

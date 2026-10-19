@@ -1,10 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Navbar } from '../components/Navbar';
 import { Sidebar } from '../components/Sidebar';
+import { useAuth } from '../hooks/useAuth';
+
+/** Thin strip above the navbar for the shared live-demo accounts */
+const DemoBanner = () => (
+  <div role="note" className="flex-shrink-0 border-b border-amber-400/20 bg-amber-400/10 px-4 py-1.5 text-center text-xs font-medium text-amber-100 print:hidden">
+    You&apos;re viewing a demo account. Data resets daily.
+  </div>
+);
 
 export const MainLayout = ({ children }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const handleEscKey = (event) => {
@@ -41,6 +50,7 @@ export const MainLayout = ({ children }) => {
       )}
 
       <div className={`flex flex-1 flex-col min-w-0 transition-all duration-500 ease-in-out print:block ${isFullscreen ? 'w-full' : ''}`}>
+        {user?.isDemo && <DemoBanner />}
         <Navbar
           isFullscreen={isFullscreen}
           onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}

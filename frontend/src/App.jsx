@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { NotificationProvider } from './context/NotificationContext';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
+import { useDemoMode } from './hooks/useDemoMode';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SplashScreen } from './components/SplashScreen';
 import { Loader } from './components/Loader';
@@ -44,6 +45,13 @@ const ForgotPassword = page(() => import('./pages/ForgotPassword'), 'ForgotPassw
 
 // Pages without the app chrome (sidebar + navbar)
 const BARE_PATHS = ['/login', '/signup', '/forgot-password', '/student/onboarding'];
+
+/** Signup and password reset do not exist on the live demo instance: go to the demo buttons */
+const NotOnDemo = ({ children }) => {
+  const demoMode = useDemoMode();
+  if (demoMode === null) return null;
+  return demoMode ? <Navigate to="/login" replace /> : children;
+};
 
 /** Shown while a page's chunk downloads: signed-in pages keep the sidebar and navbar in place */
 const PageFallback = () => {
@@ -115,8 +123,8 @@ function App() {
 
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/signup" element={<NotOnDemo><Signup /></NotOnDemo>} />
+          <Route path="/forgot-password" element={<NotOnDemo><ForgotPassword /></NotOnDemo>} />
 
           {/* Student Routes */}
           <Route

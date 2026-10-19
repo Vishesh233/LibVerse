@@ -64,6 +64,9 @@ export const authAPI = {
   getPasswordResetStatus: () => apiClient.get('/auth/password-reset'),
   forgotPassword: (email) => apiClient.post('/auth/forgot-password', { email }),
   resetPassword: (data) => apiClient.post('/auth/reset-password', data),
+  // Live demo instance: { enabled }, and one-click sign-in as the demo account for a role
+  getDemoStatus: () => apiClient.get('/auth/demo'),
+  demoLogin: (role) => apiClient.post('/auth/demo-login', { role }),
   uploadAvatar: (formData) =>
     apiClient.post('/profile/upload-avatar', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

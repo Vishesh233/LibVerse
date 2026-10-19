@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { motion, useInView } from 'framer-motion';
 import { authAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { useDemoMode } from '../hooks/useDemoMode';
 import { LogoMark } from '../components/LogoMark';
 
 // Generate particles for background
@@ -16,6 +17,13 @@ const PARTICLES = Array.from({ length: 50 }, (_, i) => ({
 }));
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Live demo instance: one button per role, signed in by the server (no password)
+const DEMO_ROLES = [
+  { role: 'student', label: 'Try as Student', hint: 'Borrow, reserve, pay a fine, see your library card' },
+  { role: 'librarian', label: 'Try as Librarian', hint: 'Approve requests, run the QR desk, verify payments' },
+  { role: 'admin', label: 'Try as Admin', hint: 'Dashboards, analytics, reports and the audit log' },
+];
 
 // Animation variants
 const containerVariants = {
@@ -50,6 +58,8 @@ export const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [resetByEmail, setResetByEmail] = useState(false);
+  const [demoRole, setDemoRole] = useState(null);
+  const demoMode = useDemoMode();
 
   useEffect(() => {
     authAPI.getPasswordResetStatus().then((r) => setResetByEmail(Boolean(r.data?.enabled))).catch(() => {});
@@ -84,6 +94,35 @@ export const Login = () => {
     return Object.keys(next).length === 0;
   };
 
+  const goHome = (user) => {
+    if (user?.role === 'admin') {
+      navigate('/admin');
+    } else if (user?.role === 'librarian') {
+      navigate('/librarian');
+    } else if (user?.role === 'student' && !user?.isOnboardingCompleted) {
+      navigate('/student/onboarding');
+    } else {
+      navigate('/student/dashboard');
+    }
+  };
+
+  const handleDemo = async (role) => {
+    setDemoRole(role);
+    setError('');
+    try {
+      const response = await authAPI.demoLogin(role);
+      const { token, user } = response.data;
+      login(user, token);
+      goHome(user);
+    } catch (err) {
+      const message = err.response?.data?.message || 'Could not open the demo. Try again in a moment.';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setDemoRole(null);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
@@ -95,16 +134,7 @@ export const Login = () => {
       const { token, user } = response.data;
       login(user, token);
       toast.success('Signed in successfully');
-
-      if (user?.role === 'admin') {
-        navigate('/admin');
-      } else if (user?.role === 'librarian') {
-        navigate('/librarian');
-      } else if (user?.role === 'student' && !user?.isOnboardingCompleted) {
-        navigate('/student/onboarding');
-      } else {
-        navigate('/student/dashboard');
-      }
+      goHome(user);
     } catch (err) {
       const message = err.response?.data?.message || 'Login failed';
       setError(message);
@@ -174,8 +204,8 @@ export const Login = () => {
 
           {/* Welcome Section */}
           <motion.div className="auth-welcome" variants={itemVariants}>
-            <h2 className="auth-heading font-display font-bold text-white">Welcome back</h2>
-            <p className="text-sm text-slate-400">Sign in to continue to your portal</p>
+            <h2 className="auth-heading font-display font-bold text-white">{demoMode ? 'Explore LibVerse' : 'Welcome back'}</h2>
+            <p className="text-sm text-slate-400">{demoMode ? 'Pick a role. No account or password needed.' : 'Sign in to continue to your portal'}</p>
           </motion.div>
 
           {/* Error Message */}
@@ -190,7 +220,41 @@ export const Login = () => {
             </motion.div>
           )}
 
+          {/* Until the server says which instance this is, show neither the form nor the demo buttons */}
+          {demoMode === null && (
+            <div className="flex flex-col items-center gap-3 py-8 text-sm text-slate-400" role="status" aria-live="polite">
+              <span className="login-spinner" />
+              Connecting to the library...
+            </div>
+          )}
+
+          {/* Live demo: only the three role buttons */}
+          {demoMode === true && (
+            <motion.div className="auth-form" variants={itemVariants}>
+              {DEMO_ROLES.map(({ role, label, hint }) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => handleDemo(role)}
+                  disabled={demoRole !== null}
+                  className="login-button"
+                  aria-describedby={`demo-hint-${role}`}
+                >
+                  <span className="flex flex-col items-center gap-0.5">
+                    <span className="flex items-center gap-2">
+                      {demoRole === role && <span className="login-spinner" />}
+                      {demoRole === role ? 'Opening the demo...' : label}
+                    </span>
+                    <span id={`demo-hint-${role}`} className="text-xs font-normal text-white/75">{hint}</span>
+                  </span>
+                </button>
+              ))}
+              <p className="text-center text-sm text-slate-400">This is a demo with sample data. It resets daily.</p>
+            </motion.div>
+          )}
+
           {/* Login Form */}
+          {demoMode === false && (
           <motion.form onSubmit={handleSubmit} noValidate className="auth-form" variants={itemVariants}>
             {/* Email Input */}
             <motion.div variants={itemVariants}>
@@ -316,6 +380,7 @@ export const Login = () => {
               </Link>
             </motion.p>
           </motion.form>
+          )}
 
           {/* Footer */}
           <motion.div className="auth-footer" variants={itemVariants}>

@@ -1,11 +1,15 @@
-# Render Blueprint: the API (Node) and the recommendation service (Python).
+# Render Blueprint: the LIVE DEMO API (Node, DEMO_MODE=true) and the recommendation service (Python).
 # The frontend is deployed on Vercel (frontend/vercel.json). Step-by-step guide: DEPLOYMENT.md
+#
+# The demo instance is the one that is deployed now. The production API (DEMO_MODE off, real
+# members) is ready below as a commented block: uncomment it when you deploy production
+# (DEPLOYMENT.md, part B). It needs its own MongoDB database and its own recommendation service.
 #
 # Environment variables are listed by NAME only (sync: false): Render asks for each value when
 # the Blueprint is created. Never commit real values.
 services:
   - type: web
-    name: libverse-api
+    name: libverse-demo-api
     runtime: node
     rootDir: backend
     plan: free
@@ -19,11 +23,15 @@ services:
         sync: false
       - key: NODE_ENV
         sync: false
+      # The demo database (name libverse_demo), never the production one
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
         sync: false
-      - key: JWT_EXPIRE
+      # true: one-click demo sign-in only (no password login, signup or password reset)
+      - key: DEMO_MODE
+        sync: false
+      - key: DEMO_JWT_EXPIRE
         sync: false
       - key: CORS_ORIGINS
         sync: false
@@ -36,16 +44,6 @@ services:
       - key: AI_SERVICE_URL
         sync: false
       - key: AI_SERVICE_TOKEN
-        sync: false
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_PORT
-        sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: MAIL_FROM
         sync: false
 
   - type: web
@@ -66,3 +64,50 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
+
+  # ---- Production API (DEMO_MODE off): uncomment to deploy it (DEPLOYMENT.md, part B).
+  # Give it its own recommendation service too (copy the libverse-ai block as libverse-ai-prod):
+  # one service is trained with one catalogue, and the demo and production catalogues differ.
+  #
+  # - type: web
+  #   name: libverse-api
+  #   runtime: node
+  #   rootDir: backend
+  #   plan: free
+  #   buildCommand: npm ci --omit=dev
+  #   startCommand: node server.js
+  #   healthCheckPath: /api/health
+  #   autoDeploy: false
+  #   envVars:
+  #     - key: NODE_VERSION
+  #       sync: false
+  #     - key: NODE_ENV
+  #       sync: false
+  #     - key: MONGODB_URI
+  #       sync: false
+  #     - key: JWT_SECRET
+  #       sync: false
+  #     - key: JWT_EXPIRE
+  #       sync: false
+  #     - key: CORS_ORIGINS
+  #       sync: false
+  #     - key: CSP_API_ORIGINS
+  #       sync: false
+  #     - key: TRUST_PROXY
+  #       sync: false
+  #     - key: REMINDERS_ENABLED
+  #       sync: false
+  #     - key: AI_SERVICE_URL
+  #       sync: false
+  #     - key: AI_SERVICE_TOKEN
+  #       sync: false
+  #     - key: SMTP_HOST
+  #       sync: false
+  #     - key: SMTP_PORT
+  #       sync: false
+  #     - key: SMTP_USER
+  #       sync: false
+  #     - key: SMTP_PASS
+  #       sync: false
+  #     - key: MAIL_FROM
+  #       sync: false

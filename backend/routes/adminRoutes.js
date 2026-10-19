@@ -16,7 +16,7 @@ const {
 const { getAnalytics, getReports, getAuditLog } = require('../controllers/analyticsController');
 const { resolveCode, deskIssue, deskReturn, reissueCard, getUserCard } = require('../controllers/deskController');
 const { getUserOverview, lookupUsers } = require('../controllers/userOverviewController');
-const { protect, isStaff, isAdminRole } = require('../middleware/authMiddleware');
+const { protect, isStaff, isAdminRole, blockDemo } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -36,12 +36,13 @@ router.get('/users', getAllUsers);
 router.get('/users/lookup', lookupUsers);
 router.get('/users/:id/overview', getUserOverview);
 router.get('/users/:id/card', getUserCard);
-router.post('/users', createUser);
-router.put('/users/:id', updateUser);
-router.delete('/users/:id', deleteUser);
+// Accounts and system-wide actions are off for demo accounts
+router.post('/users', blockDemo, createUser);
+router.put('/users/:id', blockDemo, updateUser);
+router.delete('/users/:id', blockDemo, deleteUser);
 router.get('/pending-requests', getPendingRequests);
-router.post('/create-admin', isAdminRole, createAdminUser);
-router.post('/send-reminders', sendOverdueReminders);
+router.post('/create-admin', isAdminRole, blockDemo, createAdminUser);
+router.post('/send-reminders', blockDemo, sendOverdueReminders);
 router.post('/issue-book', adminIssueBook);
 router.post('/return-book', adminReturnBook);
 
@@ -49,6 +50,6 @@ router.post('/return-book', adminReturnBook);
 router.get('/desk/resolve', resolveCode);
 router.post('/desk/issue', deskIssue);
 router.post('/desk/return', deskReturn);
-router.post('/users/:id/reissue-card', isAdminRole, reissueCard);
+router.post('/users/:id/reissue-card', isAdminRole, blockDemo, reissueCard);
 
 module.exports = router;

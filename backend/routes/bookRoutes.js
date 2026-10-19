@@ -12,7 +12,7 @@ const {
 } = require('../controllers/bookController');
 const { uploadBookCover } = require('../controllers/bookCoverUploadController');
 const { previewImport, importBooks } = require('../controllers/bookImportController');
-const { protect, isStaff } = require('../middleware/authMiddleware');
+const { protect, isStaff, blockDemo } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -26,12 +26,13 @@ router.get('/summary', protect, isStaff, getStockSummary); // before /:id
 router.get('/:id', getBook);
 router.post('/:id/review', protect, createReview);
 
-// Admin only routes
-router.post('/upload-cover', protect, isStaff, uploadBookCover);
+// Admin only routes (the catalogue is shared: demo accounts can look, not change; an import
+// preview writes nothing, so it stays open)
+router.post('/upload-cover', protect, isStaff, blockDemo, uploadBookCover);
 router.post('/import/preview', protect, isStaff, previewImport);
-router.post('/import', protect, isStaff, importBooks);
-router.post('/', protect, isStaff, createBook);
-router.put('/:id', protect, isStaff, updateBook);
-router.delete('/:id', protect, isStaff, deleteBook);
+router.post('/import', protect, isStaff, blockDemo, importBooks);
+router.post('/', protect, isStaff, blockDemo, createBook);
+router.put('/:id', protect, isStaff, blockDemo, updateBook);
+router.delete('/:id', protect, isStaff, blockDemo, deleteBook);
 
 module.exports = router;

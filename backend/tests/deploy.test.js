@@ -85,11 +85,27 @@ test('vercel.json: SPA fallback and the same CSP as the API (production)', () =>
   expect(all.find((h) => h.key === 'Permissions-Policy').value).toContain('camera=(self)');
 });
 
-test('render.yaml: both services with health checks, env var names but no values', () => {
+test('render.yaml: the demo API and the AI service with health checks, env var names but no values; production ready as a comment', () => {
   const yaml = fs.readFileSync(path.join(ROOT, 'render.yaml'), 'utf8');
-  expect(yaml).toMatch(/name: libverse-api[\s\S]*healthCheckPath: \/api\/health/);
-  expect(yaml).toMatch(/name: libverse-ai[\s\S]*healthCheckPath: \/health/);
-  ['MONGODB_URI', 'JWT_SECRET', 'CORS_ORIGINS', 'AI_SERVICE_URL', 'AI_SERVICE_TOKEN', 'SMTP_HOST', 'MAIL_FROM'].forEach((k) => expect(yaml).toContain(`key: ${k}`));
-  expect(yaml).not.toMatch(/^\s*value:/m);
-  expect(yaml.match(/^\s+- key: /gm).length).toBe(yaml.match(/^\s+sync: false$/gm).length);
+  const active = yaml.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  expect(active).toMatch(/name: libverse-demo-api[\s\S]*healthCheckPath: \/api\/health/);
+  expect(active).toMatch(/name: libverse-ai[\s\S]*healthCheckPath: \/health/);
+  expect(active).not.toMatch(/name: libverse-api\b/);
+  ['MONGODB_URI', 'JWT_SECRET', 'DEMO_MODE', 'CORS_ORIGINS', 'AI_SERVICE_URL', 'AI_SERVICE_TOKEN'].forEach((k) => expect(active).toContain(`key: ${k}`));
+  // The production service, commented out, keeps its full list
+  expect(yaml).toMatch(/#\s+name: libverse-api\n/);
+  ['SMTP_HOST', 'MAIL_FROM', 'JWT_EXPIRE'].forEach((k) => expect(yaml).toMatch(new RegExp(`#\\s+- key: ${k}\\n`)));
+  expect(yaml).not.toMatch(/^\s*#?\s*value:/m);
+  expect(active.match(/^\s+- key: /gm).length).toBe(active.match(/^\s+sync: false$/gm).length);
+  const commented = yaml.split('\n').filter((l) => /^\s*#/.test(l)).join('\n');
+  expect(commented.match(/#\s+- key: /g).length).toBe(commented.match(/#\s+sync: false/g).length);
+});
+
+test('the daily demo reset workflow: 02:00 IST, a secret for the URI, only resetDemo.js --apply', () => {
+  const wf = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'demo-reset.yml'), 'utf8');
+  expect(wf).toMatch(/cron: '30 20 \* \* \*'/);
+  expect(wf).toContain('workflow_dispatch');
+  expect(wf).toContain('DEMO_MONGODB_URI: ${{ secrets.DEMO_MONGODB_URI }}');
+  expect(wf).toContain('node scripts/resetDemo.js --apply');
+  expect(wf).not.toMatch(/mongodb(\+srv)?:\/\//);
 });

@@ -70,6 +70,13 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Live demo account (scripts/resetDemo.js): one-click sign-in, destructive actions blocked.
+    // Set only by the demo scripts, never through the API.
+    isDemo: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     createdAt: {
       type: Date,
       default: Date.now,

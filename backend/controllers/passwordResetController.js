@@ -9,6 +9,7 @@ const User = require('../models/User');
 const PasswordResetCode = require('../models/PasswordResetCode');
 const { isEmailEnabled, sendMail } = require('../services/mailer');
 const { createNotification } = require('./notificationController');
+const { isDemoMode } = require('../config/demo');
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -45,7 +46,7 @@ const codeEmail = (name, code) => ({
  * @access Public
  */
 exports.getResetStatus = (req, res) => {
-  res.status(200).json({ success: true, enabled: isEmailEnabled() });
+  res.status(200).json({ success: true, enabled: isEmailEnabled() && !isDemoMode() });
 };
 
 /**
@@ -59,8 +60,9 @@ exports.requestReset = async (req, res) => {
   if (!looksLikeEmail(email)) return res.status(400).json({ success: false, message: 'Enter a valid email address' });
 
   try {
-    const user = await User.findOne({ email }).select('name isActive');
-    if (user && user.isActive !== false) {
+    const user = await User.findOne({ email }).select('name isActive isDemo');
+    // Demo accounts have no password of their own: never send them a code (same answer as usual)
+    if (user && user.isActive !== false && !user.isDemo) {
       const recent = await PasswordResetCode.findOne({ userId: user._id, createdAt: { $gt: new Date(Date.now() - RESEND_AFTER_MS) } }).lean();
       if (!recent) {
         const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
@@ -96,8 +98,8 @@ exports.resetPassword = async (req, res) => {
   }
 
   try {
-    const user = await User.findOne({ email }).select('_id');
-    if (!user) return res.status(400).json({ success: false, message: BAD_CODE });
+    const user = await User.findOne({ email }).select('_id isDemo');
+    if (!user || user.isDemo) return res.status(400).json({ success: false, message: BAD_CODE });
 
     // Count the guess first (atomically), so parallel guesses can't exceed the limit
     const record = await PasswordResetCode.findOneAndUpdate(

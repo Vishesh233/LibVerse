@@ -7,6 +7,7 @@ const Reservation = require('../models/Reservation');
 const { returnCopy, takeCopyFor } = require('../services/reservationService');
 const { toQueryString, toPagination } = require('../utils/escapeRegex');
 const { audit, personLabel } = require('../utils/audit');
+const { receiptImage } = require('../utils/demoReceipt');
 const mongoose = require('mongoose');
 
 // A fixed fine can be waived while it is unpaid: at a return request, while a payment is being
@@ -300,7 +301,10 @@ exports.submitPayment = async (req, res, next) => {
     // Atomically move return_requested -> payment_pending while a fine is still payable, so a
     // double submit or a return processed meanwhile (paid, waived, approved) is never overwritten
     const $set = { status: 'payment_pending', paymentSubmittedAt: new Date() };
-    if (req.body.paymentScreenshot) {
+    if (req.user.isDemo) {
+      // Shared demo: store a generated receipt, never the visitor's own image
+      $set.paymentScreenshot = await receiptImage(payableFineOf(transaction), `DEMO-${String(transaction._id).slice(-8)}`);
+    } else if (req.body.paymentScreenshot) {
       $set.paymentScreenshot = req.body.paymentScreenshot;
     }
     const submitted = await Transaction.findOneAndUpdate(
