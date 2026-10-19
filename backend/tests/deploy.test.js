@@ -67,6 +67,14 @@ test('createAdmin: strong password, unique email, admin role with a Library ID',
   await expect(createAdmin({ name: 'Again', email: 'head@example.com', password: 'Long-enough-pass-1' })).rejects.toThrow(/already exists/);
 });
 
+test('the demo seed refuses every database except libverse_demo', async () => {
+  const { seedDemo, dropDemo } = require('../scripts/seedDemo');
+  await makeBook({ title: 'Must survive' });
+  await expect(seedDemo(process.env.MONGODB_URI)).rejects.toThrow(/only writes to "libverse_demo"/);
+  await expect(dropDemo(process.env.MONGODB_URI)).rejects.toThrow(/only "libverse_demo"/);
+  expect(await Book.countDocuments({ title: 'Must survive' })).toBe(1);
+});
+
 test('vercel.json: SPA fallback and the same CSP as the API (production)', () => {
   const vercel = JSON.parse(fs.readFileSync(path.join(ROOT, 'frontend', 'vercel.json'), 'utf8'));
   expect(vercel.rewrites).toEqual([{ source: '/(.*)', destination: '/index.html' }]);

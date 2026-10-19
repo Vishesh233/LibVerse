@@ -19,7 +19,13 @@ and start a fake AI service where they need one.
 | File | Covers |
 |---|---|
 | `auth.test.js` | signup/login, Library IDs, deactivated accounts, token versions (password change signs out other sessions), RBAC, helmet/CSP headers, CORS |
-| `rateLimit.test.js` | login (failed attempts), signup and password-change limits |
+| `rateLimit.test.js` | login (failed attempts), signup, password-change, forgot-password and reset-code limits |
+| `passwordReset.test.js` | forgot password by email code with a fake mail transport: same answer for unknown emails, hashed code, 10-minute expiry, 5 guesses (also in parallel), one use, resend limit, sessions ended |
+| `bookImport.test.js` | CSV parser (quotes, line breaks, BOM), row validation, duplicates against the catalogue and the file, import, audit entry, cover check with a faked fetch |
+| `staffLists.test.js` | books sorting, low-stock filter and stock summary; users filters, sorting and loan/fine columns; one book's open loans |
+| `dataQuality.test.js` | description/ISBN/year clean-up script (dry run, apply, idempotent), digits-only ISBNs and `publicationYear` through the API |
+| `files.test.js` | avatar and cover uploads in GridFS, caching headers, old avatar removed, health check, uploads migration |
+| `deploy.test.js` | catalogue export/import, first admin, `frontend/vercel.json` CSP in sync with the API, `render.yaml` names only |
 | `circulation.test.js` | request → approve → return, one copy per student, fines and payment, renewals, concurrent approvals/returns/renewals |
 | `waivers.test.js` | waiver validation, partial and full waivers, audit, running fine total, concurrent waivers |
 | `reservations.test.js` | reservation rules, queue order, held copies, borrowing a held copy, 48-hour expiry, cancellations |
