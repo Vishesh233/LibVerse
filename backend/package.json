@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
+    "dev": "node --watch server.js",
     "test": "jest",
     "catalogue:export": "node scripts/exportCatalogue.js",
     "catalogue:import": "node scripts/importCatalogue.js",
@@ -28,17 +28,19 @@
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "express-rate-limit": "8.7.0",
-    "google-auth-library": "^9.15.1",
+    "google-auth-library": "^10.9.1",
     "helmet": "8.3.0",
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^7.0.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "10.0.14",
-    "sharp": "^0.33.0"
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "jest": "30.5.2",
-    "nodemon": "^3.1.14",
     "supertest": "7.3.1"
+  },
+  "overrides": {
+    "argparse": "^2.0.1"
   }
 }
