@@ -1,81 +1,161 @@
 import React from 'react';
 import { CoverImage } from './CoverImage';
+import { Button } from './UI';
+import { genreAccentStyle } from '../constants/genres';
 
+const HeartIcon = ({ filled }) => (
+  <svg viewBox="0 0 24 24" className="h-5 w-5" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+  </svg>
+);
+
+/**
+ * Catalogue card: cover on top, then title, author, a genre + availability row and one action.
+ * - showAvailability: availability text next to the genre (from availableCopies)
+ * - onWishlistClick: renders a heart toggle over the cover
+ * - actionVariant: Button variant for the main action
+ * - note / noteTone ('ready' | 'waiting'): one status line above the action (e.g. a reservation)
+ * - secondaryAction: { label, onClick, disabled } small text action under the main one
+ * - reason: one line saying why the book is shown (e.g. a recommendation's explanation)
+ * - aiPick: "AI" badge on the cover (recommended by the AI service)
+ */
 export const BookCard = ({
   book,
   onCardClick,
   onActionClick,
   onWishlistClick,
   actionLabel = 'Request Book',
-  wishlistLabel = 'Add to Wishlist',
+  actionVariant = 'primary',
   isLoading = false,
   actionDisabled = false,
   isWishlisted = false,
+  wishlistBusy = false,
+  showAvailability = true,
   footer,
-  statusLabel,
+  note,
+  noteTone = 'waiting',
+  secondaryAction,
+  reason,
+  aiPick = false,
 }) => {
   const safeRating = Number(book?.rating) || 0;
+  const available = Number(book?.availableCopies) || 0;
+  const title = book?.title || 'Untitled';
+
+  const handleKeyDown = (e) => {
+    if (!onCardClick || e.target !== e.currentTarget) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onCardClick();
+    }
+  };
 
   return (
     <div
       onClick={onCardClick}
-      className="card cursor-pointer transition-all duration-250 hover:-translate-y-1 hover:shadow-glow hover:border-indigo-500/30"
+      onKeyDown={handleKeyDown}
+      role={onCardClick ? 'link' : undefined}
+      tabIndex={onCardClick ? 0 : undefined}
+      aria-label={onCardClick ? `${title} details` : undefined}
+      style={genreAccentStyle(book?.genre)}
+      className={`book-card ${onCardClick ? 'cursor-pointer' : ''}`}
     >
-      <div className="flex items-start gap-4">
-        <div className="h-28 w-20 overflow-hidden rounded-2xl bg-input flex-shrink-0">
-          <CoverImage book={book} alt={book?.title || 'Book cover'} />
-        </div>
+      <div className="book-card__frame">
+        {/* Whole cover (contain) over a blurred copy of itself, so nothing is cropped */}
+        <CoverImage
+          book={book}
+          src={book?.imageUrl || book?.coverImage}
+          alt={`Cover of ${title}`}
+          className="book-card__cover"
+          size="M"
+          backdrop
+        />
+        <div className="book-card__scrim" />
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <h3 className="text-base font-semibold text-slate-100 line-clamp-2">{book?.title || 'Untitled'}</h3>
-              <p className="mt-1.5 text-sm text-slate-400 line-clamp-1">{book?.author || 'Author Unknown'}</p>
-            </div>
-            {safeRating > 0 && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-semibold flex-shrink-0">
-                ⭐ {safeRating.toFixed(1)}
-              </span>
-            )}
-          </div>
-          {book?.genre && (
-            <span className="mt-2.5 inline-flex rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300 border border-indigo-500/20">{book.genre}</span>
-          )}
-        </div>
-      </div>
-
-      {footer && (
-        <div className="mt-4 pt-4 border-t border-border">
-          {footer}
-        </div>
-      )}
-
-      <div className="mt-4 flex items-center gap-2">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onActionClick?.(book?._id || book?.id);
-          }}
-          disabled={actionDisabled || isLoading}
-          className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? 'Processing...' : actionLabel}
-        </button>
+        {aiPick && (
+          <span className="glass-pill glass-pill--ai absolute left-2.5 top-2.5" title="Recommended by the AI model">
+            <span aria-hidden="true">✦</span>
+            AI<span className="sr-only"> recommendation</span>
+          </span>
+        )}
 
         {onWishlistClick && (
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onWishlistClick(book);
             }}
-            className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
-              isWishlisted
-                ? 'border-rose-500/30 bg-rose-500/10 text-rose-300'
-                : 'border-border bg-transparent text-slate-300 hover:border-indigo-500/30 hover:text-indigo-300'
-            }`}
+            disabled={wishlistBusy}
+            aria-pressed={isWishlisted}
+            aria-label={isWishlisted ? `Remove ${title} from wishlist` : `Add ${title} to wishlist`}
+            className="glass-icon-btn absolute right-2 top-2"
           >
-            {isWishlisted ? 'Wishlisted' : wishlistLabel}
+            <HeartIcon filled={isWishlisted} />
           </button>
+        )}
+
+        {/* Rating 0 means no ratings yet: hide the chip on the card */}
+        {safeRating > 0 && (
+          <span className="glass-pill glass-pill--rating absolute bottom-2.5 left-2.5">
+            <span aria-hidden="true">★</span>
+            <span className="sr-only">Rating</span>
+            {safeRating.toFixed(1)}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col p-3">
+        <h3 className="book-card__title text-sm font-semibold leading-snug text-slate-100 line-clamp-2">{title}</h3>
+        <p className="mt-0.5 text-xs text-slate-400 line-clamp-1">{book?.author || 'Author unknown'}</p>
+        {reason && <p className="book-card__reason">{reason}</p>}
+        {(book?.genre || showAvailability) && (
+          <div className="book-card__meta mt-2">
+            {book?.genre && <span className="genre-badge">{book.genre}</span>}
+            {showAvailability && (
+              <span className={`book-card__availability ${available > 0 ? 'book-card__availability--yes' : 'book-card__availability--no'}`}>
+                {available > 0 ? `${available} available` : 'Not available'}
+              </span>
+            )}
+          </div>
+        )}
+
+        {footer && <div className="mt-3 border-t border-border pt-3">{footer}</div>}
+
+        {onActionClick && (
+          <div className="mt-auto pt-3">
+            {note && (
+              <p className={`book-card__note book-card__note--${noteTone}`} role="status">
+                {note}
+              </p>
+            )}
+            <Button
+              size="sm"
+              className="!min-h-[40px]"
+              variant={actionVariant}
+              loading={isLoading}
+              disabled={actionDisabled}
+              onClick={(e) => {
+                e.stopPropagation();
+                onActionClick(book?._id || book?.id);
+              }}
+            >
+              {actionLabel}
+            </Button>
+            {secondaryAction && (
+              <button
+                type="button"
+                disabled={secondaryAction.disabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  secondaryAction.onClick();
+                }}
+                className="book-card__secondary"
+              >
+                {secondaryAction.label}
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

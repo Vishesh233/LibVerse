@@ -1,4 +1,5 @@
 import React from 'react';
+import { assetUrl } from '../utils/assetUrl';
 
 const initialsFromName = (name = '') => {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -17,7 +18,7 @@ export const Avatar = ({ name, src, size = 8, className = '', role = 'student', 
   if (src) {
     return (
       <img
-        src={src}
+        src={assetUrl(src)}
         alt={name || 'avatar'}
         onError={(e) => {
           if (onError) onError(e);

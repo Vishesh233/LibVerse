@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LibVerse gallery</title>
+<style>
+:root{--bg:#050816;--panel:#111827;--line:rgba(255,255,255,.1);--text:#F8FAFC;--muted:#CBD5E1;--accent:#67E8F9;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#050816,#0B1120) fixed;color:var(--text);font:16px/1.5 Inter,'Segoe UI',system-ui,sans-serif}
+header{padding:40px 16px 8px;max-width:1280px;margin:auto}h1{margin:0;font-size:32px;letter-spacing:-.02em}h1 b{color:var(--accent)}
+header p{color:var(--muted);margin:6px 0 0}nav{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+nav a{color:var(--text);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 14px;background:#0f1530}nav a:hover,nav a:focus-visible{border-color:var(--accent)}
+main{max-width:1280px;margin:auto;padding:8px 16px 64px}h2{font-size:22px;margin:36px 0 14px}h2 span{color:var(--muted);font-weight:500;font-size:15px}
+.grid{list-style:none;margin:0;padding:0;display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))}
+.grid.phones{grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr))}
+.grid button{all:unset;cursor:zoom-in;display:block;width:100%;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);transition:border-color .15s,transform .15s}
+.grid button:hover,.grid button:focus-visible{border-color:var(--accent);transform:translateY(-2px)}
+.grid img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;object-position:top left;background:#0B1120}.phones img{aspect-ratio:390/844}
+.cap{display:block;padding:10px 14px 14px;color:var(--muted);font-size:14px}.cap b{display:block;color:var(--text);font-size:15px;margin-bottom:2px}
+dialog{border:0;padding:0;background:transparent;max-width:min(96vw,1600px);max-height:96vh;color:var(--text)}dialog::backdrop{background:rgba(2,4,12,.88)}
+dialog img{display:block;max-width:100%;max-height:84vh;margin:auto;border-radius:10px;border:1px solid var(--line)}
+dialog p{margin:10px 0 0;text-align:center;color:var(--muted)}dialog .bar{display:flex;justify-content:center;gap:10px;margin-top:10px}
+dialog button{background:#151a33;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font:inherit;cursor:pointer}dialog button:focus-visible{outline:2px solid var(--accent)}
+</style></head>
+<body>
+<header><h1>Lib<b>Verse</b> gallery</h1><p>Every screen with demo data (fictional members). Generated 2026-10-19. Click a screen to enlarge; arrow keys move, Esc closes.</p>
+<nav aria-label="Sections"><a href="#g-01-public">Public pages</a><a href="#g-02-student">Student</a><a href="#g-03-librarian">Librarian</a><a href="#g-04-admin">Admin</a><a href="#g-05-mobile">On a phone</a></nav></header>
+<main>
+    <section aria-labelledby="g-01-public">
+      <h2 id="g-01-public">Public pages <span>4</span></h2>
+      <ul class="grid">
+        <li><button type="button" data-full="screenshots/01-public/01-splash.png" data-caption="Splash: Opening splash with a live wall of covers from the catalogue.">
+          <img loading="lazy" src="screenshots/01-public/01-splash.webp" alt="Splash"><span class="cap"><b>Splash</b>Opening splash with a live wall of covers from the catalogue.</span></button></li><li><button type="button" data-full="screenshots/01-public/02-login.png" data-caption="Sign in: Sign-in page for students, librarians and admins.">
+          <img loading="lazy" src="screenshots/01-public/02-login.webp" alt="Sign in"><span class="cap"><b>Sign in</b>Sign-in page for students, librarians and admins.</span></button></li><li><button type="button" data-full="screenshots/01-public/03-signup.png" data-caption="Sign up: Students create their own account and get a Library ID straight away.">
+          <img loading="lazy" src="screenshots/01-public/03-signup.webp" alt="Sign up"><span class="cap"><b>Sign up</b>Students create their own account and get a Library ID straight away.</span></button></li><li><button type="button" data-full="screenshots/01-public/04-onboarding.png" data-caption="Onboarding: First sign-in: pick favourite genres for personalised picks.">
+          <img loading="lazy" src="screenshots/01-public/04-onboarding.webp" alt="Onboarding"><span class="cap"><b>Onboarding</b>First sign-in: pick favourite genres for personalised picks.</span></button></li>
+      </ul>
+    </section>
+    <section aria-labelledby="g-02-student">
+      <h2 id="g-02-student">Student <span>16</span></h2>
+      <ul class="grid">
+        <li><button type="button" data-full="screenshots/02-student/01-dashboard.png" data-caption="Dashboard: Student dashboard: loans, due dates, fines and AI &quot;Picked for you&quot; suggestions with reasons.">
+          <img loading="lazy" src="screenshots/02-student/01-dashboard.webp" alt="Dashboard"><span class="cap"><b>Dashboard</b>Student dashboard: loans, due dates, fines and AI &quot;Picked for you&quot; suggestions with reasons.</span></button></li><li><button type="button" data-full="screenshots/02-student/02-books.png" data-caption="Browse books: Catalogue of 500+ books with search, genre and availability filters.">
+          <img loading="lazy" src="screenshots/02-student/02-books.webp" alt="Browse books"><span class="cap"><b>Browse books</b>Catalogue of 500+ books with search, genre and availability filters.</span></button></li><li><button type="button" data-full="screenshots/02-student/03-book-details.png" data-caption="Book details: Book page: availability, request or reserve, wishlist and reader reviews.">
+          <img loading="lazy" src="screenshots/02-student/03-book-details.webp" alt="Book details"><span class="cap"><b>Book details</b>Book page: availability, request or reserve, wishlist and reader reviews.</span></button></li><li><button type="button" data-full="screenshots/02-student/04-my-books-issued.png" data-caption="My books: issued: Books on loan with due dates, overdue fines building up, renew and return.">
+          <img loading="lazy" src="screenshots/02-student/04-my-books-issued.webp" alt="My books: issued"><span class="cap"><b>My books: issued</b>Books on loan with due dates, overdue fines building up, renew and return.</span></button></li><li><button type="button" data-full="screenshots/02-student/05-my-books-pending.png" data-caption="My books: requests: Requests waiting for a librarian to approve.">
+          <img loading="lazy" src="screenshots/02-student/05-my-books-pending.webp" alt="My books: requests"><span class="cap"><b>My books: requests</b>Requests waiting for a librarian to approve.</span></button></li><li><button type="button" data-full="screenshots/02-student/06-my-books-history.png" data-caption="My books: returned: Reading history with fines paid or waived.">
+          <img loading="lazy" src="screenshots/02-student/06-my-books-history.webp" alt="My books: returned"><span class="cap"><b>My books: returned</b>Reading history with fines paid or waived.</span></button></li><li><button type="button" data-full="screenshots/02-student/07-reservations.png" data-caption="Reservations: Waiting-list places, and a copy held for 48 hours when it is your turn.">
+          <img loading="lazy" src="screenshots/02-student/07-reservations.webp" alt="Reservations"><span class="cap"><b>Reservations</b>Waiting-list places, and a copy held for 48 hours when it is your turn.</span></button></li><li><button type="button" data-full="screenshots/02-student/08-wishlist.png" data-caption="Wishlist: Wishlist with back-in-stock alerts.">
+          <img loading="lazy" src="screenshots/02-student/08-wishlist.webp" alt="Wishlist"><span class="cap"><b>Wishlist</b>Wishlist with back-in-stock alerts.</span></button></li><li><button type="button" data-full="screenshots/02-student/09-fines.png" data-caption="Fines: Fines owed, building up and settled, with a clear total.">
+          <img loading="lazy" src="screenshots/02-student/09-fines.webp" alt="Fines"><span class="cap"><b>Fines</b>Fines owed, building up and settled, with a clear total.</span></button></li><li><button type="button" data-full="screenshots/02-student/10-pay-fine.png" data-caption="Pay fine: Pay a fine by UPI QR and upload the receipt for the library to verify.">
+          <img loading="lazy" src="screenshots/02-student/10-pay-fine.webp" alt="Pay fine"><span class="cap"><b>Pay fine</b>Pay a fine by UPI QR and upload the receipt for the library to verify.</span></button></li><li><button type="button" data-full="screenshots/02-student/11-notifications.png" data-caption="Notifications: Notifications for approvals, due dates, fines and reservations.">
+          <img loading="lazy" src="screenshots/02-student/11-notifications.webp" alt="Notifications"><span class="cap"><b>Notifications</b>Notifications for approvals, due dates, fines and reservations.</span></button></li><li><button type="button" data-full="screenshots/02-student/12-profile.png" data-caption="Profile: Profile with avatar, contact details and account summary.">
+          <img loading="lazy" src="screenshots/02-student/12-profile.webp" alt="Profile"><span class="cap"><b>Profile</b>Profile with avatar, contact details and account summary.</span></button></li><li><button type="button" data-full="screenshots/02-student/13-reading-stats.png" data-caption="Reading stats: Reading stats: books read, favourite genres and on-time returns.">
+          <img loading="lazy" src="screenshots/02-student/13-reading-stats.webp" alt="Reading stats"><span class="cap"><b>Reading stats</b>Reading stats: books read, favourite genres and on-time returns.</span></button></li><li><button type="button" data-full="screenshots/02-student/14-preferences.png" data-caption="Reading preferences: Favourite genres that drive the recommendations.">
+          <img loading="lazy" src="screenshots/02-student/14-preferences.webp" alt="Reading preferences"><span class="cap"><b>Reading preferences</b>Favourite genres that drive the recommendations.</span></button></li><li><button type="button" data-full="screenshots/02-student/15-library-card-front.png" data-caption="Library card (front): Digital library card with a signed QR code for the desk.">
+          <img loading="lazy" src="screenshots/02-student/15-library-card-front.webp" alt="Library card (front)"><span class="cap"><b>Library card (front)</b>Digital library card with a signed QR code for the desk.</span></button></li><li><button type="button" data-full="screenshots/02-student/16-library-card-back.png" data-caption="Library card (back): Back of the card: lending rules and member details.">
+          <img loading="lazy" src="screenshots/02-student/16-library-card-back.webp" alt="Library card (back)"><span class="cap"><b>Library card (back)</b>Back of the card: lending rules and member details.</span></button></li>
+      </ul>
+    </section>
+    <section aria-labelledby="g-03-librarian">
+      <h2 id="g-03-librarian">Librarian <span>12</span></h2>
+      <ul class="grid">
+        <li><button type="button" data-full="screenshots/03-librarian/01-dashboard.png" data-caption="Dashboard: Librarian control room: live queues, today at a glance and a 14-day activity trend.">
+          <img loading="lazy" src="screenshots/03-librarian/01-dashboard.webp" alt="Dashboard"><span class="cap"><b>Dashboard</b>Librarian control room: live queues, today at a glance and a 14-day activity trend.</span></button></li><li><button type="button" data-full="screenshots/03-librarian/02-requests-issue.png" data-caption="Requests: issue: Issue requests to approve or reject.">
+          <img loading="lazy" src="screenshots/03-librarian/02-requests-issue.webp" alt="Requests: issue"><span class="cap"><b>Requests: issue</b>Issue requests to approve or reject.</span></button></li><li><button type="button" data-full="screenshots/03-librarian/03-requests-return.png" data-caption="Requests: returns: Return requests with any fine worked out.">
+          <img loading="lazy" src="screenshots/03-librarian/03-requests-return.webp" alt="Requests: returns"><span class="cap"><b>Requests: returns</b>Return requests with any fine worked out.</span></button></li><li><button type="button" data-full="screenshots/03-librarian/04-requests-payment.png" data-caption="Requests: payments: Fine payments with receipts waiting for verification.">
+          <img loading="lazy" src="screenshots/03-librarian/04-requests-payment.webp" alt="Requests: payments"><span class="cap"><b>Requests: payments</b>Fine payments with receipts waiting for verification.</span></button></li><li><button type="button" data-full="screenshots/03-librarian/05-requests-reservations.png" data-caption="Requests: reservations: Waiting lists per book.">
+          <img loading="lazy" src="screenshots/03-librarian/05-requests-reservations.webp" alt="Requests: reservations"><span class="cap"><b>Requests: reservations</b>Waiting lists per book.</span></button></li><li><button type="button" data-full="screenshots/03-librarian/06-issue-return.png" data-caption="Issue &amp; return: Counter workflow: find the student and the book, pick a due date, issue.">
+          <img loading="lazy" src="screenshots/03-librarian/06-issue-return.webp" alt="Issue &amp; return"><span class="cap"><b>Issue &amp; return</b>Counter workflow: find the student and the book, pick a due date, issue.</span></button></li><li><button type="button" data-full="screenshots/03-librarian/07-return-desk.png" data-caption="Return at the desk: Books out now, soonest due first, with late fines shown before the return.">
+          <img loading="lazy" src="screenshots/03-librarian/07-return-desk.webp" alt="Return at the desk"><span class="cap"><b>Return at the desk</b>Books out now, soonest due first, with late fines shown before the return.</span></button></li><li><button type="button" data-full="screenshots/03-librarian/08-scan-desk.png" data-caption="Scan desk: Scan desk: scan a library card and a book QR to issue or return in seconds.">
+          <img loading="lazy" src="screenshots/03-librarian/08-scan-desk.webp" alt="Scan desk"><span class="cap"><b>Scan desk</b>Scan desk: scan a library card and a book QR to issue or return in seconds.</span></button></li><li><button type="button" data-full="screenshots/03-librarian/09-manage-books.png" data-caption="Manage books: Books table: sortable columns, stock at a glance, low-stock filter and bulk actions.">
+          <img loading="lazy" src="screenshots/03-librarian/09-manage-books.webp" alt="Manage books"><span class="cap"><b>Manage books</b>Books table: sortable columns, stock at a glance, low-stock filter and bulk actions.</span></button></li><li><button type="button" data-full="screenshots/03-librarian/10-qr-labels.png" data-caption="QR labels: Printable QR shelf labels for selected books.">
+          <img loading="lazy" src="screenshots/03-librarian/10-qr-labels.webp" alt="QR labels"><span class="cap"><b>QR labels</b>Printable QR shelf labels for selected books.</span></button></li><li><button type="button" data-full="screenshots/03-librarian/11-users.png" data-caption="Users: Members with loans, overdue books and fines owed; rows open Student 360.">
+          <img loading="lazy" src="screenshots/03-librarian/11-users.webp" alt="Users"><span class="cap"><b>Users</b>Members with loans, overdue books and fines owed; rows open Student 360.</span></button></li><li><button type="button" data-full="screenshots/03-librarian/12-student-360.png" data-caption="Student 360: Student 360: everything about one member, with actions.">
+          <img loading="lazy" src="screenshots/03-librarian/12-student-360.webp" alt="Student 360"><span class="cap"><b>Student 360</b>Student 360: everything about one member, with actions.</span></button></li>
+      </ul>
+    </section>
+    <section aria-labelledby="g-04-admin">
+      <h2 id="g-04-admin">Admin <span>9</span></h2>
+      <ul class="grid">
+        <li><button type="button" data-full="screenshots/04-admin/01-dashboard.png" data-caption="Dashboard: Admin dashboard: library health, circulation and staff activity.">
+          <img loading="lazy" src="screenshots/04-admin/01-dashboard.webp" alt="Dashboard"><span class="cap"><b>Dashboard</b>Admin dashboard: library health, circulation and staff activity.</span></button></li><li><button type="button" data-full="screenshots/04-admin/02-analytics.png" data-caption="Analytics: Analytics: borrowing trends, genres and member activity.">
+          <img loading="lazy" src="screenshots/04-admin/02-analytics.webp" alt="Analytics"><span class="cap"><b>Analytics</b>Analytics: borrowing trends, genres and member activity.</span></button></li><li><button type="button" data-full="screenshots/04-admin/03-reports-loans.png" data-caption="Reports: loans: Reports with summary cards and CSV export: loans.">
+          <img loading="lazy" src="screenshots/04-admin/03-reports-loans.webp" alt="Reports: loans"><span class="cap"><b>Reports: loans</b>Reports with summary cards and CSV export: loans.</span></button></li><li><button type="button" data-full="screenshots/04-admin/04-reports-fines.png" data-caption="Reports: fines: Fines fixed, paid and waived in a period.">
+          <img loading="lazy" src="screenshots/04-admin/04-reports-fines.webp" alt="Reports: fines"><span class="cap"><b>Reports: fines</b>Fines fixed, paid and waived in a period.</span></button></li><li><button type="button" data-full="screenshots/04-admin/05-reports-overdue.png" data-caption="Reports: overdue: Overdue loans by age.">
+          <img loading="lazy" src="screenshots/04-admin/05-reports-overdue.webp" alt="Reports: overdue"><span class="cap"><b>Reports: overdue</b>Overdue loans by age.</span></button></li><li><button type="button" data-full="screenshots/04-admin/06-reports-top.png" data-caption="Reports: top books: Most borrowed books.">
+          <img loading="lazy" src="screenshots/04-admin/06-reports-top.webp" alt="Reports: top books"><span class="cap"><b>Reports: top books</b>Most borrowed books.</span></button></li><li><button type="button" data-full="screenshots/04-admin/07-reports-staff.png" data-caption="Reports: staff activity: Loan actions per staff member from the audit log.">
+          <img loading="lazy" src="screenshots/04-admin/07-reports-staff.webp" alt="Reports: staff activity"><span class="cap"><b>Reports: staff activity</b>Loan actions per staff member from the audit log.</span></button></li><li><button type="button" data-full="screenshots/04-admin/08-audit-log.png" data-caption="Audit log: Audit log of every staff action, filterable and exportable.">
+          <img loading="lazy" src="screenshots/04-admin/08-audit-log.webp" alt="Audit log"><span class="cap"><b>Audit log</b>Audit log of every staff action, filterable and exportable.</span></button></li><li><button type="button" data-full="screenshots/04-admin/09-settings.png" data-caption="Settings: Settings: password change signs out every other session.">
+          <img loading="lazy" src="screenshots/04-admin/09-settings.webp" alt="Settings"><span class="cap"><b>Settings</b>Settings: password change signs out every other session.</span></button></li>
+      </ul>
+    </section>
+    <section aria-labelledby="g-05-mobile">
+      <h2 id="g-05-mobile">On a phone <span>6</span></h2>
+      <ul class="grid phones">
+        <li><button type="button" data-full="screenshots/05-mobile/01-login.png" data-caption="Sign in: Sign in on a phone.">
+          <img loading="lazy" src="screenshots/05-mobile/01-login.webp" alt="Sign in"><span class="cap"><b>Sign in</b>Sign in on a phone.</span></button></li><li><button type="button" data-full="screenshots/05-mobile/02-student-dashboard.png" data-caption="Dashboard: Student dashboard on a phone.">
+          <img loading="lazy" src="screenshots/05-mobile/02-student-dashboard.webp" alt="Dashboard"><span class="cap"><b>Dashboard</b>Student dashboard on a phone.</span></button></li><li><button type="button" data-full="screenshots/05-mobile/03-book-details.png" data-caption="Book details: Book page on a phone.">
+          <img loading="lazy" src="screenshots/05-mobile/03-book-details.webp" alt="Book details"><span class="cap"><b>Book details</b>Book page on a phone.</span></button></li><li><button type="button" data-full="screenshots/05-mobile/04-my-books.png" data-caption="My books: issued: My books on a phone.">
+          <img loading="lazy" src="screenshots/05-mobile/04-my-books.webp" alt="My books: issued"><span class="cap"><b>My books: issued</b>My books on a phone.</span></button></li><li><button type="button" data-full="screenshots/05-mobile/05-library-card.png" data-caption="Library card (front): Library card on a phone, ready to scan at the desk.">
+          <img loading="lazy" src="screenshots/05-mobile/05-library-card.webp" alt="Library card (front)"><span class="cap"><b>Library card (front)</b>Library card on a phone, ready to scan at the desk.</span></button></li><li><button type="button" data-full="screenshots/05-mobile/06-librarian-dashboard.png" data-caption="Dashboard: Librarian dashboard on a phone.">
+          <img loading="lazy" src="screenshots/05-mobile/06-librarian-dashboard.webp" alt="Dashboard"><span class="cap"><b>Dashboard</b>Librarian dashboard on a phone.</span></button></li>
+      </ul>
+    </section></main>
+<dialog id="lb" aria-label="Screenshot"><img alt=""><p></p><div class="bar"><button type="button" data-step="-1">← Previous</button><button type="button" data-close>Close</button><button type="button" data-step="1">Next →</button></div></dialog>
+<script>
+const items=[...document.querySelectorAll('.grid button')];const lb=document.getElementById('lb');const img=lb.querySelector('img');const cap=lb.querySelector('p');let at=0;
+const show=(i)=>{at=(i+items.length)%items.length;const b=items[at];img.src=b.dataset.full;img.alt=b.dataset.caption;cap.textContent=b.dataset.caption;if(!lb.open)lb.showModal();};
+items.forEach((b,i)=>b.addEventListener('click',()=>show(i)));
+lb.addEventListener('click',(e)=>{if(e.target===lb||e.target.hasAttribute('data-close'))lb.close();const s=e.target.dataset.step;if(s)show(at+Number(s));});
+lb.addEventListener('keydown',(e)=>{if(e.key==='ArrowRight')show(at+1);if(e.key==='ArrowLeft')show(at-1);});
+lb.addEventListener('close',()=>items[at].focus());
+</script>
+</body></html>

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useCallback } from 'react';
+import React, { createContext, useState, useCallback, useEffect, useRef } from 'react';
 import { authAPI } from '../services/api';
 
 export const AuthContext = createContext();
@@ -36,6 +36,18 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // On app load, replace the stored user with the server's current data (e.g. a role changed since login).
+  // Route guards wait for this, so a stale role never triggers a wrong redirect.
+  const [isRefreshingUser, setIsRefreshingUser] = useState(() => !!localStorage.getItem('token'));
+  const didRefresh = useRef(false);
+
+  useEffect(() => {
+    if (didRefresh.current) return; // StrictMode runs effects twice in development
+    didRefresh.current = true;
+    if (!localStorage.getItem('token')) return;
+    refreshUser().finally(() => setIsRefreshingUser(false));
+  }, [refreshUser]);
+
   const logout = useCallback(() => {
     setUser(null);
     setToken(null);
@@ -45,7 +57,7 @@ export const AuthProvider = ({ children }) => {
 
   const isAuthenticated = !!token && !!user;
   const isLibrarian = user?.role === 'librarian';
-  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const isAdmin = user?.role === 'admin';
   const isStudent = user?.role === 'student';
 
   return (
@@ -55,6 +67,7 @@ export const AuthProvider = ({ children }) => {
         token,
         loading,
         setLoading,
+        isRefreshingUser,
         login,
         refreshUser,
         updateUser,

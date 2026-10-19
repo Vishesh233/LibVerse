@@ -6,8 +6,6 @@ npm-debug.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
-yarn.lock
 
 # Python
 __pycache__/
@@ -98,6 +96,7 @@ mongo-data/
 
 # Testing
 coverage/
+.pytest_cache/
 .nyc_output/
 
 # Documentation
@@ -111,6 +110,5 @@ qr-codes/
 uploads/
 temp/
 
-# Lock files (optional - uncomment if team prefers)
-# package-lock.json
-# yarn.lock
+# Catalogue export for seeding another database (scripts/exportCatalogue.js)
+backend/scripts/data/catalogue-export.json

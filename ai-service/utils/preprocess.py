@@ -1,77 +1,27 @@
 """
-Preprocessing utilities for the AI recommendation service
+Text preparation for the recommender
 """
 
 import re
-from typing import List, Dict
+
+# Field weights: the title and genre say most about a book, so they count twice
+TEXT_FIELDS = (('title', 2), ('author', 1), ('genre', 2), ('description', 1))
+
 
 def clean_text(text):
-    """
-    Clean text for processing
-    
-    Args:
-        text: Input text
-        
-    Returns:
-        Cleaned text
-    """
+    """Lower-case, keep letters/digits (including accented letters) and collapse whitespace"""
     if not text:
-        return ""
-    
-    # Convert to lowercase
-    text = text.lower()
-    
-    # Remove special characters
-    text = re.sub(r'[^a-zA-Z0-9\s]', ' ', text)
-    
-    # Remove extra whitespace
-    text = re.sub(r'\s+', ' ', text).strip()
-    
-    return text
+        return ''
+    text = str(text).lower()
+    text = re.sub(r'[^\w\s]|_', ' ', text)
+    return re.sub(r'\s+', ' ', text).strip()
 
-def format_book_data(book):
-    """
-    Format book data for processing
-    
-    Args:
-        book: Book dictionary
-        
-    Returns:
-        Formatted book dictionary
-    """
-    return {
-        '_id': str(book.get('_id', '')),
-        'title': clean_text(book.get('title', '')),
-        'author': clean_text(book.get('author', '')),
-        'genre': book.get('genre', ''),
-        'description': clean_text(book.get('description', '')),
-    }
 
-def extract_genre_preferences(genres: List[str]) -> List[str]:
-    """
-    Extract and validate genre preferences
-    
-    Args:
-        genres: List of genres
-        
-    Returns:
-        List of valid genres
-    """
-    valid_genres = [
-        'Fiction', 'Non-Fiction', 'Science', 'Technology',
-        'Business', 'Self-Help', 'Biography', 'History', 'Other'
-    ]
-    
-    return [g for g in genres if g in valid_genres]
-
-def prepare_recommendation_data(books: List[Dict]):
-    """
-    Prepare books data for recommendation model
-    
-    Args:
-        books: List of book dictionaries
-        
-    Returns:
-        Formatted list of books
-    """
-    return [format_book_data(book) for book in books]
+def book_document(book):
+    """The text TF-IDF sees for one book: title, author, genre and description"""
+    parts = []
+    for field, weight in TEXT_FIELDS:
+        value = clean_text(book.get(field))
+        if value:
+            parts.extend([value] * weight)
+    return ' '.join(parts)

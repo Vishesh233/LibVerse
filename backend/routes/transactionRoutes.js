@@ -10,8 +10,10 @@ const {
   approveReturn,
   submitPayment,
   approvePayment,
+  getPaymentScreenshot,
+  waiveFine,
 } = require('../controllers/transactionController');
-const { protect, isAdmin, isStudent } = require('../middleware/authMiddleware');
+const { protect, isStaff, isStudent } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -23,10 +25,12 @@ router.get('/user/me', protect, getUserTransactions);
 router.put('/:id/submit-payment', protect, submitPayment);
 
 // Admin routes
-router.get('/', protect, isAdmin, getAllTransactions);
-router.put('/:id/approve', protect, isAdmin, approveIssueRequest);
-router.put('/:id/reject', protect, isAdmin, rejectIssueRequest);
-router.put('/:id/approve-return', protect, isAdmin, approveReturn);
-router.put('/:id/approve-payment', protect, isAdmin, approvePayment);
+router.get('/', protect, isStaff, getAllTransactions);
+router.get('/:id/payment-screenshot', protect, isStaff, getPaymentScreenshot);
+router.put('/:id/approve', protect, isStaff, approveIssueRequest);
+router.put('/:id/reject', protect, isStaff, rejectIssueRequest);
+router.put('/:id/approve-return', protect, isStaff, approveReturn);
+router.put('/:id/approve-payment', protect, isStaff, approvePayment);
+router.post('/:id/waive', protect, isStaff, waiveFine);
 
 module.exports = router;

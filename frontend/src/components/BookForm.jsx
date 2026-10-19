@@ -29,7 +29,6 @@ export const BookForm = ({
     imageUrl: '',   // URL-provided cover
   });
   const [uploadedImage, setUploadedImage] = useState('');
-  const [imageError, setImageError] = useState(false);
   const [formError, setFormError] = useState('');
   const [uploadingCover, setUploadingCover] = useState(false);
   const [coverCandidateIndex, setCoverCandidateIndex] = useState(0);
@@ -57,8 +56,6 @@ export const BookForm = ({
         publisher: initialData.publisher || '',
         publicationYear: initialData.publicationYear
           ? String(initialData.publicationYear)
-          : initialData.publishedYear
-          ? String(initialData.publishedYear)
           : '',
         description: initialData.description || '',
         totalCopies: String(initialData.totalCopies ?? initialData.availableCopies ?? ''),
@@ -71,7 +68,6 @@ export const BookForm = ({
         imageUrl: existingImageUrl,
       });
       setUploadedImage(previewImage);
-      setImageError(false);
       setFormError('');
     }
   }, [initialData]);
@@ -93,12 +89,7 @@ export const BookForm = ({
     if (uploadedImage) {
       setUploadedImage('');
     }
-    setImageError(false);
     setFormError('');
-  };
-
-  const handleCoverUrlBlur = () => {
-    setImageError(false);
   };
 
   // Upload image file to server via /books/upload-cover endpoint
@@ -131,7 +122,6 @@ export const BookForm = ({
         // Show preview immediately
         setUploadedImage(coverUrl);
         setFormData((prev) => ({ ...prev, coverImage: coverUrl }));
-        setImageError(false);
         setFormError('');
       } else {
         setFormError(res.data?.message || 'Failed to upload image');
@@ -142,42 +132,6 @@ export const BookForm = ({
     } finally {
       setUploadingCover(false);
     }
-  }, []);
-
-  // Compress image before processing (only used as fallback if server upload fails)
-  const compressImage = (dataUrl, maxWidth = 800, quality = 0.8) => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = () => {
-        resolve(dataUrl); // Fallback to original
-      };
-      img.src = dataUrl;
-    });
-  };
-
-  // Fallback: handle Base64 strings directly (for backward compatibility)
-  const handleBase64Image = useCallback((dataUrl) => {
-    if (!dataUrl) return;
-    setUploadedImage(dataUrl);
-    setFormData((prev) => ({ ...prev, coverImage: dataUrl }));
-    setImageError(false);
-    setFormError('');
   }, []);
 
   const handleFileInputChange = (e) => {
@@ -192,7 +146,6 @@ export const BookForm = ({
   const handleRemoveImage = () => {
     setUploadedImage('');
     setFormData((prev) => ({ ...prev, coverImage: '', imageUrl: '' }));
-    setImageError(false);
     setFormError('');
   };
 
@@ -260,7 +213,6 @@ export const BookForm = ({
   // Reset candidate index when coverImage, imageUrl or isbn changes
   useEffect(() => {
     setCoverCandidateIndex(0);
-    setImageError(false);
   }, [formData.coverImage, formData.imageUrl, formData.isbn]);
 
   const previewSrc = coverCandidates[coverCandidateIndex] || DEFAULT_BOOK_COVER;
@@ -568,7 +520,6 @@ export const BookForm = ({
               name="imageUrl"
               value={formData.imageUrl || ''}
               onChange={handleCoverUrlChange}
-              onBlur={handleCoverUrlBlur}
               placeholder="https://example.com/book-cover.jpg"
               className="w-full input-amo"
               disabled={submitting || uploadingCover}

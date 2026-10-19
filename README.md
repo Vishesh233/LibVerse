@@ -1,460 +1,218 @@
-<h1 align="center">📚 LibVerse — Smart Library Management System</h1>
+<p align="center">
+  <img src="docs/showcase/readme-hero.png" alt="LibVerse: student, librarian and admin screens" width="100%">
+</p>
+
+<h1 align="center">LibVerse — Smart Library Management System</h1>
 
 <p align="center">
-  <img src="https://readme-typing-svg.herokuapp.com?color=00F7FF&center=true&vCenter=true&width=650&lines=Smart+Library+Management+System;Read+%E2%80%A2+Borrow+%E2%80%A2+Discover;Manage+Books+%E2%80%A2+Users+%E2%80%A2+Transactions;AI-Powered+Book+Recommendations;Built+with+React+%E2%80%A2+Node.js+%E2%80%A2+MongoDB+%E2%80%A2+Python" />
+  Borrowing, returns, fines, reservations, QR library cards and AI book picks in one app for students, librarians and admins.
 </p>
 
 <p align="center">
-  <strong>A modern full-stack library management platform for Students, Librarians & Super Admins.</strong>
+  <a href="https://github.com/Vishesh233/LibVerse/actions/workflows/ci.yml"><img src="https://github.com/Vishesh233/LibVerse/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white" alt="React 18">
+  <img src="https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white" alt="Node.js and Express">
+  <img src="https://img.shields.io/badge/MongoDB-Mongoose-47A248?logo=mongodb&logoColor=white" alt="MongoDB">
+  <img src="https://img.shields.io/badge/Python-scikit--learn-3776AB?logo=python&logoColor=white" alt="Python and scikit-learn">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Frontend-React-61DAFB?style=for-the-badge&logo=react&logoColor=white" />
-  <img src="https://img.shields.io/badge/Backend-Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" />
-  <img src="https://img.shields.io/badge/Database-MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" />
-  <img src="https://img.shields.io/badge/AI-Python-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <b>Live demo:</b> <i>coming soon</i> &nbsp;·&nbsp;
+  <a href="docs/SCREENSHOTS.md">All screenshots</a> &nbsp;·&nbsp;
+  <a href="DEPLOYMENT.md">Deploy your own</a> &nbsp;·&nbsp;
+  <a href="docs/API.md">API</a> &nbsp;·&nbsp;
+  <a href="docs/ARCHITECTURE.md">Architecture</a>
 </p>
 
 ---
 
-# 🌌 About LibVerse
+## What it is
 
-**LibVerse** is a full-stack Smart Library Management System designed to digitize and simplify the complete library management workflow.
+LibVerse runs a college or community library end to end. Students find books, request them, renew,
+reserve when every copy is out, and pay late fines by UPI. Librarians approve requests, work the
+counter with a QR scan desk and keep the catalogue in shape. Admins see the whole library in
+dashboards, reports and an audit log. A small Python service suggests books to each student and
+says why ("Because you read *Clean Code*").
 
-The system provides dedicated role-based portals for:
+## Screens
 
-- 🎓 Students
-- 📚 Librarians
-- 🛡️ Admins
-
-From discovering books and managing wishlists to issuing books, processing returns, calculating overdue fines, handling QR-based payments, sending notifications, and viewing analytics — LibVerse brings the complete library workflow into one platform.
-
----
-
-# ✨ Core Highlights
-
-| Module | Features |
+| Student dashboard | Librarian dashboard |
 |---|---|
-| 🔐 Authentication | JWT authentication, protected routes, role-based access |
-| 👥 User Management | Student, Librarian & Super Admin roles |
-| 📚 Book Management | Add, edit, delete, search and filter books |
-| 🔎 Smart Search | Search by title, author and book information |
-| 🏷️ Filtering | Category, rating and availability filters |
-| ⭐ Ratings | Dynamic 0–5 book ratings |
-| ❤️ Wishlist | Personal wishlist management |
-| 📖 Circulation | Issue, approve, return and renew books |
-| 💰 Fine Management | Automatic overdue fine calculation |
-| 💳 QR Payment | QR-based fine payment and librarian verification |
-| 🔔 Notifications | User-specific system notifications |
-| 🖼️ Cover Management | Upload, URL, ISBN fallback and placeholder |
-| 🤖 Recommendations | TF-IDF and cosine similarity based recommendations |
-| 📊 Analytics | KPI cards and interactive charts |
-| 👤 Profile | Name, avatar and password management |
-
----
-
-# 🎓 Student Portal
-
-The Student Portal provides students with everything required to discover, borrow and manage books.
-
-
-- 📚 Browse, search and filter books by category, rating and availability
-- 📖 View book details, ratings and availability
-- 📥 Request, return and renew books
-- 💰 Track due dates and overdue fines with QR payment
-- ❤️ Manage wishlist and receive AI-powered recommendations
-- 👤 Manage profile, avatar, password and notifications
----
-
-# 📚 Librarian Portal
-
-The Librarian Portal handles the day-to-day operations of the library.
-
-
-- 📊 View library analytics and activity
-- 📚 Add, edit, delete, search and filter books
-- 👥 Manage students and issue requests
-- 📖 Issue, return and approve books
-- 💰 Manage fines and verify QR payment requests
-- 🔔 Receive payment and circulation notifications
----
-
-# 🛡️ Admin Portal
-
-The Super Admin has system-level control over the entire application.
-
-
-- 📊 Monitor system-wide analytics and reports
-- 👥 Manage users and accounts
-- 📚 Manage, search and filter books
-- 🔄 Monitor issue, return and transaction activity
-- 💰 Monitor fines and payment activity
-- 🔐 Manage role-based administration and notifications
-
----
-
-# 📖 Book Management
-
-LibVerse provides complete CRUD-based book management with:
-
-- 📚 Book details including title, author, ISBN, category, publisher and description
-- 📦 Copy and availability tracking
-- ⭐ Ratings
-- 🖼️ Cover image and URL support
-- 🔎 Search and filtering
-- ✏️ Create, update and delete operations
----
-
-# 🖼️ Smart Book Cover System
-
-LibVerse supports multiple sources for book cover images.
-
-The application follows this fallback chain:
-
-    1. Uploaded Cover Image
-             ↓
-    2. Image URL
-             ↓
-    3. OpenLibrary ISBN Cover
-             ↓
-    4. Default Placeholder
-
-This prevents broken image icons when a particular image source is unavailable.
-
----
-
-# 🔄 Book Circulation & Fine Payment
-
-LibVerse provides a controlled issue, return and fine-payment workflow.
-
-Student requests a book → Librarian approves → Book issued → Student returns.
-
-For overdue books:
-
-Return → ₹5/day fine → QR payment → Librarian verification → Fine paid → Book returned.
-
-All issue, return, fine and payment statuses are tracked through the transaction system.
-
----
-
-# 🔔 Notification System
-
-LibVerse provides user-specific notifications.
-
-Notifications may be generated for:
-
-- 📥 Book Requested
-- ✅ Book Approved
-- 🔄 Book Returned
-- 💰 Fine Generated
-- 💳 Payment Pending
-- ✅ Payment Approved
-- 📚 Circulation Updates
-- 👤 Account Updates
-
-Notifications are associated with the relevant user rather than being sent globally.
-
----
-# 🖥️ Application Preview
-
-### 🔐 Login Page
+| ![Student dashboard](docs/screenshots/02-student/01-dashboard.png) | ![Librarian dashboard](docs/screenshots/03-librarian/01-dashboard.png) |
+| **Book details** | **Books table** |
+| ![Book details](docs/screenshots/02-student/03-book-details.png) | ![Manage books](docs/screenshots/03-librarian/09-manage-books.png) |
+| **Fines and UPI payment** | **Reports** |
+| ![Pay a fine](docs/screenshots/02-student/10-pay-fine.png) | ![Reports](docs/screenshots/04-admin/03-reports-loans.png) |
 
 <p align="center">
-  <img src="./screenshots/loginPage.png" width="900" alt="LibVerse Login Page">
+  <img src="docs/screenshots/05-mobile/02-student-dashboard.png" alt="Student dashboard on a phone" width="200">
+  <img src="docs/screenshots/05-mobile/05-library-card.png" alt="Library card on a phone" width="200">
+  <img src="docs/screenshots/05-mobile/06-librarian-dashboard.png" alt="Librarian dashboard on a phone" width="200">
 </p>
 
-### 🎓 Student Dashboard
-
-<p align="center">
-  <img src="./screenshots/studentDashboard.png" width="900" alt="LibVerse Student Dashboard">
-</p>
-
-### 📚 Book Portal
-
-<p align="center">
-  <img src="./screenshots/booksPortal.png" width="900" alt="LibVerse Book Portal">
-</p>
-
-### 📚 Librarian Dashboard
-
-<p align="center">
-  <img src="./screenshots/librarianDashboard.png" width="900" alt="LibVerse Librarian Dashboard">
-</p>
-
----
-
-# 🤖 AI Recommendation Engine
-
-LibVerse uses a dedicated Python recommendation service based on
-TF-IDF vectorization and cosine similarity.
-
-The system uses book metadata, reading history and genre preferences
-to generate relevant recommendations.
-
-
-### Recommendation Pipeline
-
-    Available Books
-          ↓
-    Book Metadata
-          ↓
-    TF-IDF Vectorization
-          ↓
-    Cosine Similarity
-          ↓
-    Recommended Books
-
-The AI service is separated from the Node.js backend to keep recommendation logic modular.
-
----
-
-# 📊 Analytics Dashboard
-
-LibVerse provides interactive analytics for library management.
-
-- Total and available books
-- Issued books and active users
-- Transactions and pending requests
-- Fine statistics and library activity
-
-
-Visualizations include Bar Charts, Spline/Line Charts, Doughnut Charts and KPI Cards.
-
----
-
-# 🧩 System Architecture
-
-LibVerse follows a modular full-stack architecture.
-
-    ┌──────────────────────────┐
-    │       React Frontend     │
-    │                          │
-    │ Pages • Components       │
-    │ Hooks • Context • UI     │
-    └────────────┬─────────────┘
-                 │
-                 │ REST API
-                 ▼
-    ┌──────────────────────────┐
-    │    Node.js + Express     │
-    │                          │
-    │ Routes • Controllers     │
-    │ Middleware • Services    │
-    └────────────┬─────────────┘
-                 │
-        ┌────────┴────────┐
-        │                 │
-        ▼                 ▼
-    ┌───────────┐    ┌───────────────┐
-    │  MongoDB  │    │ Python Flask  │
-    │           │    │ AI Service    │
-    └───────────┘    └───────┬───────┘
-                              │
-                              ▼
-                       Recommendations
-
----
-
-## 🛠️ Technology Stack
-
-<table align="center">
-<tr>
-<td align="center" width="50%">
-<h3>🎨 Frontend</h3>
-<img src="https://skillicons.dev/icons?i=react,tailwind,js,html,css" />
-</td>
-
-<td align="center" width="50%">
-<h3>⚙️ Backend</h3>
-<img src="https://skillicons.dev/icons?i=nodejs,express,mongodb" />
-</td>
-</tr>
-
-<tr>
-<td align="center">
-<h3>🤖 AI / ML</h3>
-<img src="https://skillicons.dev/icons?i=python,flask" />
-
-</td>
-
-<td align="center">
-<h3>🧰 Tools</h3>
-<img src="https://skillicons.dev/icons?i=git,github,vscode,npm" />
-</td>
-</tr>
-</table>
-
----
-
-# 📁 Project Structure
-
-    smart-library-system/
-    ├── frontend/              # React + Tailwind frontend
-    │   ├── src/
-    │   │   ├── components/    # Reusable UI components
-    │   │   ├── pages/         # Application pages
-    │   │   ├── context/       # Global state
-    │   │   ├── hooks/         # Custom React hooks
-    │   │   ├── services/      # API services
-    │   │   └── utils/         # Frontend utilities
-    │   └── package.json
-    │
-    ├── backend/               # Node.js + Express backend
-    │   ├── controllers/       # Business logic
-    │   ├── models/            # MongoDB/Mongoose models
-    │   ├── routes/            # API routes
-    │   ├── middleware/        # Authentication & middleware
-    │   ├── services/          # Backend services
-    │   ├── utils/             # Helper utilities
-    │   └── server.js
-    │
-    ├── ai-service/            # Python Flask recommendation service
-    │   ├── model/
-    │   ├── routes/
-    │   ├── utils/
-    │   └── app.py
-    │
-    ├── docs/                  # Project documentation
-    ├── package.json
-    ├── QUICKSTART.md
-    └── README.md
-
----
-
-# ⚙️ Installation & Setup
-
-## Prerequisites
-
-Make sure the following are installed:
-
-- Node.js
-- npm
-- Python 3.8+
-- MongoDB
-- MongoDB Compass
-- Git
-
----
-
-# 1️⃣ Clone Repository
-
-    git clone <repository-url>
-    cd smart-library-system
-
----
-
-# 2️⃣ Backend Setup
-
-    cd backend
-    npm install
-
-Create/configure the backend `.env` file:
-
-    MONGODB_URI=your_mongodb_connection_string
-    JWT_SECRET=your_jwt_secret
-    JWT_EXPIRE=your_jwt_expiration
-    PORT=5001
-    AI_SERVICE_URL=http://localhost:5000
-    NODE_ENV=development
-
-Start the backend:
-
-    npm run dev
-
-Backend:
-
-    http://localhost:5001
-
----
-
-# 3️⃣ Frontend Setup
-
-Open a new terminal:
-
-    cd frontend
-    npm install
-
-Start the frontend:
-
-    npm run dev
-
-Vite will provide the local development URL in the terminal.
-
----
-
-# 4️⃣ AI Service Setup
-
-Open another terminal:
-
-    cd ai-service
-
-Create a virtual environment:
-
-    python -m venv venv
-
-### Windows
-
-    venv\Scripts\activate
-
-### macOS / Linux
-
-    source venv/bin/activate
-
-Install dependencies:
-
-    pip install -r requirements.txt
-
-Start the service:
-
-    python app.py
-
----
-
-# 🔐 Security
-
-LibVerse uses JWT authentication, role-based authorization, protected API routes,
-bcrypt password hashing, input validation and environment-based configuration.
-
-Never commit real credentials, passwords, API keys or secrets to GitHub.
-
----
-
-# 📈 Project Scale
-
-- **50+ implemented features**
-- **45+ books**
-- **1000+ simulated library records**
-- **3 role-based portals**
-- Reusable React components
-- Modular Node.js backend
-- MongoDB persistence
-- Dedicated Python AI recommendation service
-
----
-
-
-# 🗺️ Future Enhancements
-
-Potential future improvements include:
-
-- 📧 Automated email notifications
-- 🔊 Advanced voice search
-- 📱 Dedicated mobile application
-- 🔐 Two-factor authentication
-
----
-
-# 📄 License
-
-This project is developed as an academic and software engineering project.
-
----
-
-## 👨‍💻 Author
-
-**Vishesh Khanna**
-
-- GitHub: https://github.com/Vishesh233
-- LinkedIn: https://linkedin.com/in/vishesh-khanna-210361252
-
----
+Every screen, grouped by role: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) (or open `docs/gallery.html` locally).
+
+## Features by role
+
+**Students**
+- Dashboard with what is due, overdue fines building up, books ready to collect and "Picked for you" suggestions with reasons
+- Catalogue of 500+ books with search, genre and availability filters; book pages with reviews
+- Request, renew (up to 3 times, 7 days each) and return; history of every loan
+- Reservations: join the waiting list when every copy is out; a returned copy is held for 48 hours
+- Wishlist with back-in-stock alerts; notifications for every step
+- Fines at ₹5 per day late; pay by UPI QR and upload the receipt
+- Digital library card with a signed QR code (download as PNG or print); reading stats; favourite genres
+- Forgot password by a 6-digit email code (when email is configured)
+
+**Librarians**
+- Control-room dashboard: requests waiting, overdue now, due today, 14-day trend, recent activity
+- Requests queue: approve or reject issues, approve returns, verify fine payments, waive fines with a reason
+- Issue & return at the counter, and a scan desk (card QR + book QR) for issuing and returning in seconds
+- Books table with sortable columns, stock "X of Y", low-stock filter, bulk QR labels / CSV export / removal
+- Bulk CSV import with a row-by-row preview (genre, ISBN-13 and duplicate checks) and optional cover lookup
+- Users table with loans, overdue and fines per member; Student 360 page with actions; find a student by Library ID
+
+**Admins**
+- Everything librarians can do, plus staff accounts and roles, library card reissue and the audit log
+- Analytics (borrowing trends, genres, members) and reports (loans, fines with waivers, overdue, top books, staff activity) with CSV export
+
+## Tech stack
+
+| Part | Technology |
+|---|---|
+| Frontend | React 18, Vite, Tailwind CSS, React Router, ECharts (lazy loaded), framer-motion; route-level code splitting |
+| API | Node.js, Express, Mongoose (MongoDB), GridFS for uploaded images, sharp, nodemailer |
+| Recommendations | Python, Flask, scikit-learn (TF-IDF) |
+| Security | helmet with a Content-Security-Policy, CORS allowlist, express-rate-limit, bcrypt, JWT with session versioning |
+| Quality | Jest + Supertest against a real MongoDB, pytest, GitHub Actions |
+| Hosting | Vercel (frontend), Render (API and AI service), MongoDB Atlas — see [DEPLOYMENT.md](DEPLOYMENT.md) |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  B[Browser] -->|HTTPS| F[Frontend<br/>React + Vite<br/>Vercel]
+  B -->|REST /api, JWT| A[API<br/>Node + Express<br/>Render]
+  A -->|Mongoose| D[(MongoDB<br/>data + GridFS images)]
+  A -->|X-Service-Token, 1.5 s timeout| AI[Recommendation service<br/>Flask + TF-IDF]
+  A -.->|fallback when AI is down| D
+  J[Hourly job<br/>reminders + reservation expiry] --> D
+```
+
+The API never waits on the AI service for more than 1.5 seconds: when it is down, slow or not configured,
+"Picked for you" uses genre-based suggestions from MongoDB instead. More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Run it locally
+
+You need **Node.js 20+**, **MongoDB** running on `127.0.0.1:27017`, and optionally **Python 3.11** for the AI service.
+
+```bash
+git clone https://github.com/Vishesh233/LibVerse.git
+cd LibVerse
+
+# 1. API
+cd backend
+cp .env.example .env          # then set JWT_SECRET to a long random string
+npm install
+npm run dev                   # http://localhost:5001  (health: /api/health)
+
+# 2. Frontend (new terminal)
+cd frontend
+cp .env.example .env          # VITE_API_BASE_URL=http://localhost:5001/api
+npm install
+npm run dev                   # http://localhost:3000
+
+# 3. Optional: AI recommendations (new terminal)
+cd ai-service
+python -m venv venv
+venv\Scripts\activate         # macOS/Linux: source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env          # set AI_SERVICE_TOKEN; put the same value in backend/.env
+python app.py                 # http://127.0.0.1:5000
+```
+
+On Windows PowerShell use `Copy-Item .env.example .env` instead of `cp`.
+
+Every setting is explained in `backend/.env.example`, `frontend/.env.example` and `ai-service/.env.example`.
+Email ("Forgot password") turns on only when all of `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` and `MAIL_FROM` are set.
+
+**Data to try it with:** `node backend/scripts/seedDemo.js` fills a separate database, `libverse_demo`,
+with the catalogue and four months of fictional activity. Point the API at it with
+`MONGODB_URI=mongodb://127.0.0.1:27017/libverse_demo` and sign in as `aarav.sharma@example.com`
+(student), `rohan.desai@example.com` (librarian) or `meera.iyer@example.com` (admin), password
+`Demo#Library2026`. These accounts exist only in the demo database. `node backend/scripts/seedDemo.js --drop` removes it.
+
+To create the first admin in your own database: `cd backend && npm run create-admin`.
+
+## Scripts
+
+Run from `backend/` unless noted. Scripts that change data do a dry run first and need `--apply`.
+
+| Command | What it does |
+|---|---|
+| `npm run dev` / `npm start` | API with reload / API |
+| `npm test` | Backend tests (needs `MONGODB_URI_TEST`, see below) |
+| `npm run create-admin` | Create an admin; asks for the password without showing it |
+| `npm run catalogue:export` / `catalogue:import` | Copy the catalogue to a new, empty database (e.g. Atlas) |
+| `node scripts/seedDemo.js [--drop]` | Recreate (or drop) the demo database `libverse_demo` |
+| `node scripts/recountStock.js [--apply]` | Recompute every book's stock counters from loans and reservations |
+| `node scripts/resetPassword.js <email>` | Set a new password for one account |
+| `node scripts/migrateUploadsToGridFS.js [--apply]` | Move old `backend/uploads` images into GridFS |
+| `node scripts/applyDescriptionRewrite.js [--apply]` | Apply the catalogue description/ISBN/year clean-up |
+| `node scripts/screenshots/run.mjs` (repo root) | Regenerate every screenshot, showcase image, `docs/gallery.html` and `docs/SCREENSHOTS.md` |
+
+`node scripts/screenshots/run.mjs` seeds `libverse_demo`, builds the frontend, starts the API (and the
+AI service if `ai-service/venv` exists) on spare ports, captures every screen with headless Edge or
+Chrome (set `EDGE_PATH` if neither is found), renders the images in `docs/showcase/` and drops the
+demo database at the end. It never touches your own database or running dev servers.
+
+## Tests and CI
+
+```bash
+cd backend && MONGODB_URI_TEST=mongodb://127.0.0.1:27017/libverse_jest_test npm test   # Jest + Supertest
+cd ai-service && pip install -r requirements-dev.txt && python -m pytest             # pytest
+cd frontend && npm run build                                                          # build check
+```
+
+The test database name must end in `_test`; it is emptied on every run. GitHub Actions runs all three on
+every push and pull request (MongoDB service container, dummy secrets). Details: [docs/TESTING.md](docs/TESTING.md).
+
+## Security notes
+
+- Passwords hashed with bcrypt; JWTs carry a token version, so changing or resetting a password signs out every other session
+- Role checks on every staff route; librarians cannot see or change admin accounts
+- helmet with a Content-Security-Policy written for this app (Google Fonts, Open Library covers, the API origin), CORS allowlist, `X-Powered-By` off
+- Rate limits on login, sign-up, password change, forgot-password and reset-code entry
+- Forgot-password codes: same answer whether or not the email exists, stored only as an HMAC, 10-minute expiry, 5 guesses
+- Fine totals and stock counters updated atomically; a library card QR is signed and stops working when reissued
+- The audit log records staff actions without emails or passwords; the AI service needs a shared token and keeps no student data
+- Never commit `.env` files; production secrets live only in the host's settings (see [DEPLOYMENT.md](DEPLOYMENT.md))
+
+## How the recommendations work
+
+The AI service ([`ai-service/`](ai-service/README.md)) builds a word-level **TF-IDF** model
+(unigrams + bigrams, English stop words removed) over each book's title, author, genre and
+description. For a student, every candidate book is compared with each book they have read; the
+closest match becomes the explanation, **"Because you read …"**. Favourite genres add a small bonus,
+and books in a favourite genre with no content match are ranked by popularity as
+**"Popular in &lt;genre&gt;"**. Books the student has read, borrowed, requested or reserved are never suggested.
+
+The API sends the catalogue to the service when it starts and again a few seconds after any book is
+added, edited or removed. Each dashboard request has a 1.5-second budget; the response says whether
+the picks came from the AI (`source: "ai"`, shown with an **AI** badge) or from the MongoDB fallback.
+
+## Project layout
+
+```
+backend/      Express API: routes, controllers, services, models, jobs, scripts, tests
+frontend/     React app: pages, components, hooks, services/api.js
+ai-service/   Flask recommendation service with pytest tests
+docs/         API, architecture, testing, screenshots, showcase images, gallery
+scripts/      screenshots/: one command for every image in docs/
+render.yaml   Render services (API + AI)       DEPLOYMENT.md   step-by-step deployment
+```
+
+## Deploying
+
+[DEPLOYMENT.md](DEPLOYMENT.md) walks through MongoDB Atlas, Render (API and AI service), Vercel,
+seeding the catalogue, creating the first admin and a post-deploy checklist.

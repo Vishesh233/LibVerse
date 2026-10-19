@@ -1,4 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { booksAPI } from '../services/api';
+import { GENRES } from '../constants/genres';
+import { LogoMark } from './LogoMark';
+import { SplashCoverWall } from './SplashCoverWall';
 
 const LOADING_MESSAGES = [
   'Initializing...',
@@ -7,6 +11,9 @@ const LOADING_MESSAGES = [
   'Almost Ready...',
 ];
 
+// Stats are real or not shown at all: if the request is slow or fails, they stay hidden
+const STATS_TIMEOUT_MS = 1200;
+
 const PARTICLES = Array.from({ length: 14 }, (_, i) => ({
   left: `${(i * 7.3 + 3) % 100}%`,
   delay: `${(i * 0.7) % 8}s`,
@@ -14,14 +21,14 @@ const PARTICLES = Array.from({ length: 14 }, (_, i) => ({
   opacity: 0.25 + ((i % 4) * 0.12),
 }));
 
-export const SplashScreen = () => {
+export const SplashScreen = ({ duration = 1800, exiting = false }) => {
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
+  const [bookCount, setBookCount] = useState(null);
   const rafRef = useRef(null);
 
   useEffect(() => {
     const startTime = performance.now();
-    const duration = 3200; // ~3.2s total
 
     const tick = (now) => {
       const elapsed = now - startTime;
@@ -44,10 +51,37 @@ export const SplashScreen = () => {
 
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
+  }, [duration]);
+
+  // Real catalogue size from the public books endpoint (pagination total)
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), STATS_TIMEOUT_MS);
+
+    booksAPI
+      .getBooks({ limit: 1 }, { signal: controller.signal })
+      .then((res) => {
+        const total = res.data?.total;
+        if (!cancelled && Number.isFinite(total) && total > 0) setBookCount(total);
+      })
+      .catch(() => {
+        /* slow or failed: keep stats hidden rather than show made-up numbers */
+      })
+      .finally(() => clearTimeout(timer));
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, []);
 
   return (
-    <div className="libverse-splash">
+    <div className={`libverse-splash ${exiting ? 'is-exiting' : ''}`}>
+      {/* Living wall of real covers, under the floating books, particles and foreground */}
+      <SplashCoverWall exiting={exiting} />
+
       {/* Floating 3D books */}
       <span className="splash-book" style={{ top: '12%', left: '10%', '--book-color': '#7b5cff', '--rotate': '12deg', '--delay': '0s' }} />
       <span className="splash-book" style={{ top: '22%', right: '8%', '--book-color': '#2dd4bf', '--rotate': '-12deg', '--delay': '1.2s' }} />
@@ -69,47 +103,42 @@ export const SplashScreen = () => {
         />
       ))}
 
-      <div className="splash-inner">
+      <div className="splash-inner splash-enter">
         <div className="splash-logo-card">
-          <div className="splash-logo-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10">
-              <path d="M6 18.5V6.75A2.75 2.75 0 0 1 8.75 4H14a2.75 2.75 0 0 1 2.75 2.75V18.5" />
-              <path d="M6 18.5C6 19.328 6.672 20 7.5 20H14a2 2 0 0 0 2-2V6.75" />
-              <path d="M6 6.75C6 5.922 6.672 5.25 7.5 5.25H14" />
-            </svg>
+          <div className="splash-logo-glow-wrap">
+            <span className="splash-logo-glow" aria-hidden="true" />
+            <LogoMark size="lg" />
           </div>
           <div className="splash-logo-text">
-            <h1>
+            <h1 className="font-display">
               Lib<span className="brand-verse">Verse</span>
             </h1>
-            <p>Library Management System</p>
+            <p>Your library, beautifully organised</p>
           </div>
         </div>
 
-        <div className="splash-progress-card">
-          <div className="progress-labels">
-            <span className="progress-message">{LOADING_MESSAGES[messageIndex]}</span>
-            <span className="progress-percent">{progress}%</span>
+        <div className="splash-progress-slim" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} aria-label="Loading LibVerse">
+          <div className="splash-progress-slim-labels">
+            <span>{LOADING_MESSAGES[messageIndex]}</span>
+            <span>{progress}%</span>
           </div>
-          <div className="progress-track">
-            <div className="progress-fill" style={{ width: `${progress}%` }} />
+          <div className="splash-progress-slim-track">
+            <div className="splash-progress-slim-fill" style={{ width: `${progress}%` }} />
           </div>
         </div>
 
-        <div className="splash-stats-grid">
-          <div className="stat-card">
-            <strong>5000+</strong>
-            <span>Books</span>
+        {bookCount !== null && (
+          <div className="splash-stats-row">
+            <div className="splash-stat">
+              <strong className="font-display">{bookCount.toLocaleString()}</strong>
+              <span>Books</span>
+            </div>
+            <div className="splash-stat">
+              <strong className="font-display">{GENRES.length}</strong>
+              <span>Genres</span>
+            </div>
           </div>
-          <div className="stat-card">
-            <strong>500+</strong>
-            <span>Members</span>
-          </div>
-          <div className="stat-card">
-            <strong>24/7</strong>
-            <span>Access</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

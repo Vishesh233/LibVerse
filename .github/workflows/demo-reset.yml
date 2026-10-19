@@ -1,0 +1,55 @@
+name: Demo reset
+
+# Puts the live demo accounts back to fresh sample data every day at 02:00 IST (20:30 UTC).
+# Only the demo accounts (isDemo) and what they own are replaced: backend/scripts/resetDemo.js.
+#
+# Needs the repository secret DEMO_MONGODB_URI: the connection string of the demo database
+# (name libverse_demo) for an Atlas user whose only role is readWrite on libverse_demo.
+# Without the secret the job does nothing.
+#
+# GitHub may start scheduled runs some minutes late and pauses schedules after 60 days without
+# commits to the repository; "Run workflow" (workflow_dispatch) runs it at once and re-enables it.
+
+on:
+  schedule:
+    - cron: '30 20 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-reset
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    name: Reset demo accounts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DEMO_MONGODB_URI: ${{ secrets.DEMO_MONGODB_URI }}
+    steps:
+      - name: Check the secret is set
+        id: secret
+        run: |
+          if [ -z "$DEMO_MONGODB_URI" ]; then
+            echo "::notice::DEMO_MONGODB_URI is not set: nothing to reset."
+            echo "set=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "set=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.secret.outputs.set == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.secret.outputs.set == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --omit=dev
+        working-directory: backend
+        if: steps.secret.outputs.set == 'true'
+      - run: node scripts/resetDemo.js --apply
+        working-directory: backend
+        if: steps.secret.outputs.set == 'true'

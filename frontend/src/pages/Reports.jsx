@@ -1,619 +1,348 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import * as echarts from 'echarts';
-import { MainLayout } from '../layouts/MainLayout';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { adminAPI } from '../services/api';
+import { MainLayout } from '../layouts/MainLayout';
+import { Button, EmptyState, PageHeader } from '../components/UI';
+import { CompactEmpty, SectionCard, SectionLink, formatRupees } from '../components/dashboard/DashboardKit';
+import { ProfileTabs } from '../components/profile/ProfileTabs';
+import { RangePicker, useRangeParams } from '../components/analytics/RangePicker';
+import { DataTable } from '../components/analytics/DataTable';
+import {
+  DayCell, FineCell, FineStatusBadge, LOAN_STATUS_TEXT, LoanStatusBadge, Muted, NumCell, PersonCell, SummaryCard, fineText, shortDay,
+} from '../components/analytics/ReportCells';
+import { WaiveFineModal, waiverLoanFrom } from '../components/WaiveFineModal';
+import { formatRangeLabel, toDayString } from '../utils/dateRange';
+import { STAFF_ACTIVITY_ACTIONS, auditActionLabel } from '../constants/auditActions';
 import { useAuth } from '../hooks/useAuth';
 
+const TABS = [
+  { key: 'loans', label: 'Loans', description: 'Loans issued in this period.' },
+  { key: 'fines', label: 'Fines', description: 'Fines fixed, paid or waived in this period.' },
+  { key: 'overdue', label: 'Overdue', description: 'Issued loans past their due date today (not limited to the period).' },
+  { key: 'top', label: 'Top books', description: 'The most borrowed books in this period.' },
+  { key: 'staff', label: 'Staff activity', description: 'Loan actions per staff member, from the audit log.' },
+];
+// Old section anchors (#rep-overdue, dashboard links before tabs) -> tab
+const HASH_TABS = { 'rep-loans': 'loans', 'rep-fines': 'fines', 'rep-overdue': 'overdue', 'rep-top': 'top', 'rep-staff': 'staff' };
+const AGING_LABELS = { '1-7': '1–7 days', '8-30': '8–30 days', '31+': '31+ days' };
+
+const day = (d) => (d ? toDayString(new Date(d)) : '');
+const time = (d) => (d ? new Date(d).getTime() : null);
+const plural = (n, word) => `${n.toLocaleString('en-IN')} ${word}${n === 1 ? '' : 's'}`;
+
+const NoRows = ({ message }) => <CompactEmpty tone="slate" title="Nothing to show" message={message} />;
+
 export const Reports = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [reports, setReports] = useState(null);
+  const { isAdmin, isLibrarian } = useAuth();
+  const canAccess = isAdmin || isLibrarian;
+  const base = isAdmin ? '/admin' : '/librarian';
+  const { range, setPreset, setCustom } = useRangeParams();
+  const [params, setParams] = useSearchParams();
+
+  const requested = params.get('tab');
+  const tab = TABS.some((t) => t.key === requested) ? requested : 'loans';
+  const active = TABS.find((t) => t.key === tab);
+  const setTab = useCallback((key) => setParams((prev) => {
+    const next = new URLSearchParams(prev);
+    if (key === 'loans') next.delete('tab');
+    else next.set('tab', key);
+    return next;
+  }, { replace: true }), [setParams]);
+
+  // #rep-overdue and the other old anchors open the matching tab
+  useEffect(() => {
+    const fromHash = HASH_TABS[decodeURIComponent(window.location.hash.slice(1))];
+    if (!fromHash) return;
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    setTab(fromHash);
+  }, [setTab]);
+
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('all');
-  const barChartRef = useRef(null);
-  const lineChartRef = useRef(null);
-  const barChartInstance = useRef(null);
-  const lineChartInstance = useRef(null);
-
-  // Live update simulation
-  useEffect(() => {
-    if (loading || !reports) return;
-
-    const interval = setInterval(() => {
-      // Simulate live data updates for bar chart
-      if (barChartInstance.current) {
-        const currentOption = barChartInstance.current.getOption();
-        if (currentOption && currentOption.series) {
-          barChartInstance.current.setOption({
-            series: currentOption.series.map(series => ({
-              ...series,
-              data: series.data.map(value => 
-                Math.max(0, value + Math.floor(Math.random() * 5) - 2)
-              )
-            }))
-          });
-        }
-      }
-
-      // Simulate live data updates for line chart
-      if (lineChartInstance.current) {
-        const currentOption = lineChartInstance.current.getOption();
-        if (currentOption && currentOption.series && currentOption.series[0]) {
-          const currentData = currentOption.series[0].data;
-          const newData = currentData.map(val => Math.max(0, val + Math.floor(Math.random() * 200) - 100));
-          lineChartInstance.current.setOption({
-            series: [{
-              ...currentOption.series[0],
-              data: newData
-            }]
-          });
-        }
-      }
-    }, 5000); // Update every 5 seconds
-
-    return () => clearInterval(interval);
-  }, [loading, reports]);
+  const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [waiving, setWaiving] = useState(null);
 
   useEffect(() => {
-    loadReports();
-  }, [timeRange]);
-
-  useEffect(() => {
-    if (!loading && reports) {
-      initBarChart();
-      initLineChart();
-    }
-
-    return () => {
-      if (barChartInstance.current) {
-        barChartInstance.current.dispose();
-      }
-      if (lineChartInstance.current) {
-        lineChartInstance.current.dispose();
-      }
-    };
-  }, [loading, reports]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      barChartInstance.current?.resize();
-      lineChartInstance.current?.resize();
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const loadReports = async () => {
+    if (!canAccess) return undefined;
+    const controller = new AbortController();
     setLoading(true);
-    try {
-      const res = await adminAPI.getReports();
-      if (res.data?.success) {
-        setReports(res.data.reports);
-      }
-    } catch (err) {
-      console.error('Error fetching reports:', err);
-      toast.error('Failed to load reports');
-    } finally {
-      setLoading(false);
-    }
-  };
+    adminAPI
+      .getReports({ from: range.from, to: range.to }, { signal: controller.signal })
+      .then((res) => {
+        setData(res.data.reports);
+        setError(null);
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setError(err.response?.data?.message || 'We couldn’t load the reports right now.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [canAccess, range.from, range.to, reloadKey]);
 
-  const initBarChart = () => {
-    if (!barChartRef.current) return;
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
+  const fileName = (name) => `libverse-${name}-${range.from}-to-${range.to}.csv`;
 
-    barChartInstance.current = echarts.init(barChartRef.current);
-
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const issuedData = reports?.chartData?.issued || [45, 52, 48, 61, 55, 67, 72, 68, 75, 80, 78, 85];
-    const returnedData = reports?.chartData?.returned || [40, 48, 45, 58, 52, 63, 68, 64, 70, 75, 73, 80];
-
-    const option = {
-      backgroundColor: 'transparent',
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-          type: 'cross',
-          crossStyle: {
-            color: '#6366F1'
-          },
-          lineStyle: {
-            color: '#6366F1',
-            type: 'dashed',
-            width: 1
-          }
-        },
-        backgroundColor: 'rgba(17, 24, 39, 0.95)',
-        borderColor: '#1E293B',
-        borderWidth: 1,
-        textStyle: {
-          color: '#F8FAFC',
-          fontSize: 13
-        },
-        padding: [12, 16],
-        formatter: function (params) {
-          const month = params[0].axisValue;
-          let result = `<div style="font-weight: 600; margin-bottom: 8px; color: #F8FAFC; font-size: 14px;">${month}</div>`;
-          params.forEach(param => {
-            const color = param.color;
-            result += `<div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${color}; box-shadow: 0 0 10px ${color};"></span>
-                        <span style="color: #94A3B8;">${param.seriesName}:</span>
-                        <span style="color: #F8FAFC; font-weight: 600;">${param.value}</span>
-                      </div>`;
-          });
-          return result;
-        }
+  const columns = useMemo(() => ({
+    loans: [
+      { key: 'issued', label: 'Issued', value: (r) => time(r.issueDate), render: (r) => <DayCell value={r.issueDate} />, csv: (r) => day(r.issueDate), search: false },
+      { key: 'student', label: 'Student', primary: true, value: (r) => r.student, searchText: (r) => `${r.student} ${r.libraryId}`, render: (r) => <PersonCell name={r.student} libraryId={r.libraryId} /> },
+      { key: 'libraryId', label: 'Library ID', value: (r) => r.libraryId, screen: false },
+      { key: 'book', label: 'Book', value: (r) => r.book, className: 'max-w-[240px] truncate', render: (r) => <span title={r.book}>{r.book}</span> },
+      { key: 'genre', label: 'Genre', value: (r) => r.genre, screen: false },
+      { key: 'due', label: 'Due', value: (r) => time(r.dueDate), render: (r) => <DayCell value={r.dueDate} />, csv: (r) => day(r.dueDate), search: false },
+      { key: 'returned', label: 'Returned', value: (r) => time(r.returnDate), screen: false, csv: (r) => day(r.returnDate) },
+      {
+        key: 'status',
+        label: 'Status',
+        value: (r) => (r.status === 'issued' && r.daysLate > 0 ? 'Overdue' : LOAN_STATUS_TEXT[r.status] || r.status),
+        render: (r) => (
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <LoanStatusBadge status={r.status} overdue={r.daysLate > 0} />
+            {r.returnDate && <span className="text-[11px] text-slate-500">{shortDay(r.returnDate)}</span>}
+          </span>
+        ),
       },
-      legend: {
-        data: ['Issued', 'Returned'],
-        top: 0,
-        right: 0,
-        textStyle: {
-          color: '#94A3B8',
-          fontSize: 12
-        },
-        itemWidth: 12,
-        itemHeight: 12,
-        itemGap: 20
+      { key: 'late', label: 'Days late', align: 'right', value: (r) => r.daysLate, render: (r) => <NumCell value={r.daysLate} zeroDash />, search: false },
+      { key: 'fine', label: 'Fine', align: 'right', value: (r) => r.fine, searchText: fineText, render: (r) => <FineCell fine={r.fine} waived={r.waived} payable={r.payable} />, csv: (r) => r.fine, csvLabel: 'Fine (₹)' },
+      { key: 'waived', label: 'Waived (₹)', value: (r) => r.waived, screen: false, search: false },
+      { key: 'payable', label: 'Payable (₹)', value: (r) => r.payable, screen: false, search: false },
+    ],
+    fines: [
+      { key: 'fixed', label: 'Fixed', value: (r) => time(r.fixedOn), render: (r) => <DayCell value={r.fixedOn} />, csv: (r) => day(r.fixedOn), csvLabel: 'Fine fixed', search: false },
+      { key: 'student', label: 'Student', primary: true, value: (r) => r.student, searchText: (r) => `${r.student} ${r.libraryId}`, render: (r) => <PersonCell name={r.student} libraryId={r.libraryId} /> },
+      { key: 'libraryId', label: 'Library ID', value: (r) => r.libraryId, screen: false },
+      { key: 'book', label: 'Book', value: (r) => r.book, className: 'max-w-[220px] truncate', render: (r) => <span title={r.book}>{r.book}</span> },
+      { key: 'fine', label: 'Fine', align: 'right', value: (r) => r.fine, searchText: fineText, render: (r) => <FineCell fine={r.fine} waived={r.waived} payable={r.payable} />, csv: (r) => r.fine, csvLabel: 'Fine (₹)' },
+      { key: 'waived', label: 'Waived (₹)', value: (r) => r.waived, screen: false, search: false },
+      {
+        key: 'reason',
+        label: 'Waiver',
+        value: (r) => r.waiverReason,
+        className: 'max-w-[200px]',
+        render: (r) => (r.waived > 0
+          ? <span className="block truncate text-xs" title={`${r.waivedBy || 'Staff'}, ${shortDay(r.waivedOn)}: ${r.waiverReason}`}><span className="text-slate-400">{r.waivedBy || 'Staff'}:</span> {r.waiverReason}</span>
+          : <Muted />),
+        csvLabel: 'Waiver reason',
       },
-      grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
-        top: '15%',
-        containLabel: true
+      { key: 'waivedBy', label: 'Waived by', value: (r) => r.waivedBy, screen: false },
+      { key: 'paid', label: 'Paid', align: 'right', value: (r) => r.paid, render: (r) => (r.paid > 0 ? <span className="whitespace-nowrap"><span className="text-emerald-300">{formatRupees(r.paid)}</span> <span className="text-[11px] text-slate-500">{shortDay(r.paidOn)}</span></span> : <Muted />), csvLabel: 'Paid (₹)', search: false },
+      { key: 'paidOn', label: 'Paid on', value: (r) => time(r.paidOn), screen: false, csv: (r) => day(r.paidOn), search: false },
+      { key: 'payable', label: 'Payable (₹)', value: (r) => r.payable, screen: false, search: false },
+      { key: 'status', label: 'Status', value: (r) => r.status, render: (r) => <FineStatusBadge status={r.status} /> },
+      {
+        key: 'action',
+        label: 'Action',
+        value: (r) => (r.payable > 0 ? 1 : 0),
+        csv: false,
+        search: false,
+        render: (r) => (r.payable > 0 ? (
+          <button type="button" onClick={() => setWaiving(waiverLoanFrom(r))} className="btn-secondary min-h-[30px] whitespace-nowrap px-2.5 text-xs print:hidden">
+            Waive fine
+          </button>
+        ) : null),
       },
-      xAxis: {
-        type: 'category',
-        data: months,
-        axisLine: {
-          lineStyle: {
-            color: '#1E293B'
-          }
-        },
-        axisTick: {
-          show: false
-        },
-        axisLabel: {
-          color: '#64748B',
-          fontSize: 11,
-          fontWeight: 500
-        }
-      },
-      yAxis: {
-        type: 'value',
-        name: 'Books Count',
-        nameTextStyle: {
-          color: '#64748B',
-          fontSize: 11,
-          padding: [0, 0, 0, 0]
-        },
-        axisLine: {
-          show: false
-        },
-        axisTick: {
-          show: false
-        },
-        splitLine: {
-          lineStyle: {
-            color: '#1E293B',
-            type: 'dashed'
-          }
-        },
-        axisLabel: {
-          color: '#64748B',
-          fontSize: 11
-        }
-      },
-      series: [
-        {
-          name: 'Issued',
-          type: 'bar',
-          data: issuedData,
-          barWidth: '35%',
-          barGap: '20%',
-          itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#6366F1' },
-              { offset: 1, color: '#4F46E5' }
-            ]),
-            borderRadius: [8, 8, 0, 0]
-          },
-          emphasis: {
-            itemStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: '#818CF8' },
-                { offset: 1, color: '#6366F1' }
-              ]),
-              shadowColor: 'rgba(99, 102, 241, 0.8)',
-              shadowBlur: 20,
-              borderRadius: [8, 8, 0, 0]
-            }
-          },
-          animationDuration: 1500,
-          animationEasing: 'cubicOut',
-          animationDelay: function (idx) {
-            return idx * 50;
-          }
-        },
-        {
-          name: 'Returned',
-          type: 'bar',
-          data: returnedData,
-          barWidth: '35%',
-          itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#10B981' },
-              { offset: 1, color: '#059669' }
-            ]),
-            borderRadius: [8, 8, 0, 0]
-          },
-          emphasis: {
-            itemStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: '#34D399' },
-                { offset: 1, color: '#10B981' }
-              ]),
-              shadowColor: 'rgba(16, 185, 129, 0.8)',
-              shadowBlur: 20,
-              borderRadius: [8, 8, 0, 0]
-            }
-          },
-          animationDuration: 1500,
-          animationEasing: 'cubicOut',
-          animationDelay: function (idx) {
-            return idx * 50 + 25;
-          }
-        }
-      ]
-    };
+    ],
+    overdue: [
+      { key: 'student', label: 'Student', primary: true, value: (r) => r.student, searchText: (r) => `${r.student} ${r.libraryId}`, render: (r) => <PersonCell name={r.student} libraryId={r.libraryId} /> },
+      { key: 'libraryId', label: 'Library ID', value: (r) => r.libraryId, screen: false },
+      { key: 'book', label: 'Book', value: (r) => r.book, className: 'max-w-[260px] truncate', render: (r) => <span title={r.book}>{r.book}</span> },
+      { key: 'issued', label: 'Issued', value: (r) => time(r.issueDate), render: (r) => <DayCell value={r.issueDate} />, csv: (r) => day(r.issueDate), search: false },
+      { key: 'due', label: 'Due', value: (r) => time(r.dueDate), render: (r) => <DayCell value={r.dueDate} />, csv: (r) => day(r.dueDate), search: false },
+      { key: 'days', label: 'Days overdue', align: 'right', value: (r) => r.daysOverdue, render: (r) => <span className={`font-semibold tabular-nums ${r.daysOverdue > 30 ? 'text-rose-300' : 'text-amber-200'}`}>{r.daysOverdue}</span>, search: false },
+      { key: 'bucket', label: 'Aging', value: (r) => AGING_LABELS[r.bucket] || r.bucket },
+      { key: 'fine', label: 'Fine so far', align: 'right', value: (r) => r.fine, render: (r) => <span className="tabular-nums text-rose-200">{formatRupees(r.fine)}</span>, csvLabel: 'Fine so far (₹)', search: false },
+    ],
+    top: [
+      { key: 'rank', label: 'Rank', align: 'right', value: (r) => r.rank, search: false },
+      { key: 'title', label: 'Title', primary: true, value: (r) => r.title, className: 'max-w-[300px] truncate font-medium text-slate-100', render: (r) => <span title={r.title}>{r.title}</span> },
+      { key: 'author', label: 'Author', value: (r) => r.author },
+      { key: 'genre', label: 'Genre', value: (r) => r.genre },
+      { key: 'loans', label: 'Loans', align: 'right', value: (r) => r.loans, search: false },
+      { key: 'borrowers', label: 'Borrowers', align: 'right', value: (r) => r.borrowers, search: false },
+    ],
+  }), []);
 
-    barChartInstance.current.setOption(option, true);
-  };
+  const staffColumns = useMemo(() => {
+    const used = STAFF_ACTIVITY_ACTIONS.filter((a) => data?.staffActivity?.some((s) => s.counts[a]));
+    return [
+      { key: 'name', label: 'Staff member', primary: true, value: (r) => r.name, className: 'font-medium text-slate-100' },
+      { key: 'role', label: 'Role', value: (r) => (r.role ? r.role[0].toUpperCase() + r.role.slice(1) : '') },
+      ...used.map((a) => ({ key: a, label: auditActionLabel(a), value: (r) => r.counts[a] || 0, align: 'right', render: (r) => <NumCell value={r.counts[a]} zeroDash />, search: false })),
+      { key: 'total', label: 'Total', value: (r) => r.total, align: 'right', className: 'font-semibold text-slate-100', search: false },
+    ];
+  }, [data]);
 
-  const initLineChart = () => {
-    if (!lineChartRef.current) return;
+  if (!canAccess) {
+    return (
+      <MainLayout>
+        <EmptyState icon="🔒" title="Staff only" message="Reports are available to librarians and admins." />
+      </MainLayout>
+    );
+  }
 
-    lineChartInstance.current = echarts.init(lineChartRef.current);
+  const generated = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  const s = data?.summary;
 
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const finesData = reports?.finesData || [1200, 1800, 1500, 2100, 1900, 2400, 2200, 2600, 2300, 2800, 2500, 3000];
+  // Summary cards for the selected period (server totals over every matching row, not the page)
+  const cards = !s ? [] : {
+    loans: [
+      { label: 'Loans issued', value: s.loans.total.toLocaleString('en-IN'), hint: 'in this period' },
+      { label: 'On loan', value: s.loans.onLoan.toLocaleString('en-IN'), hint: 'not returned yet', tone: 'text-indigo-200' },
+      { label: 'Returned', value: s.loans.returned.toLocaleString('en-IN'), hint: 'of these loans', tone: 'text-emerald-300' },
+      { label: 'Overdue', value: s.loans.overdue.toLocaleString('en-IN'), hint: 'of these, past due today', tone: s.loans.overdue ? 'text-rose-300' : 'text-slate-50' },
+    ],
+    fines: [
+      { label: 'Charged', value: formatRupees(s.fines.charged), hint: plural(s.fines.count, 'loan') },
+      { label: 'Collected', value: formatRupees(s.fines.collected), hint: 'verified payments', tone: 'text-emerald-300' },
+      { label: 'Waived', value: formatRupees(s.fines.waived), hint: 'with a recorded reason', tone: 'text-sky-300' },
+      { label: 'Payable', value: formatRupees(s.fines.payable), hint: 'still owed', tone: s.fines.payable ? 'text-rose-300' : 'text-slate-50' },
+    ],
+    overdue: [
+      { label: 'Overdue now', value: s.overdue.count.toLocaleString('en-IN'), hint: 'issued, past due', tone: s.overdue.count ? 'text-rose-300' : 'text-slate-50' },
+      { label: 'Fines so far', value: formatRupees(s.overdue.fineSoFar), hint: 'still growing daily', tone: 'text-amber-200' },
+      { label: 'Average', value: `${s.overdue.averageDays} d`, hint: 'days overdue' },
+      { label: 'Over 30 days', value: s.overdue.over30.toLocaleString('en-IN'), hint: 'longest overdue', tone: s.overdue.over30 ? 'text-rose-300' : 'text-slate-50' },
+    ],
+    top: [
+      { label: 'Loans', value: s.topBooks.loans.toLocaleString('en-IN'), hint: 'in this period' },
+      { label: 'Titles borrowed', value: s.topBooks.titles.toLocaleString('en-IN'), hint: 'different books' },
+      { label: 'Borrowers', value: s.topBooks.borrowers.toLocaleString('en-IN'), hint: 'different members' },
+      { label: 'Top genre', value: s.topBooks.topGenre?.genre || '—', hint: s.topBooks.topGenre ? plural(s.topBooks.topGenre.loans, 'loan') : 'no loans' },
+    ],
+    staff: [
+      { label: 'Staff actions', value: s.staff.actions.toLocaleString('en-IN'), hint: 'loan actions logged' },
+      { label: 'Staff members', value: s.staff.members.toLocaleString('en-IN'), hint: 'with at least one action' },
+      { label: 'Most active', value: s.staff.mostActive?.name || '—', hint: s.staff.mostActive ? plural(s.staff.mostActive.total, 'action') : 'no actions' },
+    ],
+  }[tab];
 
-    const option = {
-      backgroundColor: 'transparent',
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-          type: 'cross',
-          crossStyle: {
-            color: '#6366F1'
-          },
-          lineStyle: {
-            color: '#6366F1',
-            type: 'dashed',
-            width: 1
-          }
-        },
-        backgroundColor: 'rgba(17, 24, 39, 0.95)',
-        borderColor: '#1E293B',
-        borderWidth: 1,
-        textStyle: {
-          color: '#F8FAFC',
-          fontSize: 13
-        },
-        padding: [12, 16],
-        formatter: function (params) {
-          const value = params[0].value;
-          return `<div style="font-weight: 600; margin-bottom: 4px; color: #F8FAFC;">${params[0].axisValue}</div>
-                  <div style="color: #6366F1; font-weight: 600;">Fine Amount: ₹${value}</div>`;
-        }
-      },
-      grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
-        top: '20',
-        containLabel: true
-      },
-      xAxis: {
-        type: 'category',
-        boundaryGap: false,
-        data: months,
-        axisLine: {
-          lineStyle: {
-            color: '#1E293B'
-          }
-        },
-        axisTick: {
-          show: false
-        },
-        axisLabel: {
-          color: '#64748B',
-          fontSize: 11,
-          fontWeight: 500
-        }
-      },
-      yAxis: {
-        type: 'value',
-        name: 'Fine Amount (₹)',
-        nameTextStyle: {
-          color: '#64748B',
-          fontSize: 11,
-          padding: [0, 0, 0, 0]
-        },
-        axisLine: {
-          show: false
-        },
-        axisTick: {
-          show: false
-        },
-        splitLine: {
-          lineStyle: {
-            color: '#1E293B',
-            type: 'dashed'
-          }
-        },
-        axisLabel: {
-          color: '#64748B',
-          fontSize: 11,
-          formatter: '₹{value}'
-        }
-      },
-      series: [
-        {
-          name: 'Fine Amount',
-          type: 'line',
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 8,
-          data: finesData,
-          lineStyle: {
-            width: 3,
-            color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-              { offset: 0, color: '#6366F1' },
-              { offset: 1, color: '#7C3AED' }
-            ]),
-            shadowColor: 'rgba(99, 102, 241, 0.5)',
-            shadowBlur: 15,
-            shadowOffsetY: 5
-          },
-          itemStyle: {
-            color: '#6366F1',
-            borderColor: '#fff',
-            borderWidth: 2,
-            shadowColor: 'rgba(99, 102, 241, 0.6)',
-            shadowBlur: 12
-          },
-          emphasis: {
-            scale: 1.8,
-            itemStyle: {
-              color: '#818CF8',
-              borderColor: '#fff',
-              borderWidth: 3,
-              shadowColor: 'rgba(99, 102, 241, 1)',
-              shadowBlur: 25
-            },
-            lineStyle: {
-              width: 4,
-              shadowColor: 'rgba(99, 102, 241, 0.8)',
-              shadowBlur: 20
-            }
-          },
-          areaStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: 'rgba(99, 102, 241, 0.3)' },
-              { offset: 0.5, color: 'rgba(99, 102, 241, 0.1)' },
-              { offset: 1, color: 'rgba(99, 102, 241, 0.02)' }
-            ])
-          },
-          animationDuration: 2000,
-          animationEasing: 'cubicOut',
-          animationDelay: function (idx) {
-            return idx * 100;
-          }
-        }
-      ]
-    };
+  const table = data && {
+    loans: (
+      <DataTable
+        key="loans"
+        caption="Loans issued in this period"
+        filename={fileName('loans')}
+        columns={columns.loans}
+        rows={data.loans}
+        initialSort={{ key: 'issued', dir: 'desc' }}
+        searchPlaceholder="Search student, Library ID or book"
+        empty={<NoRows message="No books were issued in this period." />}
+      />
+    ),
+    fines: (
+      <DataTable
+        key="fines"
+        caption="Fines and waivers in this period"
+        filename={fileName('fines')}
+        columns={columns.fines}
+        rows={data.fines}
+        initialSort={{ key: 'fixed', dir: 'desc' }}
+        searchPlaceholder="Search student, book or waiver reason"
+        empty={<NoRows message="No fines were fixed, paid or waived in this period." />}
+      />
+    ),
+    overdue: (
+      <DataTable
+        key="overdue"
+        caption="Overdue loans now"
+        filename={fileName('overdue')}
+        columns={columns.overdue}
+        rows={data.overdue}
+        initialSort={{ key: 'days', dir: 'desc' }}
+        searchPlaceholder="Search student, Library ID or book"
+        empty={<NoRows message="No loan is overdue right now." />}
+      />
+    ),
+    top: (
+      <DataTable
+        key="top"
+        caption="Top borrowed books"
+        filename={fileName('top-books')}
+        columns={columns.top}
+        rows={data.topBooks}
+        initialSort={{ key: 'rank', dir: 'asc' }}
+        searchPlaceholder="Search title, author or genre"
+        empty={<NoRows message="No books were borrowed in this period." />}
+      />
+    ),
+    staff: (
+      <DataTable
+        key="staff"
+        caption="Staff activity"
+        filename={fileName('staff-activity')}
+        columns={staffColumns}
+        rows={data.staffActivity.map((r) => ({ ...r, _id: r.actorId }))}
+        initialSort={{ key: 'total', dir: 'desc' }}
+        searchPlaceholder="Search staff member"
+        empty={<NoRows message="No staff actions were recorded in this period." />}
+      />
+    ),
+  }[tab];
 
-    lineChartInstance.current.setOption(option, true);
-  };
-
-  const reportCards = [
-    {
-      title: 'Total Books Issued',
-      value: reports?.totalBooksIssued || 0,
-      icon: '📚',
-      color: 'indigo',
-    },
-    {
-      title: 'Active Members',
-      value: reports?.activeMembers || 0,
-      icon: '👥',
-      color: 'emerald',
-    },
-    {
-      title: 'Fines Collected',
-      value: `₹${reports?.totalFinesCollected || 0}`,
-      icon: '💰',
-      color: 'amber',
-    },
-    {
-      title: 'Overdue Items',
-      value: reports?.overdueItems || 0,
-      icon: '⏰',
-      color: 'rose',
-    },
-  ];
-
-  const getColorClasses = (color) => {
-    const colors = {
-      indigo: { bg: 'bg-indigo-500/10', text: 'text-indigo-300', border: 'border-indigo-500/20' },
-      emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-300', border: 'border-emerald-500/20' },
-      amber: { bg: 'bg-amber-500/10', text: 'text-amber-300', border: 'border-amber-500/20' },
-      rose: { bg: 'bg-rose-500/10', text: 'text-rose-300', border: 'border-rose-500/20' },
-    };
-    return colors[color] || colors.indigo;
-  };
-
-  const pageTitle = user?.role === 'librarian' ? 'Librarian Reports' : 'Admin Reports';
+  const truncated = tab === 'loans' ? data?.loansTruncated && `Newest ${data.loans.length.toLocaleString('en-IN')} of ${data.loansTotal.toLocaleString('en-IN')} loans shown`
+    : tab === 'fines' ? data?.finesTruncated && `${data.fines.length.toLocaleString('en-IN')} of ${data.finesTotal.toLocaleString('en-IN')} fines shown` : null;
 
   return (
     <MainLayout>
-      <div className="max-w-7xl mx-auto space-y-6 pb-14">
-        {/* Page Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">{pageTitle}</h1>
-            <p className="mt-2 text-slate-400">Comprehensive analytics and insights</p>
-          </div>
-
-          {/* Time Range Dropdown */}
-          <div className="relative">
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="appearance-none bg-card border border-border text-slate-100 rounded-xl px-4 py-2.5 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-            >
-              <option value="6months">Last 6 Months</option>
-              <option value="year">Last Year</option>
-              <option value="all">All Time</option>
-            </select>
-            <svg className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
+      <div className="print-report mx-auto max-w-7xl space-y-5 pb-10">
+        {/* Print header (screen: hidden): the tab title and the period */}
+        <div className="hidden print:block">
+          <p className="text-lg font-bold">LibVerse report · {active.label}</p>
+          <p className="text-sm">{tab === 'overdue' ? `Overdue on ${new Date().toLocaleDateString('en-IN', { dateStyle: 'medium' })}` : `Period: ${formatRangeLabel(range)}`} · Generated {generated}</p>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-slate-400">Loading reports...</div>
+        <PageHeader
+          title="Reports"
+          subtitle="Loans, fines with waivers, overdue books, top books and staff activity for a period."
+          className="!mb-0 print:hidden"
+          actions={
+            <div className="flex flex-wrap items-center gap-2 print:hidden">
+              <SectionLink to={`${base}/analytics${window.location.search}`}>Charts</SectionLink>
+              <Button fullWidth={false} variant="secondary" size="sm" onClick={() => window.print()} disabled={!data || loading}>
+                Print / Save as PDF
+              </Button>
+            </div>
+          }
+        />
+
+        <div className="print:hidden">
+          <RangePicker range={range} onPreset={setPreset} onCustom={setCustom} />
+        </div>
+
+        <div className="print:hidden">
+          <ProfileTabs tabs={TABS} active={tab} onChange={setTab} label="Report" idPrefix="report" />
+        </div>
+
+        {error && !loading ? (
+          <EmptyState icon="⚠️" title="Couldn't load the reports" message={error} action={<Button fullWidth={false} onClick={reload}>Try again</Button>} />
+        ) : !data ? (
+          <div className="space-y-5" aria-busy="true" aria-label="Loading reports">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-24 rounded-2xl" />)}</div>
+            <div className="skeleton h-80 w-full rounded-2xl" />
           </div>
         ) : (
-          <>
-            {/* Top Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {reportCards.map((card, idx) => {
-                const colorClasses = getColorClasses(card.color);
-                return (
-                  <div
-                    key={idx}
-                    className="bg-card rounded-3xl border border-border p-6 shadow-card transition hover:-translate-y-0.5"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className={`rounded-2xl px-4 py-3 text-2xl ${colorClasses.bg}`}>
-                        {card.icon}
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <p className="text-3xl font-extrabold text-white leading-none">{card.value}</p>
-                      <p className="mt-2 text-xs text-slate-400 font-medium">{card.title}</p>
-                    </div>
-                  </div>
-                );
-              })}
+          <section
+            id={`report-panel-${tab}`}
+            role="tabpanel"
+            aria-labelledby={`report-tab-${tab}`}
+            className={`space-y-4 transition-opacity ${loading ? 'opacity-60' : ''}`}
+            aria-busy={loading || undefined}
+          >
+            <div className={`grid grid-cols-2 gap-3 ${cards.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
+              {cards.map((c) => <SummaryCard key={c.label} {...c} />)}
             </div>
-
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Books Issued vs Returned Chart */}
-              <div className="card p-6">
-                <h3 className="font-bold text-slate-100 text-lg mb-2">Books Issued vs Returned</h3>
-                <p className="text-xs text-slate-400 mb-6">Monthly transaction overview</p>
-
-                <div ref={barChartRef} style={{ width: '100%', height: '350px' }} />
-
-                {/* Legend */}
-                <div className="flex items-center gap-6 mt-4 pt-4 border-t border-border">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-indigo-600"></span>
-                    <span className="text-xs text-slate-400">Issued</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                    <span className="text-xs text-slate-400">Returned</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Fines Collected Chart */}
-              <div className="card p-6">
-                <h3 className="font-bold text-slate-100 text-lg mb-2">Fines Collected</h3>
-                <p className="text-xs text-slate-400 mb-6">Revenue overview by month</p>
-
-                <div ref={lineChartRef} style={{ width: '100%', height: '350px' }} />
-
-                {/* Total */}
-                <div className="mt-4 pt-4 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400 font-medium">Total Collected</span>
-                    <span className="text-xl font-bold text-amber-300">
-                      ₹{reports?.totalFinesCollected || 10900}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Top Borrowed Books Table */}
-            <div className="card p-6">
-              <h3 className="font-bold text-slate-100 text-lg mb-6">Top Borrowed Books</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Rank</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Book Title</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Author</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Times Borrowed</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Category</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(reports?.topBorrowedBooks || [
-                      { rank: 1, title: 'Clean Code', author: 'Robert C. Martin', timesBorrowed: 128, category: 'Technology' },
-                      { rank: 2, title: 'The Pragmatic Programmer', author: 'Andrew Hunt & David Thomas', timesBorrowed: 96, category: 'Technology' },
-                      { rank: 3, title: 'Design Patterns', author: 'Erich Gamma et al.', timesBorrowed: 84, category: 'Technology' },
-                      { rank: 4, title: 'Atomic Habits', author: 'James Clear', timesBorrowed: 72, category: 'Self-Help' },
-                      { rank: 5, title: 'The Alchemist', author: 'Paulo Coelho', timesBorrowed: 64, category: 'Fiction' },
-                    ]).map((book, idx) => (
-                      <tr
-                        key={book._id || idx}
-                        className="border-b border-slate-800/40 hover:bg-slate-900/30 transition-colors"
-                      >
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs ${
-                            book.rank === 1 ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20' :
-                            book.rank === 2 ? 'bg-slate-300/10 text-slate-300 border border-slate-300/20' :
-                            book.rank === 3 ? 'bg-orange-500/10 text-orange-300 border border-orange-500/20' :
-                            'bg-slate-800/50 text-slate-400'
-                          }`}>
-                            {book.rank}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="font-semibold text-slate-100">{book.title || book.bookTitle}</p>
-                        </td>
-                        <td className="px-4 py-3 text-slate-300">{book.author}</td>
-                        <td className="px-4 py-3">
-                          <span className="font-semibold text-indigo-300">{book.timesBorrowed || book.count}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex rounded-full bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-300">
-                            {book.category}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
+            <SectionCard id={`rep-${tab}`} title={active.label} subtitle={truncated ? `${active.description} ${truncated}.` : active.description}>
+              {table}
+            </SectionCard>
+          </section>
         )}
       </div>
+
+      {waiving && <WaiveFineModal loan={waiving} onClose={() => setWaiving(null)} onWaived={reload} />}
     </MainLayout>
   );
 };

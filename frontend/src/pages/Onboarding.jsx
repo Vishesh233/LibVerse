@@ -1,35 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { authAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { GENRES as CATALOGUE_GENRES } from '../constants/genres';
+import { LogoMark } from '../components/LogoMark';
 
-const GENRES = [
-  { name: 'Programming', icon: '💻', color: 'from-blue-500 to-cyan-500' },
-  { name: 'Java', icon: '☕', color: 'from-red-500 to-orange-500' },
-  { name: 'Python', icon: '🐍', color: 'from-yellow-500 to-green-500' },
-  { name: 'Web Development', icon: '🌐', color: 'from-purple-500 to-pink-500' },
-  { name: 'AI & Machine Learning', icon: '🤖', color: 'from-indigo-500 to-purple-500' },
-  { name: 'Cyber Security', icon: '🔒', color: 'from-gray-600 to-gray-800' },
-  { name: 'Computer Science', icon: '🖥️', color: 'from-blue-600 to-indigo-600' },
-  { name: 'Database', icon: '🗄️', color: 'from-cyan-600 to-blue-600' },
-  { name: 'Networking', icon: '🔗', color: 'from-teal-500 to-cyan-500' },
-  { name: 'Operating Systems', icon: '⚙️', color: 'from-slate-600 to-slate-800' },
-  { name: 'Algorithms', icon: '📊', color: 'from-emerald-500 to-teal-500' },
-  { name: 'Technology', icon: '📱', color: 'from-violet-500 to-purple-500' },
-  { name: 'Science', icon: '🔬', color: 'from-green-500 to-emerald-500' },
-  { name: 'Business', icon: '💼', color: 'from-amber-500 to-orange-500' },
-  { name: 'Finance', icon: '💰', color: 'from-green-600 to-emerald-600' },
-  { name: 'Startup', icon: '🚀', color: 'from-pink-500 to-rose-500' },
-  { name: 'History', icon: '📚', color: 'from-yellow-600 to-amber-600' },
-  { name: 'Biography', icon: '👤', color: 'from-blue-500 to-indigo-500' },
-  { name: 'Psychology', icon: '🧠', color: 'from-purple-600 to-pink-600' },
-  { name: 'Motivation', icon: '⭐', color: 'from-yellow-400 to-orange-400' },
-  { name: 'Self Help', icon: '🌱', color: 'from-green-400 to-emerald-400' },
-  { name: 'Fiction', icon: '📖', color: 'from-rose-500 to-pink-500' },
-  { name: 'Non Fiction', icon: '📕', color: 'from-slate-500 to-gray-600' },
-];
+// Same 18 genres as the book catalogue (Book.genre enum); styles are only visual
+const GENRE_STYLES = {
+  'Self-Help': { icon: '🌱', color: 'from-green-400 to-emerald-400' },
+  Programming: { icon: '💻', color: 'from-blue-500 to-cyan-500' },
+  'Computer Science': { icon: '🖥️', color: 'from-blue-600 to-indigo-600' },
+  Finance: { icon: '💰', color: 'from-green-600 to-emerald-600' },
+  Business: { icon: '💼', color: 'from-amber-500 to-orange-500' },
+  Fiction: { icon: '📖', color: 'from-rose-500 to-pink-500' },
+  'Non-Fiction': { icon: '📕', color: 'from-slate-500 to-gray-600' },
+  History: { icon: '📚', color: 'from-yellow-600 to-amber-600' },
+  Biography: { icon: '👤', color: 'from-blue-500 to-indigo-500' },
+  Science: { icon: '🔬', color: 'from-green-500 to-emerald-500' },
+  Technology: { icon: '📱', color: 'from-violet-500 to-purple-500' },
+  Startup: { icon: '🚀', color: 'from-pink-500 to-rose-500' },
+  Motivation: { icon: '⭐', color: 'from-yellow-400 to-orange-400' },
+  Psychology: { icon: '🧠', color: 'from-purple-600 to-pink-600' },
+  Database: { icon: '🗄️', color: 'from-cyan-600 to-blue-600' },
+  Networking: { icon: '🔗', color: 'from-teal-500 to-cyan-500' },
+  'Cyber Security': { icon: '🔒', color: 'from-gray-600 to-gray-800' },
+  'AI & Machine Learning': { icon: '🤖', color: 'from-indigo-500 to-purple-500' },
+};
+
+// Same rule as the API: digits with an optional leading +, spaces, hyphens or brackets; 7-15 digits
+const PHONE_PATTERN = /^\+?[\d\s()-]+$/;
+const phoneError = (value) => {
+  const v = value.trim();
+  if (!v) return 'Enter your phone number';
+  const digits = v.replace(/\D/g, '').length;
+  return PHONE_PATTERN.test(v) && digits >= 7 && digits <= 15 ? null : 'Use 7-15 digits (spaces, hyphens and a leading + are fine)';
+};
+
+const GENRES = CATALOGUE_GENRES.map((name) => ({
+  name,
+  ...(GENRE_STYLES[name] || { icon: '📘', color: 'from-slate-500 to-slate-700' }),
+}));
 
 export const Onboarding = () => {
   const [selectedGenres, setSelectedGenres] = useState([]);
@@ -37,6 +49,11 @@ export const Onboarding = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const { updateUser, user } = useAuth();
+  // Accounts created with Google give their contact details first (email signups go straight to genres)
+  const needsDetails = user?.createdWith === 'google' && !user?.phone;
+  const [step, setStep] = useState(needsDetails ? 'details' : 'genres');
+  const [details, setDetails] = useState({ phone: '', address: '' });
+  const [detailsTouched, setDetailsTouched] = useState(false);
 
   // Ensure user is authenticated
   if (!user) {
@@ -67,7 +84,10 @@ export const Onboarding = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await authAPI.completeOnboarding({ favoriteGenres: selectedGenres });
+      const res = await authAPI.completeOnboarding({
+        favoriteGenres: selectedGenres,
+        ...(needsDetails ? { phone: details.phone.trim(), address: details.address.trim() } : {}),
+      });
       if (res?.data?.success) {
         toast.success('Welcome to LibVerse! 🎉');
         updateUser(res.data.user);
@@ -86,13 +106,13 @@ export const Onboarding = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#020713] via-[#0a0f1e] to-[#1a1f3a] flex items-center justify-center p-4">
+    <div className="onb-page min-h-screen bg-gradient-to-br from-[#020713] via-[#0a0f1e] to-[#1a1f3a] flex items-center justify-center p-4">
       {/* Animated background particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(20)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-2 h-2 bg-purple-500/20 rounded-full"
+            className="absolute w-2 h-2 bg-indigo-400/20 rounded-full"
             initial={{
               x: Math.random() * 100 + '%',
               y: Math.random() * 100 + '%',
@@ -119,20 +139,23 @@ export const Onboarding = () => {
         className="relative z-10 w-full max-w-6xl"
       >
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="onb-header text-center mb-10">
+          <div className="onb-logo mb-6 flex justify-center">
+            <LogoMark size="md" />
+          </div>
           <motion.h1
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent"
+            className="onb-title font-display text-4xl sm:text-5xl md:text-6xl font-bold mb-4 text-slate-50"
           >
-            Welcome to LibVerse 👋
+            Welcome to <span className="brand-wordmark">Lib<span className="brand-wordmark-accent">Verse</span></span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="text-xl text-slate-300 mb-2"
+            className="onb-lead text-lg sm:text-xl text-slate-300 mb-2"
           >
             Let's personalize your library experience.
           </motion.p>
@@ -140,20 +163,74 @@ export const Onboarding = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="text-slate-400"
+            className="onb-sub text-slate-400"
           >
-            Choose your favorite genres to receive better book recommendations.
+            {step === 'details'
+              ? 'First your contact details, then your favourite genres.'
+              : 'Choose your favorite genres to receive better book recommendations.'}
           </motion.p>
         </div>
 
+        {/* Google accounts: Library ID and contact details */}
+        {step === 'details' && (
+          <form
+            noValidate
+            className="mx-auto mb-8 w-full max-w-md space-y-5 rounded-2xl border border-border bg-surface/70 p-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setDetailsTouched(true);
+              if (phoneError(details.phone) || details.address.trim().length > 200) return;
+              setStep('genres');
+            }}
+          >
+            <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-center">
+              <p className="text-xs uppercase tracking-wider text-slate-400">Your Library ID</p>
+              <p className="mt-1 font-mono text-2xl font-bold text-cyan-200">{user.libraryId || 'Assigned shortly'}</p>
+              <p className="mt-1 text-xs text-slate-400">Show it (or your library card) at the desk.</p>
+            </div>
+            <div>
+              <label htmlFor="onb-phone" className="mb-1.5 block text-sm font-medium text-slate-200">Phone number</label>
+              <input
+                id="onb-phone"
+                type="tel"
+                autoComplete="tel"
+                className="input-amo w-full"
+                value={details.phone}
+                onChange={(e) => setDetails((d) => ({ ...d, phone: e.target.value }))}
+                onBlur={() => setDetailsTouched(true)}
+                aria-invalid={detailsTouched && phoneError(details.phone) ? true : undefined}
+                aria-describedby="onb-phone-help"
+                placeholder="+91 98765 43210"
+              />
+              <p id="onb-phone-help" className={`mt-1.5 text-xs ${detailsTouched && phoneError(details.phone) ? 'text-rose-400' : 'text-slate-400'}`}>
+                {(detailsTouched && phoneError(details.phone)) || 'The library uses it only about your loans.'}
+              </p>
+            </div>
+            <div>
+              <label htmlFor="onb-address" className="mb-1.5 block text-sm font-medium text-slate-200">Address <span className="text-slate-500">(optional)</span></label>
+              <input
+                id="onb-address"
+                type="text"
+                autoComplete="street-address"
+                maxLength={200}
+                className="input-amo w-full"
+                value={details.address}
+                onChange={(e) => setDetails((d) => ({ ...d, address: e.target.value }))}
+              />
+            </div>
+            <button type="submit" className="btn-primary w-full !min-h-[48px]">Next: choose genres</button>
+          </form>
+        )}
+
+        {step === 'genres' && (<>
         {/* Genre Selection */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="mb-8"
+          className="onb-genres mb-8"
         >
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="onb-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             {GENRES.map((genre, index) => {
               const isSelected = selectedGenres.includes(genre.name);
               return (
@@ -164,25 +241,28 @@ export const Onboarding = () => {
                   transition={{ delay: 0.7 + index * 0.03 }}
                   whileHover={{ scale: 1.05, y: -5 }}
                   whileTap={{ scale: 0.95 }}
+                  type="button"
                   onClick={() => toggleGenre(genre.name)}
-                  className={`relative p-6 rounded-2xl border-2 transition-all duration-300 ${
+                  aria-pressed={isSelected}
+                  disabled={!isSelected && selectedGenres.length >= 5}
+                  className={`onb-tile relative p-4 sm:p-6 rounded-2xl border transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50 ${
                     isSelected
-                      ? 'border-purple-500 bg-gradient-to-br from-purple-500/20 to-pink-500/20 shadow-lg shadow-purple-500/50'
-                      : 'border-slate-700 bg-slate-800/50 hover:border-slate-600 hover:bg-slate-800/80'
+                      ? 'border-cyan-400/70 bg-indigo-500/15 shadow-glow-accent'
+                      : 'border-border bg-surface/70 hover:border-indigo-500/40 hover:bg-surface-raised'
                   }`}
                 >
                   {/* Glow effect for selected */}
                   {isSelected && (
                     <motion.div
                       layoutId="glow"
-                      className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl blur-xl"
+                      className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-cyan-400/10 rounded-2xl blur-xl"
                       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     />
                   )}
 
                   {/* Content */}
                   <div className="relative z-10">
-                    <div className="text-4xl mb-3">{genre.icon}</div>
+                    <div className="onb-tile-icon text-3xl sm:text-4xl mb-2 sm:mb-3" aria-hidden="true">{genre.icon}</div>
                     <h3 className="text-sm font-semibold text-slate-200 mb-1">{genre.name}</h3>
 
                     {/* Checkmark for selected */}
@@ -192,7 +272,7 @@ export const Onboarding = () => {
                           initial={{ scale: 0, rotate: -180 }}
                           animate={{ scale: 1, rotate: 0 }}
                           exit={{ scale: 0, rotate: 180 }}
-                          className="absolute top-2 right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center"
+                          className="absolute top-2 right-2 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center"
                         >
                           <svg
                             className="w-4 h-4 text-white"
@@ -222,7 +302,8 @@ export const Onboarding = () => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-center"
+            role="alert"
+            className="mb-6 p-4 bg-rose-500/10 border border-rose-500/40 rounded-xl text-rose-200 text-center"
           >
             {error}
           </motion.div>
@@ -233,9 +314,9 @@ export const Onboarding = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1 }}
-          className="flex flex-col items-center gap-4"
+          className="onb-actions flex flex-col items-center gap-4"
         >
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-400 text-sm" aria-live="polite">
             {selectedGenres.length === 0 && 'Select at least 2 genres'}
             {selectedGenres.length === 1 && 'Select 1 more genre'}
             {selectedGenres.length >= 2 && selectedGenres.length < 5 && `${selectedGenres.length} genres selected`}
@@ -247,11 +328,7 @@ export const Onboarding = () => {
             whileTap={{ scale: 0.95 }}
             onClick={handleContinue}
             disabled={selectedGenres.length < 2 || loading}
-            className={`px-12 py-4 rounded-xl font-semibold text-lg transition-all duration-300 ${
-              selectedGenres.length >= 2
-                ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/50 cursor-pointer'
-                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
-            }`}
+            className="onb-continue btn-primary !min-h-[52px] !px-12 !text-base disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -265,7 +342,13 @@ export const Onboarding = () => {
               'Continue'
             )}
           </motion.button>
+          {needsDetails && (
+            <button type="button" onClick={() => setStep('details')} className="text-sm text-slate-400 hover:text-white">
+              Back to your details
+            </button>
+          )}
         </motion.div>
+        </>)}
       </motion.div>
     </div>
   );

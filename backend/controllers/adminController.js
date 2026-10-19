@@ -1,10 +1,86 @@
 const User = require('../models/User');
 const Book = require('../models/Book');
 const Transaction = require('../models/Transaction');
-const Notification = require('../models/Notification');
-const { createNotification } = require('./notificationController');
-const { calculateFine } = require('../utils/fineCalculator');
+const Reservation = require('../models/Reservation');
+const { getUserNotifications } = require('./notificationController');
+const { runReminders } = require('../jobs/reminders');
+const { calculateFine, getDaysOverdue, startOfDay, payableFineOf } = require('../utils/fineCalculator');
+const { issueAtDesk, returnAtDesk, DeskError } = require('../services/deskService');
+const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
+const { audit, personLabel } = require('../utils/audit');
+const { nextLibraryId } = require('../utils/libraryId');
 const mongoose = require('mongoose');
+
+const USER_ROLES = ['student', 'librarian', 'admin'];
+
+/**
+ * Turn Mongoose validation / duplicate-key errors into a 400 response.
+ * Returns true when the error was handled.
+ */
+const sendUserSaveError = (res, error) => {
+  if (error.name === 'ValidationError') {
+    // Never echo the submitted value back (Mongoose's default password message contains it)
+    const message = Object.values(error.errors)
+      .map((e) => (e.path === 'password' ? 'Password must be at least 6 characters' : e.message))
+      .join(', ');
+    res.status(400).json({ success: false, message });
+    return true;
+  }
+  if (error.code === 11000) {
+    const field = Object.keys(error.keyPattern || error.keyValue || {})[0];
+    const message = field === 'email' ? 'Email already in use' : field === 'libraryId' ? 'Library ID already in use' : 'Duplicate field value';
+    res.status(400).json({ success: false, message });
+    return true;
+  }
+  return false;
+};
+
+/**
+ * Check whether `actor` may change `target` (role and/or isActive).
+ * Returns { status, message } when the change is not allowed, otherwise null.
+ * - Librarians may only manage students and may never change a role.
+ * - Nobody can demote or deactivate themselves.
+ * - The last active admin can never be demoted or deactivated.
+ */
+const checkUserChange = async (actor, target, { role, isActive }) => {
+  const roleChanged = role !== undefined && role !== target.role;
+  const deactivating = isActive === false && target.isActive !== false;
+
+  if (role !== undefined && !USER_ROLES.includes(role)) {
+    return { status: 400, message: 'Invalid role' };
+  }
+
+  if (actor.role === 'librarian') {
+    if (target.role !== 'student') {
+      return { status: 403, message: 'Librarians can only manage student accounts' };
+    }
+    if (roleChanged) {
+      return { status: 403, message: 'Librarians cannot change user roles' };
+    }
+  }
+
+  if (actor._id.toString() === target._id.toString()) {
+    if (roleChanged) {
+      return { status: 400, message: 'You cannot change your own role' };
+    }
+    if (deactivating) {
+      return { status: 400, message: 'You cannot deactivate your own account' };
+    }
+  }
+
+  if (target.role === 'admin' && target.isActive !== false && (roleChanged || deactivating)) {
+    const otherActiveAdmins = await User.countDocuments({
+      role: 'admin',
+      isActive: { $ne: false },
+      _id: { $ne: target._id },
+    });
+    if (otherActiveAdmins === 0) {
+      return { status: 400, message: 'The last active admin cannot be demoted or deactivated' };
+    }
+  }
+
+  return null;
+};
 
 /**
  * Helper to calculate relative time string (e.g. "2 min ago", "1 hr ago", "Yesterday")
@@ -40,14 +116,18 @@ exports.getDashboard = async (req, res, next) => {
     const issuedBooks = await Transaction.countDocuments({ status: 'issued' });
     const overdueBooksCount = await Transaction.countDocuments({
       status: 'issued',
-      dueDate: { $lt: now },
+      dueDate: { $lt: startOfDay(now) },
     });
 
     const activeUserIds = await Transaction.distinct('userId', { status: 'issued' });
     const activeUsers = activeUserIds.length;
 
-    const fineData = await Transaction.find({ status: 'returned', finePaid: true });
-    const totalFines = fineData.reduce((sum, t) => sum + (t.fineAmount || 0), 0);
+    // Collected on completed returns: the paid part only (a waived part was never paid)
+    const [paidAgg] = await Transaction.aggregate([
+      { $match: { status: 'returned', finePaid: true } },
+      { $group: { _id: null, total: { $sum: { $max: [0, { $subtract: ['$fineAmount', { $ifNull: ['$fineWaived', 0] }] }] } } } },
+    ]);
+    const totalFines = paidAgg?.total || 0;
 
     // Books issued today (real data from MongoDB)
     const startOfToday = new Date();
@@ -65,19 +145,17 @@ exports.getDashboard = async (req, res, next) => {
     // 2. Overdue Books Detailed List
     const overdueTransactions = await Transaction.find({
       status: 'issued',
-      dueDate: { $lt: now },
+      dueDate: { $lt: startOfDay(now) },
     })
       .populate('userId', 'name email libraryId fineAmount')
       .populate('bookId', 'title author coverImage location')
       .sort('dueDate');
 
     const overdueList = overdueTransactions.map((tx) => {
-      const due = new Date(tx.dueDate);
-      const overdueMs = now.getTime() - due.getTime();
-      const overdueDays = Math.max(1, Math.ceil(overdueMs / (1000 * 60 * 60 * 24)));
-      const fine = overdueDays * 5;
-      const userName = tx.userId?.name || 'Student';
-      const libraryId = tx.userId?.libraryId || 'N/A';
+      const overdueDays = getDaysOverdue(tx.dueDate, now);
+      const fine = calculateFine(tx.dueDate, now);
+      const userName = tx.userId?.name || 'Deleted user';
+      const libraryId = tx.userId?.libraryId || '';
       const bookTitle = tx.bookId?.title || 'Book';
 
       return {
@@ -102,7 +180,7 @@ exports.getDashboard = async (req, res, next) => {
       .sort('-createdAt');
 
     const pendingRequests = pendingTransactions.map((tx) => {
-      const studentName = tx.userId?.name || 'Student';
+      const studentName = tx.userId?.name || 'Deleted user';
       const initials = studentName
         .split(' ')
         .map((n) => n[0])
@@ -131,7 +209,7 @@ exports.getDashboard = async (req, res, next) => {
       .sort('-createdAt');
 
     const returnRequests = returnRequestedTx.map((tx) => {
-      const studentName = tx.userId?.name || 'Student';
+      const studentName = tx.userId?.name || 'Deleted user';
       const initials = studentName
         .split(' ')
         .map((n) => n[0])
@@ -151,6 +229,8 @@ exports.getDashboard = async (req, res, next) => {
         userId: tx.userId,
         bookId: tx.bookId,
         fineAmount: tx.fineAmount || 0,
+        fineWaived: tx.fineWaived || 0,
+        payableFine: payableFineOf(tx),
         finePaid: tx.finePaid || false,
         type: 'return',
       };
@@ -163,7 +243,7 @@ exports.getDashboard = async (req, res, next) => {
       .sort('-createdAt');
 
     const paymentPending = paymentPendingTx.map((tx) => {
-      const studentName = tx.userId?.name || 'Student';
+      const studentName = tx.userId?.name || 'Deleted user';
       const initials = studentName
         .split(' ')
         .map((n) => n[0])
@@ -183,6 +263,8 @@ exports.getDashboard = async (req, res, next) => {
         userId: tx.userId,
         bookId: tx.bookId,
         fineAmount: tx.fineAmount || 0,
+        fineWaived: tx.fineWaived || 0,
+        payableFine: payableFineOf(tx),
         hasScreenshot: !!tx.paymentScreenshot,
         type: 'payment',
       };
@@ -196,7 +278,7 @@ exports.getDashboard = async (req, res, next) => {
       .limit(10);
 
     const recentActivities = recentTx.map((tx, idx) => {
-      const name = tx.userId?.name || 'Student';
+      const name = tx.userId?.name || 'Deleted user';
       const initials = name
         .split(' ')
         .map((n) => n[0])
@@ -204,23 +286,20 @@ exports.getDashboard = async (req, res, next) => {
         .toUpperCase()
         .substring(0, 2);
       const book = tx.bookId?.title || 'Book';
-      const action =
-        tx.status === 'issued'
-          ? 'borrowed'
-          : tx.status === 'returned'
-          ? 'returned'
-          : tx.status === 'pending'
-          ? 'requested'
-          : 'processed';
-
-      const badgeStatus =
-        tx.status === 'issued'
-          ? 'Issued'
-          : tx.status === 'returned'
-          ? 'Returned'
-          : tx.status === 'pending'
-          ? 'Pending'
-          : 'Rejected';
+      // Every status is mapped explicitly; anything unexpected shows as "updated" with its raw status
+      const ACTIVITY_BY_STATUS = {
+        pending: { action: 'requested', status: 'Pending' },
+        issued: { action: 'borrowed', status: 'Issued' },
+        return_requested: { action: 'requested to return', status: 'Return Requested' },
+        payment_pending: { action: 'submitted fine payment for', status: 'Payment Pending' },
+        returned: { action: 'returned', status: 'Returned' },
+        rejected: { action: 'request rejected for', status: 'Rejected' },
+      };
+      const rawStatus = tx.status || 'unknown';
+      const { action, status: badgeStatus } = ACTIVITY_BY_STATUS[rawStatus] || {
+        action: 'updated',
+        status: rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1),
+      };
 
       const timestamp = tx.status === 'returned' ? tx.returnDate : tx.updatedAt || tx.createdAt;
 
@@ -240,10 +319,13 @@ exports.getDashboard = async (req, res, next) => {
       };
     });
 
-    // 5. Top Books (Most Issued Books) - use real ratings from Book collection
+    // 5. Top Books (most borrowed): real loans only - requests and rejections are not borrows.
+    //    Nothing borrowed yet -> empty list (no placeholder books).
+    const LOAN_STATUSES = ['issued', 'return_requested', 'payment_pending', 'returned'];
     const topIssuedAgg = await Transaction.aggregate([
+      { $match: { status: { $in: LOAN_STATUSES } } },
       { $group: { _id: '$bookId', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
+      { $sort: { count: -1, _id: 1 } }, // stable order for ties
       { $limit: 5 },
     ]);
 
@@ -262,7 +344,7 @@ exports.getDashboard = async (req, res, next) => {
           count: item.count,
           rating: bookDoc.rating || 0,
           publisher: bookDoc.publisher || '',
-          publishedYear: bookDoc.publicationYear || '',
+          publicationYear: bookDoc.publicationYear || '',
           pages: bookDoc.pages || '',
           language: bookDoc.language || '',
           isbn: bookDoc.isbn || '',
@@ -275,46 +357,29 @@ exports.getDashboard = async (req, res, next) => {
       })
       .filter(Boolean);
 
-    if (topBooks.length === 0) {
-      const defaultBooks = await Book.find().limit(5);
-      defaultBooks.forEach((b) => {
-        topBooks.push({
-          _id: b._id,
-          title: b.title,
-          author: b.author,
-          category: b.category || b.genre || 'General',
-          count: b.issuedCopies || 1,
-          rating: b.rating || 0,
-          publisher: b.publisher || '',
-          publishedYear: b.publicationYear || '',
-          pages: b.pages || '',
-          language: b.language || '',
-          isbn: b.isbn || '',
-          description: b.description || '',
-          availableCopies: b.availableCopies || 0,
-          issuedCopies: b.issuedCopies || 0,
-          genre: b.genre || '',
-          coverImage: b.coverImage || null,
-        });
-      });
-    }
 
-    // 6. Books by Category/Genre Distribution
-    const categoryAgg = await Book.aggregate([
+    // 6. Active books per genre: every genre of the catalogue (Book.genre enum), 0 when empty
+    const genreAgg = await Book.aggregate([
       { $match: { isActive: true } },
-      {
-        $group: {
-          _id: { $ifNull: ['$category', '$genre'] },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { count: -1 } },
+      { $group: { _id: '$genre', count: { $sum: 1 } } },
     ]);
+    const genreCounts = Object.fromEntries(genreAgg.map((g) => [g._id, g.count]));
+    const booksByGenre = Book.schema.path('genre').enumValues
+      .map((genre) => ({ genre, count: genreCounts[genre] || 0 }))
+      .sort((x, y) => y.count - x.count || x.genre.localeCompare(y.genre));
 
-    const booksByCategory = categoryAgg.map((item) => ({
-      category: item._id || 'General',
-      count: item.count,
-    }));
+    // 6b. Real loans per genre (same loan rule as top books), every genre of the enum, 0 when none.
+    //     Loans of books that no longer exist are skipped.
+    const borrowedAgg = await Transaction.aggregate([
+      { $match: { status: { $in: LOAN_STATUSES } } },
+      { $lookup: { from: Book.collection.name, localField: 'bookId', foreignField: '_id', as: 'book' } },
+      { $unwind: '$book' },
+      { $group: { _id: '$book.genre', count: { $sum: 1 } } },
+    ]);
+    const borrowedCounts = Object.fromEntries(borrowedAgg.map((g) => [g._id, g.count]));
+    const borrowedByGenre = Book.schema.path('genre').enumValues
+      .map((genre) => ({ genre, count: borrowedCounts[genre] || 0 }))
+      .sort((x, y) => y.count - x.count || x.genre.localeCompare(y.genre));
 
     // 7. 7-Day Issue vs Return Weekly Stats
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -342,9 +407,64 @@ exports.getDashboard = async (req, res, next) => {
       });
     }
 
+    // 7b. Staff hero: loans issued per day for the last 14 days (local days, oldest first),
+    //     issued loans due today, and reservations holding a copy for pickup
+    const DAILY_DAYS = 14;
+    const dailyStart = startOfDay(now);
+    dailyStart.setDate(dailyStart.getDate() - (DAILY_DAYS - 1));
+    // KPI row: reservations still active (waiting + ready) and students with a loan issued in the last 30 days
+    const memberSince = startOfDay(now);
+    memberSince.setDate(memberSince.getDate() - 30);
+    const [dailyLoans, dueToday, readyReservations, activeReservations, recentBorrowerIds] = await Promise.all([
+      Transaction.find({ issueDate: { $gte: dailyStart }, status: { $in: LOAN_STATUSES } })
+        .select('issueDate')
+        .lean(),
+      Transaction.countDocuments({ status: 'issued', dueDate: { $gte: startOfToday, $lte: endOfToday } }),
+      Reservation.countDocuments({ status: 'ready' }),
+      Reservation.countDocuments({ status: { $in: Reservation.ACTIVE_STATUSES } }),
+      Transaction.distinct('userId', { issueDate: { $gte: memberSince }, status: { $in: LOAN_STATUSES } }),
+    ]);
+    const activeMembers = await User.countDocuments({ _id: { $in: recentBorrowerIds }, role: 'student' });
+    const issuedDaily = Array.from({ length: DAILY_DAYS }, (_, i) => {
+      const d = new Date(dailyStart);
+      d.setDate(d.getDate() + i);
+      return { date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, count: 0, start: d.getTime() };
+    });
+    dailyLoans.forEach((t) => {
+      const i = Math.floor((startOfDay(t.issueDate).getTime() - dailyStart.getTime()) / 86400000 + 0.5); // DST-safe
+      if (issuedDaily[i]) issuedDaily[i].count += 1;
+    });
+    issuedDaily.forEach((d) => delete d.start);
+
+    // 8. Fines summary (server values): paid fines (minus waivers), fixed fines still payable
+    //    after waivers, fines waived, and fines still growing on issued overdue loans
+    const NET_FINE = { $max: [0, { $subtract: ['$fineAmount', { $ifNull: ['$fineWaived', 0] }] }] };
+    const [fineAgg] = await Transaction.aggregate([
+      { $match: { fineAmount: { $gt: 0 } } },
+      {
+        $group: {
+          _id: null,
+          collected: { $sum: { $cond: ['$finePaid', NET_FINE, 0] } },
+          outstandingFixed: { $sum: { $cond: ['$finePaid', 0, NET_FINE] } },
+          waived: { $sum: { $ifNull: ['$fineWaived', 0] } },
+          loansWithFixedFines: { $sum: { $cond: [{ $or: ['$finePaid', { $gt: [NET_FINE, 0] }] }, 1, 0] } },
+        },
+      },
+    ]);
+    const accruing = overdueList.reduce((sum, item) => sum + (item.rawFineAmount || 0), 0);
+    const fineSummary = {
+      collected: fineAgg?.collected || 0,
+      outstandingFixed: fineAgg?.outstandingFixed || 0,
+      waived: fineAgg?.waived || 0,
+      accruing,
+      outstanding: (fineAgg?.outstandingFixed || 0) + accruing,
+      loansWithFines: (fineAgg?.loansWithFixedFines || 0) + overdueList.length,
+    };
+
     res.status(200).json({
       success: true,
       analytics: {
+        fineSummary,
         totalUsers,
         totalBooks,
         issuedBooks,
@@ -359,85 +479,18 @@ exports.getDashboard = async (req, res, next) => {
         paymentPending,
         recentActivities,
         topBooks,
-        booksByCategory,
+        booksByGenre,
+        borrowedByGenre,
         weeklyData,
+        issuedDaily,
+        dueToday,
+        readyReservations,
+        activeReservations,
+        activeMembers,
       },
     });
   } catch (error) {
     console.error('Error fetching admin dashboard:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * @route GET /api/admin/reports
- * @desc Get reports statistics matching Screenshot 1
- * @access Private/Admin
- */
-exports.getReports = async (req, res, next) => {
-  try {
-    const totalIssuedTx = await Transaction.countDocuments({ status: { $in: ['issued', 'returned'] } });
-    const totalMembers = await User.countDocuments({ role: { $in: ['student', 'librarian'] }, isActive: true });
-    
-    const overdueCount = await Transaction.countDocuments({
-      status: 'issued',
-      dueDate: { $lt: new Date() },
-    });
-
-    const fineData = await Transaction.find({ finePaid: true });
-    const totalFinesSum = fineData.reduce((sum, t) => sum + (t.fineAmount || 0), 0);
-
-    // Top 5 borrowed books
-    const topAgg = await Transaction.aggregate([
-      { $group: { _id: '$bookId', timesBorrowed: { $sum: 1 } } },
-      { $sort: { timesBorrowed: -1 } },
-      { $limit: 5 },
-    ]);
-
-    const topBookIds = topAgg.map((item) => item._id);
-    const topBooksDocs = await Book.find({ _id: { $in: topBookIds } });
-
-    const topBorrowedBooks = topAgg.map((item, index) => {
-      const b = topBooksDocs.find((doc) => doc._id.toString() === item._id.toString());
-      return {
-        rank: `#${index + 1}`,
-        bookTitle: b ? b.title : 'Clean Code',
-        author: b ? b.author : 'Robert C. Martin',
-        timesBorrowed: item.timesBorrowed > 0 ? item.timesBorrowed * 12 + 5 : 87 - index * 10,
-        category: b ? b.category || b.genre || 'Programming' : 'Programming',
-      };
-    });
-
-    // Default top borrowed books fallback matching screenshot if aggregate is small
-    const sampleTop = [
-      { rank: '#1', bookTitle: 'Clean Code', author: 'Robert C. Martin', timesBorrowed: 87, category: 'Programming' },
-      { rank: '#2', bookTitle: '1984', author: 'George Orwell', timesBorrowed: 76, category: 'Fiction' },
-      { rank: '#3', bookTitle: 'Sapiens', author: 'Yuval Noah Harari', timesBorrowed: 68, category: 'History' },
-      { rank: '#4', bookTitle: 'The Pragmatic Programmer', author: 'Andrew Hunt', timesBorrowed: 62, category: 'Programming' },
-      { rank: '#5', bookTitle: 'To Kill a Mockingbird', author: 'Harper Lee', timesBorrowed: 59, category: 'Fiction' },
-    ];
-
-    res.status(200).json({
-      success: true,
-      reports: {
-        totalBooksIssued: totalIssuedTx > 0 ? totalIssuedTx * 85 + 28 : 928,
-        totalBooksIssuedChange: '+12.5%',
-        activeMembers: totalMembers > 0 ? totalMembers * 110 + 12 : 892,
-        activeMembersChange: '+8.2%',
-        finesCollected: totalFinesSum > 0 ? totalFinesSum + 1200 : 1390,
-        finesCollectedChange: '-15.3%',
-        overdueItems: overdueCount > 0 ? overdueCount + 40 : 47,
-        overdueItemsChange: '-5.1%',
-        topBorrowedBooks: topBorrowedBooks.length >= 5 ? topBorrowedBooks : sampleTop,
-        chartData: {
-          months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-          issued: [120, 145, 160, 135, 180, 195],
-          returned: [100, 130, 150, 120, 165, 185],
-          fines: [240, 330, 180, 280, 210, 160],
-        },
-      },
-    });
-  } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -455,12 +508,22 @@ exports.createUser = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please provide name, email, and password' });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      return res.status(400).json({ success: false, message: 'User with this email already exists' });
+    if (!USER_ROLES.includes(role)) {
+      return res.status(400).json({ success: false, message: 'Invalid role' });
     }
 
-    const generatedLibraryId = libraryId || `LIB-${Math.floor(1000 + Math.random() * 9000)}`;
+    if (req.user.role === 'librarian' && role !== 'student') {
+      return res.status(403).json({ success: false, message: 'Librarians can only create student accounts' });
+    }
+
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'Email already in use' });
+    }
+
+    // An ID typed in by the admin is kept (unique index guards it); otherwise the next short sequential ID
+    const typedId = typeof libraryId === 'string' ? libraryId.trim().toUpperCase() : '';
+    const generatedLibraryId = typedId || (await nextLibraryId());
 
     const newUser = await User.create({
       name,
@@ -473,12 +536,16 @@ exports.createUser = async (req, res, next) => {
       isActive: true,
     });
 
+    await audit(req, 'user.create', { type: 'User', id: newUser._id },
+      `Created ${newUser.role} account for ${personLabel(newUser)}`, { role: newUser.role });
+
     res.status(201).json({
       success: true,
       message: `User ${newUser.name} created successfully as ${newUser.role}`,
       user: newUser,
     });
   } catch (error) {
+    if (sendUserSaveError(res, error)) return;
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -490,38 +557,23 @@ exports.createUser = async (req, res, next) => {
  */
 exports.sendOverdueReminders = async (req, res, next) => {
   try {
-    const now = new Date();
-    const overdueTxs = await Transaction.find({
-      status: 'issued',
-      dueDate: { $lt: now },
-    }).populate('userId bookId');
+    // Same logic as the hourly job, minus the once-per-day lock. Each loan is still only reminded
+    // when it is due (due soon once, overdue at most every 7 days), so repeated clicks send nothing new.
+    const result = await runReminders({ force: true });
+    const count = result.dueSoon + result.overdue;
 
-    let count = 0;
-    for (const tx of overdueTxs) {
-      if (tx.userId && tx.bookId && tx.userId._id) {
-        const due = new Date(tx.dueDate);
-        const overdueDays = Math.max(1, Math.ceil((now - due) / (1000 * 60 * 60 * 24)));
-        const fine = overdueDays * 5;
-
-        try {
-          await createNotification(
-            tx.userId._id,
-            'student',
-            'BOOK_OVERDUE',
-            'Overdue Book Reminder',
-            `Your book "${tx.bookId.title}" is ${overdueDays} day(s) overdue. Current estimated fine: ₹${fine}. Please return it at the library.`
-          );
-          count++;
-        } catch (notifError) {
-          console.error(`Failed to create notification for user ${tx.userId._id}:`, notifError);
-        }
-      }
-    }
+    await audit(req, 'reminders.send', { type: 'System' },
+      `Sent reminders manually: ${result.dueSoon} due soon, ${result.overdue} overdue`,
+      { dueSoon: result.dueSoon, overdue: result.overdue });
 
     res.status(200).json({
       success: true,
-      message: `Overdue reminder notifications sent successfully to ${count} student(s)!`,
+      message: count
+        ? `Sent ${count} reminder${count === 1 ? '' : 's'} (${result.dueSoon} due soon, ${result.overdue} overdue).`
+        : 'No reminders due right now. Every loan has already been reminded.',
       count,
+      dueSoon: result.dueSoon,
+      overdue: result.overdue,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -535,7 +587,12 @@ exports.sendOverdueReminders = async (req, res, next) => {
  */
 exports.adminIssueBook = async (req, res, next) => {
   try {
-    const { userEmail, libraryId, bookTitle, bookId, dueDate: customDueDate } = req.body;
+    // Plain strings only - objects in the JSON body can never become Mongo operators
+    const userEmail = toQueryString(req.body.userEmail);
+    const libraryId = toQueryString(req.body.libraryId);
+    const bookTitle = toQueryString(req.body.bookTitle);
+    const bookId = toQueryString(req.body.bookId);
+    const customDueDate = toQueryString(req.body.dueDate);
 
     if (!userEmail && !libraryId) {
       return res.status(400).json({ success: false, message: 'Please select a student' });
@@ -562,46 +619,16 @@ exports.adminIssueBook = async (req, res, next) => {
       book = await Book.findById(bookId);
     }
     if (!book && bookTitle) {
-      book = await Book.findOne({ title: { $regex: new RegExp(bookTitle.trim(), 'i') } });
+      book = await Book.findOne({ title: { $regex: escapeRegex(bookTitle), $options: 'i' } });
     }
 
-    if (!book) {
+    if (!book || book.isActive === false) {
       return res.status(404).json({ success: false, message: `Book not found matching "${bookTitle || bookId}"` });
     }
 
-    if (book.availableCopies <= 0) {
-      return res.status(400).json({ success: false, message: `No available copies for "${book.title}"` });
-    }
-
-    const dueDate = customDueDate ? new Date(customDueDate) : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-
-    const transaction = await Transaction.create({
-      userId: user._id,
-      bookId: book._id,
-      issueDate: new Date(),
-      dueDate,
-      status: 'issued',
-      isApproved: true,
-      approvedBy: req.user._id,
-      approvalDate: new Date(),
-    });
-
-    book.availableCopies -= 1;
-    book.issuedCopies += 1;
-    await book.save();
-
-    // Create notification for the student (non-fatal - never fails the main operation)
-    try {
-      await createNotification(
-        user._id,
-        'student',
-        'BOOK_ISSUED',
-        'Book Issued',
-        `The book "${book.title}" has been issued to you by the librarian. Due date: ${dueDate.toLocaleDateString()}.`
-      );
-    } catch (notifError) {
-      console.error('Notification creation failed (non-fatal):', notifError.message);
-    }
+    // Same rules as the scan desk (services/deskService): student, active, no open loan of this book,
+    // atomic copy (their held copy for a ready reservation, never one held for someone else)
+    const { transaction } = await issueAtDesk(req, user, book, { dueDate: customDueDate ? new Date(customDueDate) : undefined });
 
     res.status(201).json({
       success: true,
@@ -609,6 +636,7 @@ exports.adminIssueBook = async (req, res, next) => {
       transaction,
     });
   } catch (error) {
+    if (error instanceof DeskError) return res.status(error.status).json({ success: false, message: error.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -620,7 +648,10 @@ exports.adminIssueBook = async (req, res, next) => {
  */
 exports.adminReturnBook = async (req, res, next) => {
   try {
-    const { transactionId, query, userEmail, bookId } = req.body;
+    const transactionId = toQueryString(req.body.transactionId);
+    const query = toQueryString(req.body.query);
+    const userEmail = toQueryString(req.body.userEmail);
+    const bookId = toQueryString(req.body.bookId);
 
     let transaction;
     if (transactionId && mongoose.Types.ObjectId.isValid(transactionId)) {
@@ -643,11 +674,11 @@ exports.adminReturnBook = async (req, res, next) => {
           $or: [
             { email: query.trim().toLowerCase() },
             { libraryId: query.trim().toUpperCase() },
-            { name: { $regex: new RegExp(query.trim(), 'i') } },
+            { name: { $regex: escapeRegex(query), $options: 'i' } },
           ],
         });
         const bookMatch = await Book.findOne({
-          title: { $regex: new RegExp(query.trim(), 'i') },
+          title: { $regex: escapeRegex(query), $options: 'i' },
         });
 
         if (userMatch) filter.userId = userMatch._id;
@@ -661,38 +692,18 @@ exports.adminReturnBook = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Active issued transaction not found matching the criteria' });
     }
 
-    if (transaction.status !== 'issued') {
-      return res.status(400).json({ success: false, message: 'This book transaction is not in issued status' });
-    }
-
-    const fine = calculateFine(transaction.dueDate);
-    transaction.fineAmount = fine;
-    transaction.returnDate = new Date();
-    transaction.status = 'returned';
-    await transaction.save();
-
-    if (fine > 0) {
-      const user = await User.findById(transaction.userId);
-      if (user) {
-        user.fineAmount += fine;
-        await user.save();
-      }
-    }
-
-    const book = await Book.findById(transaction.bookId);
-    if (book) {
-      book.availableCopies += 1;
-      book.issuedCopies = Math.max(0, book.issuedCopies - 1);
-      await book.save();
-    }
+    // Same rules as the scan desk: an issued loan's fine is fixed and recorded; a return request with
+    // nothing payable is completed; the copy goes to the next reservation first
+    const { transaction: returned, fine, book } = await returnAtDesk(req, transaction);
 
     res.status(200).json({
       success: true,
       message: `Book "${book ? book.title : 'Book'}" returned successfully! ${fine > 0 ? `Fine incurred: ₹${fine}` : 'No fine.'}`,
-      transaction,
+      transaction: returned,
       fine,
     });
   } catch (error) {
+    if (error instanceof DeskError) return res.status(error.status).json({ success: false, message: error.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -702,24 +713,8 @@ exports.adminReturnBook = async (req, res, next) => {
  * @desc Get admin notifications
  * @access Private/Admin
  */
-exports.getNotifications = async (req, res, next) => {
-  try {
-    const notifications = await Notification.find({ 
-      userId: req.user.id,
-      role: req.user.role 
-    }).sort({ createdAt: -1 });
-    
-    const unreadCount = await Notification.countDocuments({
-      userId: req.user.id,
-      role: req.user.role,
-      isRead: false,
-    });
-    
-    res.status(200).json({ success: true, notifications, unreadCount });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+// Same paginated, own-notifications-only listing as GET /api/notifications (kept for existing clients)
+exports.getNotifications = (req, res, next) => getUserNotifications(req, res, next);
 
 /**
  * @route GET /api/admin/users
@@ -728,42 +723,80 @@ exports.getNotifications = async (req, res, next) => {
  */
 exports.getAllUsers = async (req, res, next) => {
   try {
-    const { page = 1, limit = 50, role, search } = req.query;
+    const role = toQueryString(req.query.role);
+    const search = toQueryString(req.query.search);
+    const status = toQueryString(req.query.status);
+    const { limit, skip } = toPagination(req.query.page, req.query.limit, 50);
 
     const filter = {};
     if (role && role !== 'All Roles') {
       filter.role = role.toLowerCase();
     }
+    // Librarians manage students and see fellow librarians, never admin accounts
+    if (req.user.role === 'librarian') {
+      filter.role = filter.role === 'admin' ? '__none__' : (filter.role || { $ne: 'admin' });
+    }
+    if (status === 'active') filter.isActive = { $ne: false };
+    else if (status === 'inactive') filter.isActive = false;
     if (search) {
+      const pattern = escapeRegex(search);
       filter.$or = [
-        { name: { $regex: new RegExp(search.trim(), 'i') } },
-        { email: { $regex: new RegExp(search.trim(), 'i') } },
-        { libraryId: { $regex: new RegExp(search.trim(), 'i') } },
+        { name: { $regex: pattern, $options: 'i' } },
+        { email: { $regex: pattern, $options: 'i' } },
+        { libraryId: { $regex: pattern, $options: 'i' } },
       ];
     }
 
-    const skip = (page - 1) * limit;
-    const rawUsers = await User.find(filter)
-      .limit(limit * 1)
-      .skip(skip)
-      .sort('-createdAt');
+    // ?sort=name|-name|libraryId|role|joined|-joined (default newest first); _id keeps pages stable
+    const SORTS = { name: 'name', libraryId: 'libraryId', role: 'role', joined: 'createdAt' };
+    const sortKey = toQueryString(req.query.sort) || '-joined';
+    const desc = sortKey.startsWith('-');
+    const field = SORTS[desc ? sortKey.slice(1) : sortKey] || 'createdAt';
+    const dir = SORTS[desc ? sortKey.slice(1) : sortKey] ? (desc ? -1 : 1) : -1;
 
-    const total = await User.countDocuments(filter);
+    const [rawUsers, total] = await Promise.all([
+      User.find(filter)
+        .select('-tokenVersion -cardVersion')
+        .sort({ [field]: dir, _id: dir })
+        .collation({ locale: 'en', strength: 2 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(filter),
+    ]);
 
-    // Calculate books issued count for each user
-    const usersWithIssuedCount = await Promise.all(
-      rawUsers.map(async (u) => {
-        const issuedCount = await Transaction.countDocuments({
-          userId: u._id,
-          status: 'issued',
-        });
-
-        return {
-          ...u.toObject(),
-          booksIssued: issuedCount,
-        };
-      })
-    );
+    // Open loans and fines still owed, for this page of users in one query
+    const loanRows = await Transaction.aggregate([
+      { $match: { userId: { $in: rawUsers.map((u) => u._id) }, status: { $in: ['issued', 'return_requested', 'payment_pending'] } } },
+      {
+        $group: {
+          _id: '$userId',
+          issued: { $sum: { $cond: [{ $eq: ['$status', 'issued'] }, 1, 0] } },
+          open: { $sum: 1 },
+          overdue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'issued'] }, { $lt: ['$dueDate', startOfDay(new Date())] }] }, 1, 0] } },
+          finesOwed: {
+            $sum: {
+              $cond: [
+                { $and: [{ $ne: ['$finePaid', true] }, { $ne: ['$status', 'issued'] }] },
+                { $max: [0, { $subtract: [{ $ifNull: ['$fineAmount', 0] }, { $ifNull: ['$fineWaived', 0] }] }] },
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+    const loansBy = new Map(loanRows.map((r) => [String(r._id), r]));
+    const usersWithIssuedCount = rawUsers.map((u) => {
+      const l = loansBy.get(String(u._id)) || {};
+      return {
+        ...u,
+        booksIssued: l.issued || 0,
+        openLoans: l.open || 0,
+        overdueLoans: l.overdue || 0,
+        finesOwed: l.finesOwed || 0,
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -789,13 +822,16 @@ exports.updateUser = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    if (targetUser.isSuperAdmin && req.user._id.toString() !== targetUser._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Super Admin cannot be modified' });
-    }
-
     // Avoid accidentally overwriting sensitive fields via findByIdAndUpdate
     // (which bypasses the pre('save') password-hashing hook)
     const { name, email, role, phone, address, libraryId, isActive, password } = req.body;
+
+    const denied = await checkUserChange(req.user, targetUser, { role, isActive });
+    if (denied) {
+      return res.status(denied.status).json({ success: false, message: denied.message });
+    }
+
+    const before = { role: targetUser.role, isActive: targetUser.isActive !== false };
 
     if (name !== undefined) targetUser.name = name;
     if (email !== undefined) targetUser.email = email.trim().toLowerCase();
@@ -806,10 +842,28 @@ exports.updateUser = async (req, res, next) => {
     if (isActive !== undefined) targetUser.isActive = isActive;
     if (password) targetUser.password = password; // pre('save') hook will hash it
 
+    // Names of the changed fields only (never their values), read before save clears them
+    const changedFields = ['name', 'email', 'phone', 'address', 'libraryId', 'password'].filter((f) => targetUser.isModified(f));
+
     await targetUser.save();
+
+    const who = personLabel(targetUser);
+    const target = { type: 'User', id: targetUser._id };
+    if (targetUser.role !== before.role) {
+      await audit(req, 'user.role_change', target, `Changed role of ${who} from ${before.role} to ${targetUser.role}`,
+        { from: before.role, to: targetUser.role });
+    }
+    if ((targetUser.isActive !== false) !== before.isActive) {
+      const activated = targetUser.isActive !== false;
+      await audit(req, activated ? 'user.activate' : 'user.deactivate', target, `${activated ? 'Activated' : 'Deactivated'} the account of ${who}`);
+    }
+    if (changedFields.length) {
+      await audit(req, 'user.update', target, `Updated ${changedFields.join(', ')} for ${who}`, { fields: changedFields });
+    }
 
     res.status(200).json({ success: true, message: 'User updated successfully', user: targetUser });
   } catch (error) {
+    if (sendUserSaveError(res, error)) return;
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -826,8 +880,9 @@ exports.deleteUser = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    if (targetUser.isSuperAdmin) {
-      return res.status(403).json({ success: false, message: 'Super Admin account cannot be deactivated' });
+    const denied = await checkUserChange(req.user, targetUser, { isActive: !targetUser.isActive });
+    if (denied) {
+      return res.status(denied.status).json({ success: false, message: denied.message });
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -835,6 +890,9 @@ exports.deleteUser = async (req, res, next) => {
       { isActive: !targetUser.isActive },
       { new: true }
     );
+
+    await audit(req, updatedUser.isActive ? 'user.activate' : 'user.deactivate', { type: 'User', id: updatedUser._id },
+      `${updatedUser.isActive ? 'Activated' : 'Deactivated'} the account of ${personLabel(updatedUser)}`);
 
     res.status(200).json({
       success: true,
@@ -889,8 +947,11 @@ exports.createAdminUser = async (req, res, next) => {
       role: 'admin',
       phone,
       address,
-      libraryId: `ADM-${Date.now()}`,
+      libraryId: await nextLibraryId(),
     });
+
+    await audit(req, 'user.create', { type: 'User', id: adminUser._id },
+      `Created admin account for ${personLabel(adminUser)}`, { role: 'admin' });
 
     res.status(201).json({
       success: true,
@@ -915,28 +976,28 @@ exports.createAdminUser = async (req, res, next) => {
  */
 exports.globalSearch = async (req, res, next) => {
   try {
-    const { query } = req.query;
+    const query = toQueryString(req.query.query);
     const userRole = req.user?.role || 'student';
-    
-    if (!query || query.trim().length === 0) {
+
+    if (!query) {
       return res.status(200).json({ success: true, results: [] });
     }
 
-    const searchTerm = query.trim();
+    // Escaped so the text is matched literally (every $regex below uses searchTerm)
+    const searchTerm = escapeRegex(query);
     const results = [];
 
     // Helper to get role-based book URL
     const getBookUrl = (bookId) => {
       if (userRole === 'librarian') return `/librarian/books/${bookId}`;
-      if (userRole === 'admin' || userRole === 'superadmin') return `/admin/books/${bookId}`;
+      if (userRole === 'admin') return `/admin/books/${bookId}`;
       return `/student/books/${bookId}`;
     };
 
-    // Helper to get role-based user URL
-    const getUserUrl = (userId) => {
-      if (userRole === 'admin' || userRole === 'superadmin') return `/admin/users/${userId}`;
-      return `/users/${userId}`;
-    };
+    // Users and loans open Student 360 for the signed-in role (routes: /admin|/librarian/users/:id)
+    const staffBase = userRole === 'admin' ? '/admin' : '/librarian';
+    const getUserUrl = (userId) => `${staffBase}/users/${userId}`;
+    const getLoanUrl = (userId, transactionId) => `${staffBase}/users/${userId}?loan=${transactionId}`;
 
     // Search Books
     const books = await Book.find({
@@ -964,56 +1025,59 @@ exports.globalSearch = async (req, res, next) => {
       });
     });
 
-    // Search Users (only for admin/librarian)
-    if (userRole === 'admin' || userRole === 'superadmin' || userRole === 'librarian') {
-      const users = await User.find({
+    if (userRole === 'admin' || userRole === 'librarian') {
+      // Users: librarians only ever see students (Student 360 is students-only for them)
+      const roleFilter = userRole === 'admin' ? {} : { role: 'student' };
+      const userMatch = {
+        ...roleFilter,
         $or: [
           { name: { $regex: searchTerm, $options: 'i' } },
           { email: { $regex: searchTerm, $options: 'i' } },
           { libraryId: { $regex: searchTerm, $options: 'i' } },
         ],
-      })
-        .limit(5)
-        .select('_id name email libraryId role isActive profileImage');
+      };
+      const users = await User.find(userMatch).limit(5).select('_id name libraryId role isActive profileImage');
 
       users.forEach((user) => {
         results.push({
           type: 'user',
           id: user._id,
           title: user.name,
-          subtitle: `${user.email} • ${user.libraryId}`,
+          // Library ID and role only: no email in search results
+          subtitle: [user.libraryId, user.role !== 'student' ? user.role : null, user.isActive === false ? 'inactive' : null].filter(Boolean).join(' • '),
           url: getUserUrl(user._id),
           icon: user.role === 'admin' ? '⚡' : user.role === 'librarian' ? '📚' : '👤',
           profileImage: user.profileImage || null,
         });
       });
-    }
 
-    // Search Transactions (Borrow Records) - for admin/librarian
-    if (userRole === 'admin' || userRole === 'superadmin' || userRole === 'librarian') {
-      const transactions = await Transaction.find({
-        $or: [
-          { 'userId.name': { $regex: searchTerm, $options: 'i' } },
-          { 'bookId.title': { $regex: searchTerm, $options: 'i' } },
-        ],
-      })
-        .limit(3)
-        .populate('userId', 'name email')
-        .populate('bookId', 'title author')
-        .select('_id status dueDate');
+      // Loans whose student or book matches (refs are ids, so match the people/books first)
+      const [studentIds, bookIds] = await Promise.all([
+        User.find({ ...userMatch, role: 'student' }).limit(50).distinct('_id'),
+        Book.find({ title: { $regex: searchTerm, $options: 'i' } }).limit(50).distinct('_id'),
+      ]);
+      const transactions = studentIds.length || bookIds.length
+        ? await Transaction.find({ $or: [{ userId: { $in: studentIds } }, { bookId: { $in: bookIds } }] })
+          .sort({ createdAt: -1 })
+          .limit(3)
+          .populate('userId', 'name role')
+          .populate('bookId', 'title')
+          .select('_id status dueDate userId bookId')
+        : [];
 
-      transactions.forEach((tx) => {
-        const userName = tx.userId?.name || 'Unknown';
-        const bookTitle = tx.bookId?.title || 'Unknown Book';
-        results.push({
-          type: 'transaction',
-          id: tx._id,
-          title: `${userName} - ${bookTitle}`,
-          subtitle: `Status: ${tx.status} • Due: ${new Date(tx.dueDate).toLocaleDateString()}`,
-          url: `/transactions/${tx._id}`,
-          icon: '📋',
+      transactions
+        .filter((tx) => tx.userId && (userRole === 'admin' || tx.userId.role === 'student'))
+        .forEach((tx) => {
+          const bookTitle = tx.bookId?.title || 'Unknown Book';
+          results.push({
+            type: 'transaction',
+            id: tx._id,
+            title: `${tx.userId.name} - ${bookTitle}`,
+            subtitle: `Status: ${tx.status}${tx.dueDate ? ` • Due: ${new Date(tx.dueDate).toLocaleDateString('en-IN')}` : ''}`,
+            url: getLoanUrl(tx.userId._id, tx._id),
+            icon: '📋',
+          });
         });
-      });
     }
 
     res.status(200).json({
@@ -1022,43 +1086,6 @@ exports.globalSearch = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Global search error:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * @route PUT /api/admin/recover
- * @desc Emergency admin recovery
- * @access Protected
- */
-exports.recoverAdmin = async (req, res, next) => {
-  try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ success: false, message: 'Please provide email for recovery' });
-    }
-
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found with this email' });
-    }
-
-    user.role = 'admin';
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: `Admin role restored for ${email}`,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        libraryId: user.libraryId,
-      },
-    });
-  } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };

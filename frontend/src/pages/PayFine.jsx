@@ -1,10 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import QRCode from 'react-qr-code';
 import { MainLayout } from '../layouts/MainLayout';
-import { Card, Button, Alert, Badge } from '../components/UI';
+import { Card, Button, Alert, Badge, EmptyState, PageHeader, Skeleton } from '../components/UI';
 import { fineAPI, transactionsAPI } from '../services/api';
 import { formatDate } from '../utils/dateUtils';
+
+const Stat = ({ label, children }) => (
+  <div className="rounded-2xl border border-border bg-input/60 p-4">
+    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">{label}</p>
+    <div className="mt-1.5">{children}</div>
+  </div>
+);
 
 export const PayFine = () => {
   const { fineId } = useParams();
@@ -12,6 +20,7 @@ export const PayFine = () => {
   const [fineData, setFineData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [initialising, setInitialising] = useState(true);
   const [success, setSuccess] = useState(null);
   const [paymentReference, setPaymentReference] = useState('');
   const [paymentScreenshot, setPaymentScreenshot] = useState('');
@@ -21,7 +30,7 @@ export const PayFine = () => {
   useEffect(() => {
     if (!fineId) return;
     const loadPayment = async () => {
-      setLoading(true);
+      setInitialising(true);
       try {
         const response = await fineAPI.initiatePayment(fineId);
         if (response.data.success) {
@@ -31,9 +40,11 @@ export const PayFine = () => {
           setError(response.data.message || 'Unable to initialize payment');
         }
       } catch (err) {
-        setError(err.response?.data?.message || err.message || 'Unable to load fine payment');
+        const message = err.response?.data?.message || err.message || 'Unable to load fine payment';
+        setError(message);
+        toast.error(message);
       } finally {
-        setLoading(false);
+        setInitialising(false);
       }
     };
     loadPayment();
@@ -50,6 +61,7 @@ export const PayFine = () => {
   const handleMarkPaid = async () => {
     if (!fineId) return;
     setLoading(true);
+    setError(null);
     try {
       // Use the return workflow's submitPayment endpoint
       const response = await transactionsAPI.submitPayment(fineId, {
@@ -57,11 +69,14 @@ export const PayFine = () => {
       });
       if (response.data.success) {
         setSuccess('Payment submitted! Waiting for librarian verification.');
+        toast.success('Payment submitted for verification');
       } else {
         setError(response.data.message || 'Failed to update payment');
       }
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Payment failed');
+      const message = err.response?.data?.message || err.message || 'Payment failed';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -70,8 +85,13 @@ export const PayFine = () => {
   const handleScreenshotChange = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file only');
+    // Same limits as the server: PNG, JPEG or WEBP, at most 3 MB
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      setError('Please upload a PNG, JPEG or WEBP image');
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setError('Screenshot must be 3 MB or smaller');
       return;
     }
 
@@ -90,108 +110,124 @@ export const PayFine = () => {
     reader.readAsDataURL(file);
   };
 
-  if (loading && !fineData && !success) {
-    return (
-      <MainLayout>
-        <div className="text-center py-16 text-slate-400">Loading payment details...</div>
-      </MainLayout>
-    );
-  }
+  const removeScreenshot = () => {
+    setPaymentScreenshot('');
+    if (screenshotInputRef.current) screenshotInputRef.current.value = '';
+  };
+
+  // Server value: days late up to the return request (when the fine was frozen)
+  const daysLate = Number(fineData?.daysLate) || 0;
 
   return (
     <MainLayout>
-      <div className="max-w-3xl mx-auto p-4 sm:p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">💳 Pay Fine</h1>
-          <p className="mt-1 text-slate-400">
-            Complete the simulated payment to clear your outstanding fine.
-          </p>
-        </div>
+      <div className="mx-auto max-w-5xl">
+        <PageHeader
+          title="Pay fine"
+          subtitle="Scan the QR code to pay, then submit so a librarian can verify it."
+          actions={<Button fullWidth={false} variant="ghost" onClick={() => navigate('/student/fines')}>← Back to fines</Button>}
+        />
 
         {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
-        {success && <Alert type="success" message={success} onClose={() => setSuccess(null)} />}
+        {success && <Alert type="success" message={`${success} Taking you back to your fines...`} />}
 
-        {fineData && (
-          <Card>
-            <div className="flex flex-col items-center text-center">
-              <div className="mb-6">
-                <p className="text-sm text-slate-500 uppercase mb-2">Book</p>
-                <h2 className="text-2xl font-semibold text-slate-100">{fineData.bookTitle}</h2>
+        {initialising ? (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]" aria-busy="true" aria-label="Loading payment details">
+            <Skeleton className="h-80 w-full" />
+            <Skeleton className="h-80 w-full" />
+          </div>
+        ) : !fineData ? (
+          <EmptyState
+            icon="💳"
+            title="Nothing to pay here"
+            message={error || 'This fine could not be loaded.'}
+            action={<Button fullWidth={false} variant="secondary" onClick={() => navigate('/student/fines')}>Back to fines</Button>}
+          />
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+            <Card variant="glass" className="space-y-6">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Book</p>
+                <h2 className="mt-1 font-display text-2xl font-semibold text-slate-50">{fineData.bookTitle}</h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 w-full max-w-2xl">
-                <div className="card p-4">
-                  <p className="text-sm text-slate-500">Amount Due</p>
-                  <p className="text-3xl font-bold text-rose-400">₹{fineData.fineAmount}</p>
-                </div>
-                <div className="card p-4">
-                  <p className="text-sm text-slate-500">Due Date</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Stat label="Amount due">
+                  <p className="font-display text-3xl font-bold text-rose-300">₹{fineData.fineAmount}</p>
+                  {Number(fineData.fineWaived) > 0 && (
+                    <p className="mt-0.5 text-xs text-pink-300">₹{fineData.fineWaived} waived by the library</p>
+                  )}
+                </Stat>
+                <Stat label="Days overdue">
+                  <p className="text-lg font-semibold text-slate-100">{daysLate} day{daysLate === 1 ? '' : 's'}</p>
+                </Stat>
+                <Stat label="Due date">
                   <p className="font-medium text-slate-100">{formatDate(fineData.dueDate)}</p>
-                </div>
-                <div className="card p-4">
-                  <p className="text-sm text-slate-500">Days Overdue</p>
-                  <p className="font-medium text-slate-100">{fineData.daysLate} day{fineData.daysLate === 1 ? '' : 's'}</p>
-                </div>
-                <div className="card p-4">
-                  <p className="text-sm text-slate-500">Payment Ref</p>
-                  <Badge variant="warning">{paymentReference}</Badge>
-                </div>
+                </Stat>
+                <Stat label="Payment ref">
+                  <Badge variant="warning" className="break-all">{paymentReference}</Badge>
+                </Stat>
               </div>
 
-              <div className="space-y-3 mb-6 w-full max-w-2xl">
-                <p className="text-slate-300 font-medium">Follow these instructions to complete payment:</p>
-                <ul className="list-disc pl-5 text-slate-400 space-y-2 text-left">
-                  <li>Scan the QR code using your mobile banking or UPI app.</li>
-                  <li>Confirm payment of ₹{fineData.fineAmount}.</li>
-                  <li>Optionally upload a payment screenshot.</li>
-                  <li>Click "Submit Payment" once payment is complete.</li>
-                </ul>
-              </div>
+              <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-300">
+                <li>Scan the QR code with your mobile banking or UPI app.</li>
+                <li>Pay exactly ₹{fineData.fineAmount}.</li>
+                <li>Optionally attach a screenshot of the payment.</li>
+                <li>Press <span className="font-semibold text-slate-100">Submit payment</span>.</li>
+              </ol>
 
               {/* Optional payment screenshot upload */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Payment Screenshot (Optional)
-                </label>
+              <div>
+                <p className="field-label">Payment screenshot (optional)</p>
                 <input
                   ref={screenshotInputRef}
+                  id="payment-screenshot"
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/webp"
                   onChange={handleScreenshotChange}
-                  className="hidden"
+                  className="sr-only"
                 />
-                <div className="flex items-center justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => screenshotInputRef.current?.click()}
-                    className="rounded-xl border border-border bg-input px-4 py-2.5 text-sm font-medium text-slate-300 hover:border-indigo-500/30 hover:text-indigo-300 transition-colors"
-                  >
-                    {uploadingScreenshot ? 'Uploading...' : paymentScreenshot ? 'Change Screenshot' : '📎 Upload Screenshot'}
-                  </button>
-                  {paymentScreenshot && (
-                    <span className="text-xs text-emerald-400 font-medium">✓ Screenshot attached</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="card p-8 mb-6">
-                <p className="text-lg font-semibold text-slate-100 mb-4">Scan to Pay</p>
-                <div className="flex justify-center">
-                  <div className="p-4 rounded-2xl bg-white">
-                    <QRCode
-                      value={`PAYMENT|REF:${paymentReference}|AMT:${fineData.fineAmount}|BOOK:${fineData.bookTitle}`}
-                      size={220}
-                      fgColor="#1f2937"
-                    />
+                {paymentScreenshot ? (
+                  <div className="flex items-center gap-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3">
+                    <img src={paymentScreenshot} alt="Attached payment screenshot" className="h-16 w-16 flex-shrink-0 rounded-lg object-cover" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-emerald-300">Screenshot attached</p>
+                      <p className="text-xs text-slate-400">PNG, JPEG or WEBP, up to 3 MB</p>
+                    </div>
+                    <div className="flex flex-col gap-1 sm:flex-row">
+                      <Button size="sm" variant="ghost" fullWidth={false} onClick={() => screenshotInputRef.current?.click()} disabled={!!success}>Change</Button>
+                      <Button size="sm" variant="ghost" fullWidth={false} onClick={removeScreenshot} disabled={!!success}>Remove</Button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <label
+                    htmlFor="payment-screenshot"
+                    className="flex min-h-[88px] cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-border bg-input/40 p-4 text-center transition-colors hover:border-indigo-500/40 focus-within:border-cyan-400/60"
+                  >
+                    <span className="text-sm font-medium text-slate-200">{uploadingScreenshot ? 'Reading image...' : 'Choose a screenshot'}</span>
+                    <span className="text-xs text-muted">PNG, JPEG or WEBP, up to 3 MB</span>
+                  </label>
+                )}
               </div>
 
-              <Button onClick={handleMarkPaid} variant="success" disabled={loading || !!success}>
-                {loading ? 'Processing...' : 'Submit Payment'}
+              <Button onClick={handleMarkPaid} variant="success" size="lg" loading={loading} disabled={!!success || uploadingScreenshot}>
+                {loading ? 'Submitting...' : success ? 'Submitted' : 'Submit payment'}
               </Button>
-            </div>
-          </Card>
+            </Card>
+
+            <Card variant="glass" className="flex flex-col items-center text-center lg:self-start">
+              <p className="font-semibold text-slate-100">Scan to pay</p>
+              <p className="mt-1 text-xs text-slate-400">Simulated payment code</p>
+              <div className="mt-4 rounded-2xl bg-white p-4">
+                <QRCode
+                  value={`PAYMENT|REF:${paymentReference}|AMT:${fineData.fineAmount}|BOOK:${fineData.bookTitle}`}
+                  size={200}
+                  fgColor="#1f2937"
+                  style={{ height: 'auto', maxWidth: '100%', width: '100%' }}
+                />
+              </div>
+              <p className="mt-4 font-display text-2xl font-bold text-slate-50">₹{fineData.fineAmount}</p>
+            </Card>
+          </div>
         )}
       </div>
     </MainLayout>

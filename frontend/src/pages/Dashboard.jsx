@@ -1,480 +1,473 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { MainLayout } from '../layouts/MainLayout';
 import { useAuth } from '../hooks/useAuth';
-import { transactionsAPI, booksAPI } from '../services/api';
+import { transactionsAPI, booksAPI, wishlistAPI, authAPI } from '../services/api';
+import { BookCard } from '../components/BookCard';
 import { CoverImage } from '../components/CoverImage';
+import { Badge, EmptyState, Skeleton } from '../components/UI';
+import { DashboardHero } from '../components/dashboard/DashboardHero';
+import {
+  AmountStat, CompactEmpty, DASH_ICONS, DashTabs, KpiLink, QuickTile, SectionCard, SectionLink, formatRupees,
+} from '../components/dashboard/DashboardKit';
+import { formatDate } from '../utils/dateUtils';
+import { ACTIVE_LOAN_STATUSES } from '../hooks/useActiveBookIds';
+import { bookActionFor, formatHoldEnd, holdTimeLeft, useReservations } from '../hooks/useReservations';
+import { GENRES } from '../constants/genres';
+import { ReadingStatsCompact } from '../components/profile/ReadingStats';
 
-const toSafeNumber = (value, fallback = 0) => {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
+const DUE_SOON_DAYS = 3;
+const WEEK_DAYS = 7;
+// Loans (not requests): the book was handed out at some point
+const LOAN_STATUSES = ['issued', 'return_requested', 'payment_pending', 'returned'];
+const FIXED_FINE_STATUSES = ['return_requested', 'payment_pending', 'returned'];
+const DISCOVER_TABS = [
+  { key: 'picked', label: 'Picked for you' },
+  { key: 'new', label: 'New arrivals' },
+  { key: 'popular', label: 'Popular' },
+];
+
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+// Still owed after any waiver (server payableFine; 0 once paid)
+const payableOf = (t) => num(t.payableFine ?? (t.finePaid ? 0 : t.fineAmount));
+// Paid amount = fine minus the waived part
+const paidOf = (t) => (t.finePaid ? Math.max(0, num(t.fineAmount) - num(t.fineWaived)) : 0);
+const bookOf = (t) => (t?.bookId && typeof t.bookId === 'object' ? t.bookId : {});
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/** Status badge for a loan, from server values (status, daysRemaining) */
+const LoanBadge = ({ t }) => {
+  if (t.status === 'return_requested') return <Badge variant="info">Return requested</Badge>;
+  if (t.status === 'payment_pending') return <Badge variant="warning">Payment pending</Badge>;
+  if (t.status === 'returned') return <Badge variant="success">Returned</Badge>;
+  const d = num(t.daysRemaining);
+  if (d < 0) return <Badge variant="danger">Overdue · {plural(-d, 'day')}</Badge>;
+  if (d === 0) return <Badge variant="warning">Due today</Badge>;
+  if (d <= DUE_SOON_DAYS) return <Badge variant="warning">Due in {plural(d, 'day')}</Badge>;
+  return <Badge variant="primary">Issued</Badge>;
 };
 
+const UP_NEXT_LIMIT = 4;
+const dueWhen = (d) => (d < 0 ? `${plural(-d, 'day')} overdue` : d === 0 ? 'due today' : `in ${plural(d, 'day')}`);
+
+/** "Up next": issued loans by due date, nearest (or most overdue) first, on a dotted line */
+const UpNext = ({ loans }) => (
+  <ol className="relative ml-1.5 border-l border-white/10 pl-5" aria-label="Upcoming due dates">
+    {loans.map((t) => {
+      const d = num(t.daysRemaining);
+      const tone = d < 0 ? 'bg-rose-400 ring-rose-400/25' : d <= DUE_SOON_DAYS ? 'bg-amber-300 ring-amber-300/25' : 'bg-indigo-300 ring-indigo-300/20';
+      const book = bookOf(t);
+      return (
+        <li key={t._id} className="relative py-2 first:pt-0.5 last:pb-0.5">
+          <span className={`absolute -left-[26px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full ring-4 ${tone}`} aria-hidden="true" />
+          <Link to={book._id ? `/student/books/${book._id}` : '/student/my-books?tab=issued'} className="block min-w-0 rounded-lg transition-colors hover:text-white">
+            <span className="block truncate text-sm font-semibold text-slate-100">{book.title || 'A book'}</span>
+            <span className={`block text-[11px] ${d < 0 ? 'font-semibold text-rose-300' : 'text-slate-400'}`}>
+              {formatDate(t.dueDate)} · {dueWhen(d)}
+            </span>
+          </Link>
+        </li>
+      );
+    })}
+  </ol>
+);
+
+const BookRowSkeleton = () => (
+  <div className="dash-book-row" aria-hidden="true">
+    {[0, 1, 2, 3].map((i) => (
+      <div key={i} className="card-glass !p-0 overflow-hidden">
+        <Skeleton className="aspect-[2/3] w-full !rounded-none" />
+        <div className="space-y-2 p-3">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-3 w-2/3" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 export const Dashboard = () => {
   const navigate = useNavigate();
   const { user, isAdmin, isLibrarian } = useAuth();
-  const [borrowed, setBorrowed] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [txError, setTxError] = useState(null);
   const [recommended, setRecommended] = useState([]);
   const [favoriteGenres, setFavoriteGenres] = useState([]);
+  const [wishlistCount, setWishlistCount] = useState(null);
+  const [heroCovers, setHeroCovers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [renewingId, setRenewingId] = useState(null);
   const [requestingBookId, setRequestingBookId] = useState(null);
-  const [error, setError] = useState(null);
+  const [discoverTab, setDiscoverTab] = useState('picked');
+  const [genre, setGenre] = useState('');
+  const [lists, setLists] = useState({}); // "<tab>|<genre>" -> { loading, books, error }
+  const [reading, setReading] = useState({ loading: true, stats: null, error: null });
+  const reservations = useReservations();
+  const readyReservations = reservations.reservations.filter((r) => r.status === 'ready');
 
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [txResponse, recResponse] = await Promise.all([
-        transactionsAPI.getUserTransactions(),
-        booksAPI.getRecommendations()
-      ]);
-
-      const userTx = Array.isArray(txResponse.data?.transactions) ? txResponse.data.transactions : [];
-      const activeBorrowed = userTx.filter((t) => t?.status === 'issued' || t?.status === 'pending');
-      setBorrowed(activeBorrowed);
-
-      const recData = recResponse.data;
-      if (recData?.success && Array.isArray(recData.recommendations)) {
-        setRecommended(recData.recommendations);
-        setFavoriteGenres(recData.favoriteGenres || []);
-      } else {
-        setRecommended([]);
-        setFavoriteGenres([]);
-      }
-    } catch (err) {
-      console.error('Error loading dashboard data:', err);
-      setError(err.response?.data?.message || 'Failed to load dashboard data. Please try again.');
-      setBorrowed([]);
-      setRecommended([]);
-    } finally {
-      setLoading(false);
+  const loadData = useCallback(async () => {
+    const [tx, rec, wish, top, readingRes] = await Promise.allSettled([
+      transactionsAPI.getUserTransactions(),
+      booksAPI.getRecommendations(),
+      wishlistAPI.getWishlist(),
+      booksAPI.getBooks({ sort: 'rating', limit: 8 }),
+      authAPI.getReadingStats(),
+    ]);
+    setReading(readingRes.status === 'fulfilled'
+      ? { loading: false, stats: readingRes.value.data?.stats || null, error: null }
+      : { loading: false, stats: null, error: readingRes.reason?.response?.data?.message || 'Could not load your reading stats' });
+    if (tx.status === 'fulfilled') {
+      setTransactions(Array.isArray(tx.value.data?.transactions) ? tx.value.data.transactions : []);
+      setTxError(null);
+    } else {
+      setTxError(tx.reason?.response?.data?.message || 'Failed to load your loans');
     }
-  };
+    if (rec.status === 'fulfilled') {
+      setRecommended(rec.value.data?.recommendations || []);
+      setFavoriteGenres(rec.value.data?.favoriteGenres || []);
+    }
+    if (wish.status === 'fulfilled') setWishlistCount((wish.value.data?.wishlist || []).length);
+    if (top.status === 'fulfilled') setHeroCovers(top.value.data?.books || []);
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
-  // Use actual borrowed books only - no demo/placeholder data
-  const displayBorrowed = useMemo(() => {
-    return Array.isArray(borrowed) ? borrowed : [];
-  }, [borrowed]);
+  // New arrivals / Popular: fetched per tab + genre and kept for the session
+  const listKey = `${discoverTab}|${genre}`;
+  useEffect(() => {
+    if (discoverTab === 'picked' || lists[listKey]) return;
+    setLists((prev) => ({ ...prev, [listKey]: { loading: true, books: [] } }));
+    const params = { limit: 12, ...(genre ? { genre } : {}) };
+    const request = discoverTab === 'new'
+      ? booksAPI.getBooks({ ...params, sort: 'newest' })
+      : booksAPI.getPopular({ ...params, limit: 10 });
+    request
+      .then((res) => setLists((prev) => ({ ...prev, [listKey]: { loading: false, books: res.data?.books || [] } })))
+      .catch((err) => setLists((prev) => ({ ...prev, [listKey]: { loading: false, books: [], error: err.response?.data?.message || 'Failed to load books' } })));
+  }, [discoverTab, genre, listKey, lists]);
 
-  const safeRecommended = useMemo(() => {
-    return Array.isArray(recommended) ? recommended : [];
-  }, [recommended]);
+  const activeBookIds = useMemo(
+    () => new Set(transactions.filter((t) => ACTIVE_LOAN_STATUSES.includes(t?.status)).map((t) => String(bookOf(t)._id || t.bookId))),
+    [transactions]
+  );
 
-  const stats = useMemo(() => {
-    const borrowedBooks = displayBorrowed.length;
-    const nextDueDates = displayBorrowed
-      .map((item) => (item?.dueDate ? new Date(item.dueDate) : null))
-      .filter((d) => d && !Number.isNaN(d.getTime()))
-      .sort((a, b) => a - b);
-    let nextDueDateText = '—';
-    if (nextDueDates.length > 0) {
-      const diffDays = Math.ceil((nextDueDates[0] - new Date()) / (1000 * 60 * 60 * 24));
-      if (diffDays < 0) nextDueDateText = `${Math.abs(diffDays)}d overdue`;
-      else if (diffDays === 0) nextDueDateText = 'Today';
-      else nextDueDateText = `${diffDays} day${diffDays === 1 ? '' : 's'}`;
-    }
-    const outstandingFines = toSafeNumber(user?.fineAmount, 0);
-    return { borrowedBooks, nextDueDateText, outstandingFines };
-  }, [displayBorrowed, user]);
+  // Every figure below is derived from GET /transactions/user/me (server-calculated fine, daysRemaining)
+  const s = useMemo(() => {
+    const issued = transactions.filter((t) => t.status === 'issued');
+    const overdue = issued.filter((t) => num(t.daysRemaining) < 0);
+    const dueWeek = issued.filter((t) => num(t.daysRemaining) >= 0 && num(t.daysRemaining) <= WEEK_DAYS)
+      .sort((x, y) => num(x.daysRemaining) - num(y.daysRemaining));
+    const dueSoon = dueWeek.filter((t) => num(t.daysRemaining) <= DUE_SOON_DAYS);
+    const paid = transactions.reduce((sum, t) => sum + paidOf(t), 0);
+    const fixedUnpaid = transactions
+      .filter((t) => !t.finePaid && FIXED_FINE_STATUSES.includes(t.status))
+      .reduce((sum, t) => sum + payableOf(t), 0);
+    const waived = transactions.reduce((sum, t) => sum + num(t.fineWaived), 0);
+    const accruing = issued.reduce((sum, t) => sum + num(t.fine), 0);
+    const verifying = transactions.filter((t) => t.status === 'payment_pending').reduce((sum, t) => sum + payableOf(t), 0);
+    const payable = transactions.find((t) => t.status === 'return_requested' && payableOf(t) > 0);
+    const loans = transactions
+      .filter((t) => LOAN_STATUSES.includes(t.status))
+      .sort((x, y) => new Date(y.issueDate || y.createdAt) - new Date(x.issueDate || x.createdAt))
+      .slice(0, 5);
+    // Up next: books with the student now, most overdue / nearest due date first
+    const upNext = [...issued].sort((x, y) => num(x.daysRemaining) - num(y.daysRemaining)).slice(0, UP_NEXT_LIMIT);
+    return {
+      upNext,
+      hasLoans: transactions.some((t) => LOAN_STATUSES.includes(t.status) || t.status === 'pending'),
+      issued: issued.length,
+      pendingRequests: transactions.filter((t) => t.status === 'pending').length,
+      overdue,
+      overdueFine: overdue.reduce((sum, t) => sum + num(t.fine), 0),
+      dueWeek,
+      dueSoon: dueSoon.length,
+      paid,
+      waived,
+      pending: fixedUnpaid + accruing,
+      accruing,
+      verifying,
+      payable,
+      loans,
+    };
+  }, [transactions]);
 
-  // If user is librarian or admin, redirect directly to their dashboard
-  // NOTE: Placed after all hooks to respect the Rules of Hooks
-  if (isAdmin) {
-    return <Navigate to="/admin" replace />;
-  }
-
-  if (isLibrarian) {
-    return <Navigate to="/librarian" replace />;
-  }
-
-  // Onboarding should ONLY appear for brand-new users who have NOT completed onboarding.
-  // Existing users (isOnboardingCompleted === true) must NEVER be redirected to onboarding,
-  // even if favoriteGenres is empty. This preserves existing accounts.
+  // Redirects after all hooks (Rules of Hooks)
+  if (isAdmin) return <Navigate to="/admin" replace />;
+  if (isLibrarian) return <Navigate to="/librarian" replace />;
   if (!loading && user?.role === 'student' && user?.isOnboardingCompleted === false) {
     return <Navigate to="/student/onboarding" replace />;
   }
 
-  const handleRenew = async (txId) => {
-    if (!txId) {
-      toast.error('Unable to renew this book');
-      return;
-    }
-    setRenewingId(txId);
-    if (typeof txId === 'string' && txId.startsWith('demo-')) {
-      setTimeout(() => {
-        toast.success('Book renewed successfully! Due date extended by 7 days.');
-        setRenewingId(null);
-      }, 500);
-      return;
-    }
-
-    try {
-      await transactionsAPI.renewBook(txId);
-      toast.success('Book renewed successfully! Extended by 7 days.');
-      loadData();
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to renew book';
-      toast.error(msg);
-    } finally {
-      setRenewingId(null);
-    }
-  };
-
   const handleRequestBook = async (bookId) => {
-    if (!bookId) {
-      toast.error('Unable to request this book');
-      return;
-    }
+    if (!bookId) return;
     setRequestingBookId(bookId);
     try {
       await transactionsAPI.requestIssueBook({ bookId });
-      toast.success('Issue request submitted to admin!');
-      loadData();
+      toast.success('Request sent. A librarian will review it shortly.');
+      setLists({}); // availability may have changed
+      await loadData();
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to request book';
-      toast.error(msg);
+      toast.error(err.response?.data?.message || 'Failed to request book');
     } finally {
       setRequestingBookId(null);
     }
   };
 
-  // Helper to get recommendation reason for a book
-  const getRecommendationReason = (book) => {
-    if (!book || !favoriteGenres || favoriteGenres.length === 0) return null;
-    const bookGenre = book.genre;
-    if (bookGenre && favoriteGenres.includes(bookGenre)) {
-      return `Recommended because you like ${bookGenre}`;
-    }
-    return `Based on your interest in ${favoriteGenres[0]}`;
-  };
+  // Request / Reserve / Borrow now (held copy) / Cancel reservation
+  const actionFor = (book) =>
+    bookActionFor(book, {
+      isStudent: true,
+      requesting: requestingBookId === book._id,
+      hasActive: activeBookIds.has(String(book._id)),
+      reservations,
+      onRequest: handleRequestBook,
+    });
 
-  const statCards = [
-    {
-      label: 'Borrowed Books',
-      value: stats.borrowedBooks,
-      icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-        </svg>
-      ),
-      accent: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20',
-    },
-    {
-      label: 'Next Due Date',
-      value: stats.nextDueDateText,
-      icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      ),
-      accent: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
-    },
-    {
-      label: 'Outstanding Fines',
-      value: `₹${toSafeNumber(stats.outstandingFines, 0).toFixed(2)}`,
-      icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 8v2m0-6c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-      accent: 'bg-rose-500/10 text-rose-300 border-rose-500/20',
-    },
-  ];
-
-  // Show error state if data loading failed
-  if (error && !loading) {
-    return (
-      <MainLayout>
-        <div className="max-w-7xl mx-auto space-y-8 p-2 sm:p-4 lg:p-0">
-          <div className="card p-8 text-center">
-            <div className="max-w-md mx-auto">
-              <svg className="w-16 h-16 text-rose-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <h2 className="text-2xl font-bold text-slate-100 mb-2">Unable to Load Dashboard</h2>
-              <p className="text-slate-400 mb-6">{error}</p>
-              <button
-                onClick={loadData}
-                className="btn-primary px-6 py-3"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
+  const firstName = (user?.name || '').trim().split(/\s+/)[0];
+  const genrePills = ['', ...favoriteGenres, ...GENRES.filter((g) => !favoriteGenres.includes(g))];
+  const pickedBooks = genre ? recommended.filter((b) => b.genre === genre) : recommended;
+  const current = discoverTab === 'picked' ? { loading, books: pickedBooks } : (lists[listKey] || { loading: true, books: [] });
+  const nextDue = s.dueWeek[0];
 
   return (
     <MainLayout>
-      <div className="max-w-7xl mx-auto space-y-8 p-2 sm:p-4 lg:p-0">
-        {/* Title Header */}
-        <div className="animate-fade-in-up">
-          <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight">My Library</h1>
-          <p className="mt-1 text-sm text-slate-400">Track your borrowed books and discover new ones</p>
-        </div>
-
-        {/* Top 3 Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {statCards.map((card) => (
-            <div
-              key={card.label}
-              className="card flex items-center gap-4 p-5 transition-all duration-250 hover:-translate-y-0.5 hover:shadow-glow"
-            >
-              <div className={`h-14 w-14 rounded-2xl border flex items-center justify-center flex-shrink-0 ${card.accent}`}>
-                {card.icon}
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-100 leading-none">{card.value}</p>
-                <p className="text-xs text-slate-400 font-medium mt-1">{card.label}</p>
-              </div>
+      <div className="mx-auto max-w-7xl space-y-5 pb-10">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+          {/* Hero */}
+          <DashboardHero className="xl:col-span-8" covers={heroCovers} titleId="student-hero-title">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">Your library</p>
+            <h1 id="student-hero-title" className="mt-2 font-display text-3xl font-bold tracking-tight text-slate-50 sm:text-4xl">
+              Welcome back{firstName ? `, ${firstName}` : ''}
+            </h1>
+            <p className="mt-2 text-sm text-slate-300 sm:text-base">Find your next read and keep track of due dates and fines.</p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link to="/student/books" className="btn-primary">{DASH_ICONS.search}Browse books</Link>
+              <Link to="/student/my-books" className="btn-secondary">{DASH_ICONS.book}My books</Link>
             </div>
-          ))}
-        </div>
+          </DashboardHero>
 
-        {/* Middle Section: Currently Borrowed - Only show if user has borrowed books */}
-        {displayBorrowed.length > 0 && (
-          <div className="card">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-slate-100">Currently Borrowed</h2>
-              <span className="badge-amo badge-primary">{displayBorrowed.length} active</span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {displayBorrowed.map((item, index) => {
-                // bookId may be a populated object OR a bare id string
-                const book = item?.bookId && typeof item.bookId === 'object' ? item.bookId : {};
-                const bookTitle = book.title || item?.title || 'Unknown Title';
-                const bookAuthor = book.author || item?.author || 'Unknown Author';
-                const bookPublisher =
-                  typeof book.publisher === 'string'
-                    ? book.publisher
-                    : book.publisher?.name || 'Unknown Publisher';
-                const bookYear = book.publicationYear || 'N/A';
-                const bookGenre = book.genre || 'Uncategorized';
-                const safeRating = toSafeNumber(book.rating, 0);
-                const rawDueDate = item?.dueDate ? new Date(item.dueDate).toLocaleDateString() : 'N/A';
-                const formattedDueDate =
-                  item?.dueDate && typeof item.dueDate === 'string' && item.dueDate.includes('/')
-                    ? item.dueDate
-                    : rawDueDate;
-
-                // Theme palette matching the 3 cards (Purple, Green, Blue)
-                const themes = [
-                  { bg: 'bg-indigo-500/10', text: 'text-indigo-300', border: 'border-indigo-500/20' },
-                  { bg: 'bg-emerald-500/10', text: 'text-emerald-300', border: 'border-emerald-500/20' },
-                  { bg: 'bg-sky-500/10', text: 'text-sky-300', border: 'border-sky-500/20' },
-                ];
-                const theme = themes[index % 3];
-
-                // Calculate days remaining
-                const getDaysRemaining = (dueDate) => {
-                  if (!dueDate) return null;
-                  const due = new Date(dueDate);
-                  if (Number.isNaN(due.getTime())) return null;
-                  const now = new Date();
-                  const diffTime = due - now;
-                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  return diffDays;
-                };
-
-                const daysRemaining = getDaysRemaining(item?.dueDate);
-                const bookId = book._id || (typeof item?.bookId === 'string' ? item.bookId : null);
-
-                const handleCardClick = () => {
-                  if (bookId) {
-                    navigate(`/student/books/${bookId}`);
-                  }
-                };
-
-                return (
-                  <div
-                    key={item?._id || index}
-                    onClick={handleCardClick}
-                    className="rounded-2xl border border-border p-5 bg-input flex flex-col justify-between hover:shadow-glow transition-all duration-250 hover:-translate-y-0.5 cursor-pointer"
+          {/* Today */}
+          <SectionCard id="today" className="xl:col-span-4" title="Today" action={<SectionLink to="/student/my-books?tab=issued">My books</SectionLink>}>
+            {loading ? (
+              <Skeleton lines={3} className="h-5 w-full" />
+            ) : txError ? (
+              <CompactEmpty icon={DASH_ICONS.alert} tone="rose" title="Couldn't load your loans" message={txError} role="alert" />
+            ) : (
+              <div className="space-y-3">
+                {readyReservations.map((r) => (
+                  <Link
+                    key={r._id}
+                    to="/student/my-books?tab=reservations"
+                    className="flex items-start gap-3 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-3 transition-colors hover:bg-emerald-500/15"
                   >
-                    {/* Top Row: Rating Badge */}
-                    {safeRating > 0 && (
-                      <div className="flex justify-end mb-2">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-semibold">
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
-                          {safeRating.toFixed(1)}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Middle Section: Cover + Metadata */}
-                    <div className="flex gap-4">
-                      {/* Book Cover — safe fallback, no nextSibling access */}
-                      <div className="h-28 w-20 overflow-hidden rounded-2xl bg-input border border-border flex-shrink-0">
-                        <CoverImage book={book} src={book.imageUrl || book.coverImage} alt={bookTitle} iconClassName={theme.text} />
-                      </div>
-
-                      {/* Book Metadata */}
-                      <div className="flex-1 min-w-0 space-y-1.5">
-                        <div>
-                          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Publisher</p>
-                          <p className="text-xs font-medium text-slate-300 truncate">{bookPublisher}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Year</p>
-                          <p className="text-xs font-medium text-slate-300">{bookYear}</p>
-                        </div>
-                        <div>
-                          <span className="inline-flex rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-300 border border-indigo-500/20">
-                            {bookGenre}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bottom Section: Title, Author, Due Date, Renew */}
-                    <div className="mt-4 pt-3 border-t border-border space-y-2">
-                      <h3 className="font-bold text-slate-100 text-sm leading-snug line-clamp-2">{bookTitle}</h3>
-                      <p className="text-xs text-slate-400 font-normal">by {bookAuthor}</p>
-
-                      <div className="flex items-center justify-between text-xs pt-1">
-                        <div className="flex flex-col">
-                          <span className="text-slate-400 font-medium">Due: {formattedDueDate}</span>
-                          {daysRemaining !== null && (
-                            <span
-                              className={`text-[11px] font-semibold mt-0.5 ${
-                                daysRemaining < 0
-                                  ? 'text-rose-400'
-                                  : daysRemaining <= 3
-                                  ? 'text-amber-400'
-                                  : 'text-emerald-400'
-                              }`}
-                            >
-                              {daysRemaining < 0
-                                ? `${Math.abs(daysRemaining)} days overdue`
-                                : daysRemaining === 0
-                                ? 'Due today'
-                                : `${daysRemaining} days remaining`}
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRenew(item?._id);
-                          }}
-                          disabled={renewingId === item?._id}
-                          className="btn-warning text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {renewingId === item?._id ? 'Renewing...' : 'Renew'}
-                        </button>
-                      </div>
-                    </div>
+                    <span className="mt-0.5 text-emerald-300">{DASH_ICONS.book}</span>
+                    <span className="min-w-0 text-sm text-emerald-50">
+                      <span className="font-semibold">“{r.bookId?.title || 'A reserved book'}” is ready for you.</span>{' '}
+                      Borrow by {formatHoldEnd(r.expiresAt)} <span className="text-emerald-200/80">({holdTimeLeft(r.expiresAt)})</span>
+                    </span>
+                  </Link>
+                ))}
+                {s.overdue.length > 0 && (
+                  <div className="flex items-start gap-3 rounded-2xl border border-rose-400/30 bg-rose-500/10 p-3" role="alert">
+                    <span className="mt-0.5 text-rose-300">{DASH_ICONS.alert}</span>
+                    <p className="text-sm text-rose-100">
+                      <span className="font-semibold">{plural(s.overdue.length, 'book')} overdue.</span>{' '}
+                      Fine so far {formatRupees(s.overdueFine)}, growing daily until you return {s.overdue.length === 1 ? 'it' : 'them'}.
+                    </p>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Bottom Section: Recommended for You */}
-        <div>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-bold text-slate-100">Books Picked Just For You</h2>
-            <span className="text-xs text-slate-400 font-medium">Based on your interests and favorite genres</span>
-          </div>
-
-          {loading && safeRecommended.length === 0 ? (
-            <div className="card p-8 text-center text-sm text-slate-400">
-              <div className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-5 w-5 text-indigo-400" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Loading recommendations...
-              </div>
-            </div>
-          ) : safeRecommended.length === 0 && !error ? (
-            <div className="card p-8 text-center text-sm text-slate-400">
-              <svg className="w-12 h-12 text-slate-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-              No recommendations available yet.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {safeRecommended.slice(0, 6).map((book, index) => {
-                if (!book || typeof book !== 'object') return null;
-                const id = book._id || book.id || `rec-${index}`;
-                const bookPath = `/student/books/${id}`;
-                const availableCopies = toSafeNumber(book.availableCopies, 0);
-
-                return (
-                  <div
-                    key={id}
-                    onClick={() => book._id && navigate(bookPath)}
-                    className="card p-5 transition-all duration-250 hover:-translate-y-1 hover:shadow-glow hover:border-indigo-500/30 cursor-pointer flex flex-col"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="h-28 w-20 overflow-hidden rounded-2xl bg-input flex-shrink-0">
-                        <CoverImage book={book} src={book.imageUrl || book.coverImage} alt={book.title || 'Book'} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-base font-semibold text-slate-100 line-clamp-2">
-                          {book.title || 'Untitled'}
-                        </h3>
-                        <p className="mt-2 text-sm text-slate-300 line-clamp-1">{book.author || 'Unknown Author'}</p>
-                        {book.genre && (
-                          <span className="mt-3 inline-flex rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300 border border-indigo-500/20">
-                            {book.genre}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Recommendation Reason Label */}
-                    {getRecommendationReason(book) && (
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <p className="text-xs text-indigo-300 font-medium flex items-center gap-1.5">
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
-                          {getRecommendationReason(book)}
-                        </p>
-                      </div>
-                    )}
-                    <div className="mt-5 flex-1">
-                      <p className="text-sm text-slate-500 leading-relaxed line-clamp-3">
-                        {book.description || book.summary || 'A great read to help improve your knowledge and skills.'}
+                )}
+                {s.dueWeek.length > 0 ? (
+                  <div>
+                    <p className="font-display text-3xl font-bold text-slate-50">{s.dueWeek.length}</p>
+                    <p className="text-sm text-slate-300">{s.dueWeek.length === 1 ? 'book is' : 'books are'} due in the next 7 days</p>
+                    {nextDue && (
+                      <p className="mt-2 text-xs text-slate-400">
+                        Next: <span className="font-semibold text-slate-200">{bookOf(nextDue).title || 'A book'}</span> · {formatDate(nextDue.dueDate)}
+                        {' '}({num(nextDue.daysRemaining) === 0 ? 'today' : `in ${plural(num(nextDue.daysRemaining), 'day')}`})
                       </p>
-                    </div>
-                    <div className="mt-5 flex items-center gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRequestBook(book._id);
-                        }}
-                        disabled={requestingBookId === book._id || availableCopies <= 0}
-                        className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {requestingBookId === book._id
-                          ? 'Requesting...'
-                          : availableCopies > 0
-                          ? 'Request Book'
-                          : 'Unavailable'}
-                      </button>
-                    </div>
+                    )}
                   </div>
-                );
-              })}
+                ) : s.overdue.length === 0 && readyReservations.length === 0 ? (
+                  <div className="flex items-center gap-3">
+                    <span className="text-emerald-300">{DASH_ICONS.check}</span>
+                    <p className="text-sm text-slate-200">All clear — nothing due this week.</p>
+                  </div>
+                ) : null}
+                {s.pendingRequests > 0 && (
+                  <p className="text-xs text-slate-400">{plural(s.pendingRequests, 'request')} waiting for a librarian.</p>
+                )}
+              </div>
+            )}
+          </SectionCard>
+        </div>
+
+        {/* KPI row */}
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-busy={loading || undefined}>
+          <KpiLink to="/student/my-books?tab=issued" label="Borrowed" value={s.issued} hint={s.pendingRequests ? `${s.pendingRequests} awaiting approval` : 'books with you'} icon={DASH_ICONS.book} tone="indigo" loading={loading} />
+          <KpiLink to="/student/my-books?tab=issued" label="Due soon" value={s.dueSoon} hint={`within ${DUE_SOON_DAYS} days`} icon={DASH_ICONS.clock} tone="amber" alert={s.overdue.length > 0} loading={loading} />
+          <KpiLink to="/student/fines" label="Fine pending" value={formatRupees(s.pending)} hint={s.accruing ? `${formatRupees(s.accruing)} still growing` : 'unpaid fines'} icon={DASH_ICONS.card} tone="rose" loading={loading} />
+          <KpiLink to="/student/wishlist" label="Wishlist" value={wishlistCount ?? 0} hint="saved books" icon={DASH_ICONS.heart} tone="violet" loading={loading && wishlistCount === null} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+          {/* Discover */}
+          <SectionCard id="discover" className="xl:col-span-8" title="Discover" action={<SectionLink to="/student/books">All books</SectionLink>}>
+            <DashTabs tabs={DISCOVER_TABS} active={discoverTab} onChange={setDiscoverTab} label="Discover" idPrefix="discover" />
+            <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Filter by genre">
+              {genrePills.map((g) => (
+                <button
+                  key={g || 'all'}
+                  type="button"
+                  aria-pressed={genre === g}
+                  onClick={() => setGenre(g)}
+                  className={`min-h-[32px] flex-shrink-0 rounded-full border px-3 text-xs font-semibold transition-colors ${
+                    genre === g ? 'border-indigo-400/40 bg-indigo-500/15 text-white' : 'border-border text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                  }`}
+                >
+                  {g || 'All genres'}
+                </button>
+              ))}
             </div>
-          )}
+            <div id="discover-panel" role="tabpanel" aria-labelledby={`discover-tab-${discoverTab}`} className="mt-3">
+              {current.loading ? (
+                <BookRowSkeleton />
+              ) : current.error ? (
+                <CompactEmpty icon={DASH_ICONS.alert} tone="rose" title="Couldn't load books" message={current.error} role="alert" />
+              ) : current.books.length === 0 ? (
+                <CompactEmpty
+                  icon={discoverTab === 'popular' ? DASH_ICONS.chart : DASH_ICONS.search}
+                  tone="slate"
+                  title={genre ? `Nothing here for ${genre}` : 'Nothing to show yet'}
+                  message={discoverTab === 'picked'
+                    ? 'Add favourite genres in Settings to get picks.'
+                    : discoverTab === 'popular' ? 'Popular books appear once books are borrowed.' : 'Try another genre.'}
+                />
+              ) : (
+                <div className="dash-book-row">
+                  {current.books.map((book) => {
+                    const action = actionFor(book);
+                    return (
+                      <BookCard
+                        key={book._id}
+                        book={book}
+                        onCardClick={() => navigate(`/student/books/${book._id}`)}
+                        onActionClick={() => action.onClick?.()}
+                        isLoading={requestingBookId === book._id}
+                        actionLabel={action.label}
+                        actionDisabled={action.disabled || !action.onClick}
+                        actionVariant={action.variant}
+                        note={action.note}
+                        noteTone={action.noteTone}
+                        secondaryAction={action.secondary}
+                        reason={discoverTab === 'picked' ? book.recommendationReason : undefined}
+                        aiPick={discoverTab === 'picked' && book.recommendationSource === 'ai'}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </SectionCard>
+
+          {/* My loans + Up next: the column ends level with Discover */}
+          <div className="flex min-w-0 flex-col gap-5 xl:col-span-4">
+          <SectionCard id="my-loans" title="My loans" subtitle="Latest 5" action={<SectionLink to="/student/my-books">View all</SectionLink>}>
+            {loading ? (
+              <Skeleton lines={4} className="h-14 w-full" />
+            ) : s.loans.length === 0 ? (
+              <CompactEmpty icon={DASH_ICONS.book} tone="indigo" title="No loans yet" message="Request a book and it shows up here." />
+            ) : (
+              <ul className="divide-y divide-border">
+                {s.loans.map((t) => {
+                  const book = bookOf(t);
+                  return (
+                    <li key={t._id}>
+                      <Link to={book._id ? `/student/books/${book._id}` : '/student/my-books'} className="flex items-center gap-3 rounded-xl py-2.5 transition-colors hover:bg-white/[0.03]">
+                        <span className="h-14 w-10 flex-shrink-0 overflow-hidden rounded-lg border border-white/10 bg-input">
+                          <CoverImage book={book} src={book.imageUrl || book.coverImage} alt="" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-slate-100">{book.title || 'Unknown title'}</span>
+                          <span className="block truncate text-[11px] text-slate-400">
+                            {t.status === 'returned' ? `Returned ${formatDate(t.returnDate)}` : `Due ${formatDate(t.dueDate)}`}
+                          </span>
+                        </span>
+                        <span className="flex-shrink-0"><LoanBadge t={t} /></span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </SectionCard>
+
+          <SectionCard id="up-next" className="flex-1" title="Up next" subtitle="Due dates, nearest first" action={<SectionLink to="/student/my-books?tab=issued">My books</SectionLink>}>
+            {loading ? (
+              <Skeleton lines={3} className="h-9 w-full" />
+            ) : txError ? (
+              <CompactEmpty icon={DASH_ICONS.alert} tone="rose" title="Couldn't load your due dates" message={txError} role="alert" />
+            ) : !s.hasLoans ? (
+              <EmptyState
+                bare
+                icon={<span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-indigo-400/25 bg-indigo-500/10 text-indigo-300">{DASH_ICONS.library}</span>}
+                title="Your shelf is empty"
+                message="Borrow a book and its due date shows up here."
+                action={<Link to="/student/books" className="btn-primary min-h-[40px] px-4 text-sm">Browse books</Link>}
+              />
+            ) : s.upNext.length === 0 ? (
+              <CompactEmpty title="Nothing due right now" message="You have no books out. Due dates appear here when you borrow." />
+            ) : (
+              <UpNext loans={s.upNext} />
+            )}
+          </SectionCard>
+          </div>
+
+          {/* Fines */}
+          <SectionCard id="fine-summary" className="xl:col-span-6" bodyClassName="fines-wrap" title="Fines" subtitle="₹5 per day late" action={<SectionLink to="/student/fines">Details</SectionLink>}>
+            {loading ? (
+              <div className="fines-stats">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
+            ) : (
+              <div className="fines-stats">
+                <AmountStat label="Total charged" value={formatRupees(s.paid + s.pending + s.waived)} hint={s.waived ? `incl. ${formatRupees(s.waived)} waived` : 'paid + pending'} />
+                <AmountStat label="Paid" value={formatRupees(s.paid)} tone="text-emerald-300" hint="verified by the library" />
+                <AmountStat
+                  label="Pending"
+                  value={formatRupees(s.pending)}
+                  tone={s.pending > 0 ? 'text-rose-300' : 'text-slate-50'}
+                  hint={s.verifying ? `${formatRupees(s.verifying)} being verified` : s.accruing ? `${formatRupees(s.accruing)} still growing` : s.pending > 0 ? 'unpaid fines' : 'nothing owed'}
+                />
+              </div>
+            )}
+          </SectionCard>
+
+          {/* Reading stats (compact; full version on the profile) */}
+          <SectionCard id="reading-summary" className="xl:col-span-6" title="Your reading" subtitle="Books you have returned" action={<SectionLink to="/student/profile?tab=reading">Reading stats</SectionLink>}>
+            <ReadingStatsCompact stats={reading.stats} loading={reading.loading} error={reading.error} />
+          </SectionCard>
+
+          {/* Quick actions */}
+          <SectionCard id="student-quick-actions" className="xl:col-span-12" title="Quick actions">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <QuickTile icon={DASH_ICONS.search} label="Browse books" hint="Search the catalogue" to="/student/books" tone="indigo" />
+              <QuickTile icon={DASH_ICONS.book} label="My books" hint="Loans, renewals, returns" to="/student/my-books" tone="cyan" />
+              <QuickTile
+                icon={DASH_ICONS.card}
+                label="Pay fine"
+                tone="rose"
+                to={s.payable ? `/student/pay-fine/${s.payable._id}` : undefined}
+                disabled={!s.payable}
+                hint={s.payable
+                  ? `${formatRupees(payableOf(s.payable))} for ${bookOf(s.payable).title || 'a returned book'}`
+                  : s.accruing ? 'Request a return first, then pay' : 'Nothing to pay right now'}
+              />
+              <QuickTile icon={DASH_ICONS.card} label="Library card" hint="Show the QR at the desk" to="/student/profile?tab=card" tone="emerald" />
+              <QuickTile icon={DASH_ICONS.bell} label="Notifications" hint="Requests, reminders, fines" to="/student/notifications" tone="amber" />
+            </div>
+          </SectionCard>
         </div>
       </div>
     </MainLayout>

@@ -1,19 +1,30 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { LogoMark } from './LogoMark';
 
-export const Sidebar = () => {
+const SCAN_ICON = (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z" />
+  </svg>
+);
+
+export const Sidebar = ({ onNavigate }) => {
   const { user, isAdmin, isLibrarian, logout } = useAuth();
   const navigate = useNavigate();
+  // Not in the menu: Notifications (the header bell shows the unread count and opens the panel)
+  // and Requests (the staff dashboard hero shows what is waiting and links to it)
 
   const handleLogoClick = () => {
     if (user?.role === 'student') {
       navigate('/student/dashboard');
     } else if (user?.role === 'librarian') {
       navigate('/librarian');
-    } else if (user?.role === 'admin' || user?.role === 'superadmin') {
+    } else if (user?.role === 'admin') {
       navigate('/admin');
     }
+    onNavigate?.();
   };
 
   const studentItems = [
@@ -103,20 +114,16 @@ export const Sidebar = () => {
       ),
     },
     {
+      label: 'Scan desk',
+      to: '/librarian/scan',
+      icon: SCAN_ICON,
+    },
+    {
       label: 'Users',
       to: '/librarian/users',
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Pending Requests',
-      to: '/librarian/pending',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M16 17l-4 4m0 0l-4-4m4 4V3" />
         </svg>
       ),
     },
@@ -179,6 +186,11 @@ export const Sidebar = () => {
       ),
     },
     {
+      label: 'Scan desk',
+      to: '/admin/scan',
+      icon: SCAN_ICON,
+    },
+    {
       label: 'Users',
       to: '/admin/users',
       icon: (
@@ -206,6 +218,15 @@ export const Sidebar = () => {
       ),
     },
     {
+      label: 'Audit log',
+      to: '/admin/audit',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+        </svg>
+      ),
+    },
+    {
       label: 'Settings',
       to: '/admin/profile',
       icon: (
@@ -220,36 +241,48 @@ export const Sidebar = () => {
   const navItems = isAdmin ? adminItems : isLibrarian ? librarianItems : studentItems;
 
   return (
-    <aside className="w-64 h-screen bg-sidebar border-r px-5 py-7 flex flex-col justify-between flex-shrink-0 text-slate-100" style={{ borderColor: 'var(--border)' }}>
-      <div>
-        <div className="mb-8 px-2">
-          <button onClick={handleLogoClick} className="text-left cursor-pointer">
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-100">
-              Lib<span className="brand-verse">Verse</span>
-            </h1>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">
-              {user?.role === 'librarian' ? 'Librarian Portal' : isAdmin ? 'Admin Portal' : 'Student Portal'}
-            </p>
+    <aside className="app-sidebar flex h-full w-64 flex-shrink-0 flex-col justify-between border-r border-border bg-sidebar px-4 py-6 text-slate-100">
+      <div className="min-h-0 overflow-y-auto">
+        <div className="sidebar-brand mb-8 px-3">
+          <button onClick={handleLogoClick} className="flex cursor-pointer items-center gap-3 rounded-lg text-left">
+            <LogoMark size="md" />
+            <span>
+              <span className="block font-display text-2xl font-bold leading-tight tracking-tight text-slate-100">
+                Lib<span className="brand-verse">Verse</span>
+              </span>
+              <span className="mt-0.5 block text-xs font-medium text-slate-400">
+                {user?.role === 'librarian' ? 'Librarian Portal' : isAdmin ? 'Admin Portal' : 'Student Portal'}
+              </span>
+            </span>
           </button>
         </div>
 
-        <nav className="space-y-1.5">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? 'bg-card text-slate-100 font-semibold border-l-4 border-indigo-500 pl-3'
-                    : 'text-slate-300 hover:bg-card hover:text-white rounded-lg'
-                }`
-              }
-            >
-              <span className="flex-shrink-0">{item.icon}</span>
-              {item.label}
-            </NavLink>
-          ))}
+        <nav className="space-y-1" aria-label="Main">
+          {navItems.map((item) => {
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => onNavigate?.()}
+                // Portal roots (/admin, /librarian) match only exactly, otherwise "Dashboard" stays highlighted on every sub-page
+                end={item.to === '/admin' || item.to === '/librarian'}
+                className={({ isActive }) =>
+                  `nav-pill flex min-h-[44px] items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'bg-indigo-500/15 font-semibold text-white shadow-[0_0_0_1px_rgba(99,102,241,0.28),0_8px_24px_rgba(99,102,241,0.18)]'
+                      : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <span className={`grid h-5 w-5 flex-shrink-0 place-items-center ${isActive ? 'text-indigo-300' : 'text-slate-400'}`}>{item.icon}</span>
+                    <span className="flex-1 truncate">{item.label}</span>
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
       </div>
 
@@ -257,10 +290,11 @@ export const Sidebar = () => {
         onClick={() => {
           logout();
           navigate('/login');
+          onNavigate?.();
         }}
-        className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-rose-400 hover:bg-rose-500/10 transition-colors w-full cursor-pointer"
+        className="mt-4 flex min-h-[44px] w-full cursor-pointer items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-rose-300 transition-colors hover:bg-rose-500/10"
       >
-        <svg className="w-5 h-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+        <svg className="h-5 w-5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4-4-4M21 12H9M13 8v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2h6a2 2 0 002-2v-2" />
         </svg>
         Logout

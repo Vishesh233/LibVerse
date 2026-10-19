@@ -37,6 +37,7 @@ const bookSchema = new mongoose.Schema(
       ],
     },
     description: String,
+    // Digits only (utils/isbn.js normaliseIsbn)
     isbn: {
       type: String,
       unique: true,
@@ -46,7 +47,7 @@ const bookSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    publishedYear: Number,
+    // Year of the edition held (the only year field; older documents also had publishedYear)
     publicationYear: Number,
     imageUrl: String,
     pages: Number,
@@ -71,7 +72,22 @@ const bookSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    qrCode: String, // QR code URL or data
+    // Copies set aside for a ready reservation (utils/bookStock.js).
+    // Invariant: availableCopies + issuedCopies + heldCopies === totalCopies
+    heldCopies: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    // Set when the last free copy goes; cleared when a copy is free again, which sends the
+    // one "back in stock" notification to students who wishlisted the book
+    restockAlertPending: {
+      type: Boolean,
+      default: false,
+    },
+    // Legacy: a PNG data URL stored by older versions (kept readable, no longer written).
+    // The desk QR is "LV1:B:<bookId>", generated on the fly by the frontend.
+    qrCode: String,
     coverImage: String,
     location: String, // shelf location in library
     isActive: {

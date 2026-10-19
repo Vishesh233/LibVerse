@@ -1,12 +1,9 @@
 const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 const sharp = require('sharp');
+const { saveFile, fileUrl } = require('../services/fileStore');
 
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+const CONTENT_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
 
 // Allowed image MIME types
 const ALLOWED_MIME = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -62,13 +59,14 @@ exports.uploadBookCover = (req, res, next) => {
         if (!['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) ext = '.jpg';
       }
 
-      // Generate unique filename
+      // Stored in GridFS; the book form saves this host-independent path as coverImage
       const filename = `book-cover-${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
-      const filePath = path.join(uploadDir, filename);
-      fs.writeFileSync(filePath, finalBuffer);
-
-      // Build full URL so frontend can display it correctly
-      const coverUrl = `${req.protocol}://${req.get('host')}/uploads/${filename}`;
+      const id = await saveFile(finalBuffer, {
+        filename,
+        contentType: CONTENT_TYPES[ext] || 'image/jpeg',
+        metadata: { kind: 'cover', uploadedBy: req.user._id },
+      });
+      const coverUrl = fileUrl(id);
 
       return res.status(200).json({
         success: true,

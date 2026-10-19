@@ -50,7 +50,8 @@ exports.addToWishlist = async (req, res, next) => {
           'student',
           'WISHLIST_AVAILABLE',
           'Added to Wishlist',
-          `"${book.title}" has been added to your wishlist. We'll notify you when it becomes available.`
+          `"${book.title}" has been added to your wishlist.`,
+          { link: '/student/wishlist', meta: { bookId: book._id } }
         );
       } catch (notifError) {
         console.error('Notification creation failed (non-fatal):', notifError.message);
@@ -94,7 +95,8 @@ exports.removeFromWishlist = async (req, res, next) => {
         'student',
         'WISHLIST_AVAILABLE',
         'Removed from Wishlist',
-        `"${removedBook?.title || 'Book'}" has been removed from your wishlist.`
+        `"${removedBook?.title || 'Book'}" has been removed from your wishlist.`,
+        { link: '/student/wishlist' }
       );
     } catch (notifError) {
       console.error('Notification creation failed (non-fatal):', notifError.message);

@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 const roleMap = {
   student: ['student'],
   librarian: ['librarian'],
-  admin: ['admin', 'superadmin'],
+  admin: ['admin'],
 };
 
 const roleRedirectPath = {
@@ -15,8 +15,9 @@ const roleRedirectPath = {
 };
 
 export const ProtectedRoute = ({ children, requiredRole = null, requireOnboarding = true }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isRefreshingUser, logout } = useAuth();
   const navigate = useNavigate();
+  const knownRole = Object.keys(roleMap).includes(user?.role);
 
   const isRoleAllowed = React.useMemo(() => {
     if (!requiredRole) return true;
@@ -30,7 +31,13 @@ export const ProtectedRoute = ({ children, requiredRole = null, requireOnboardin
   }, [requireOnboarding, user]);
 
   React.useEffect(() => {
+    // Wait for the on-load /auth/me refresh before judging the (possibly stale) stored role
+    if (isRefreshingUser) return;
     if (!isAuthenticated) {
+      navigate('/login');
+    } else if (!knownRole) {
+      // Role the app doesn't know (e.g. a removed role): redirecting by role would loop, so sign out
+      logout();
       navigate('/login');
     } else if (!isRoleAllowed) {
       const redirect = user?.role === 'student'
@@ -42,9 +49,15 @@ export const ProtectedRoute = ({ children, requiredRole = null, requireOnboardin
     } else if (needsOnboarding) {
       navigate('/student/onboarding');
     }
-  }, [isAuthenticated, isRoleAllowed, needsOnboarding, navigate, user]);
+  }, [isRefreshingUser, isAuthenticated, knownRole, isRoleAllowed, needsOnboarding, navigate, user, logout]);
 
+  if (isAuthenticated && isRefreshingUser) {
+    return (
+      <div className="min-h-screen grid place-items-center text-sm text-slate-400">Loading your account...</div>
+    );
+  }
   if (!isAuthenticated) return null;
+  if (!knownRole) return null;
   if (!isRoleAllowed) return null;
   if (needsOnboarding) return null;
 

@@ -1,3 +1,5 @@
+import { assetUrl } from './assetUrl';
+
 /**
  * Default book cover placeholder (inline SVG to avoid broken image icons)
  */
@@ -12,6 +14,20 @@ export const DEFAULT_BOOK_COVER =
   <text x="200" y="430" font-family="Arial, sans-serif" font-size="22" fill="#475569" text-anchor="middle">Available</text>
 </svg>
 `);
+
+// covers.openlibrary.org/b/{isbn|id|olid}/<key>-S|M|L.jpg
+const OPEN_LIBRARY_COVER = /^(https?:\/\/covers\.openlibrary\.org\/b\/(?:isbn|id|olid)\/[^/?#]+?)-[SML](\.jpg)((?:[?#].*)?)$/i;
+
+/**
+ * Point an Open Library cover URL at the requested size: 'M' (~180px wide) for cards,
+ * 'L' (full size) for the book details page. Any other URL is returned unchanged.
+ * @param {string} url
+ * @param {'S'|'M'|'L'} size
+ */
+export const withCoverSize = (url, size = 'M') => {
+  if (typeof url !== 'string' || !/^[SML]$/.test(size)) return url;
+  return url.replace(OPEN_LIBRARY_COVER, `$1-${size}$2$3`);
+};
 
 /**
  * Get candidate cover URL list in priority order:
@@ -32,10 +48,10 @@ export const getBookCoverCandidates = (book) => {
   const candidates = [];
 
   // 1. imageUrl (reliable persisted cover source)
-  if (book.imageUrl) candidates.push(book.imageUrl);
+  if (book.imageUrl) candidates.push(assetUrl(book.imageUrl));
 
-  // 2. Uploaded cover image (legacy / alternate field)
-  if (book.coverImage) candidates.push(book.coverImage);
+  // 2. Uploaded cover image (stored as /api/files/<id>, served by the API)
+  if (book.coverImage) candidates.push(assetUrl(book.coverImage));
 
   // 3. OpenLibrary ISBN cover
   if (book.isbn) {
