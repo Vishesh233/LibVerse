@@ -1,13 +1,15 @@
 /**
  * "Forgot password" by email code. Available only when outgoing email is configured
- * (services/mailer.js). The request answer is the same whether or not the email has an account,
- * the code is stored only as an HMAC, lasts 10 minutes and allows 5 guesses, and setting the new
- * password signs out every existing session (tokenVersion).
+ * (services/mailer.js: Brevo API or SMTP; templates in services/emailTemplates.js). The request
+ * answer is the same whether or not the email has an account, the code is stored only as an HMAC,
+ * lasts 10 minutes and allows 5 guesses, and setting the new password signs out every existing
+ * session (tokenVersion).
  */
 const crypto = require('crypto');
 const User = require('../models/User');
 const PasswordResetCode = require('../models/PasswordResetCode');
 const { isEmailEnabled, sendMail } = require('../services/mailer');
+const { passwordResetEmail, googleOnlyEmail } = require('../services/emailTemplates');
 const { createNotification } = require('./notificationController');
 const { isDemoMode } = require('../config/demo');
 
@@ -22,42 +24,6 @@ const hashCode = (userId, code) => crypto.createHmac('sha256', process.env.JWT_S
 const sameHash = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 const cleanEmail = (value) => (typeof value === 'string' ? value.trim().toLowerCase() : '');
 const looksLikeEmail = (email) => email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-const codeEmail = (name, code) => ({
-  subject: `${code} is your LibVerse password reset code`,
-  text: [
-    `Hi ${name},`,
-    '',
-    `Your LibVerse password reset code is ${code}.`,
-    'It expires in 10 minutes. Enter it on the "Forgot password" page to choose a new password.',
-    '',
-    'If you did not ask for this, ignore this email: your password stays the same.',
-  ].join('\n'),
-  html: `<p>Hi ${String(name).replace(/[<>&"]/g, '')},</p>
-<p>Your LibVerse password reset code is</p>
-<p style="font-size:28px;font-weight:700;letter-spacing:6px;font-family:monospace">${code}</p>
-<p>It expires in 10 minutes. Enter it on the "Forgot password" page to choose a new password.</p>
-<p style="color:#666">If you did not ask for this, ignore this email: your password stays the same.</p>`,
-});
-
-// An account created with Google has no password to reset: tell the owner how to get in instead
-const googleOnlyEmail = (name) => ({
-  subject: 'Signing in to LibVerse',
-  text: [
-    `Hi ${name},`,
-    '',
-    'Someone asked to reset the password of your LibVerse account. Your account uses Google sign-in and',
-    'has no password yet, so there is nothing to reset.',
-    '',
-    'Sign in with the "Sign in with Google" button. If you also want a password, set one in Settings > Security.',
-    '',
-    'If you did not ask for this, ignore this email.',
-  ].join('\n'),
-  html: `<p>Hi ${String(name).replace(/[<>&"]/g, '')},</p>
-<p>Someone asked to reset the password of your LibVerse account. Your account uses Google sign-in and has no password yet, so there is nothing to reset.</p>
-<p>Sign in with the <strong>Sign in with Google</strong> button. If you also want a password, set one in <em>Settings &gt; Security</em>.</p>
-<p style="color:#666">If you did not ask for this, ignore this email.</p>`,
-});
 
 /**
  * @route GET /api/auth/password-reset
@@ -96,7 +62,7 @@ exports.requestReset = async (req, res) => {
           { upsert: true, setDefaultsOnInsert: true }
         );
         // Not awaited: the answer must not take longer when the account exists
-        sendMail({ to: email, ...codeEmail(user.name, code) });
+        sendMail({ to: email, ...passwordResetEmail(user.name, code) });
       }
     }
     res.status(200).json({ success: true, message: SENT_MESSAGE });

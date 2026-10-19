@@ -40,6 +40,7 @@ const createAdmin = async ({ name, email, password }) => {
     role: 'admin',
     libraryId: await nextLibraryId(),
     isOnboardingCompleted: true,
+    emailVerified: true,
   });
   return { _id: user._id, name: user.name, libraryId: user.libraryId };
 };

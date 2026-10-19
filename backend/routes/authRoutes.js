@@ -6,6 +6,9 @@ const { getGoogleStatus, googleSignIn, linkGoogle, unlinkGoogle } = require('../
 const { getMyStats, getMyActivity, getMyReadingStats } = require('../controllers/accountController');
 const { getMyCard } = require('../controllers/deskController');
 const { getResetStatus, requestReset, resetPassword } = require('../controllers/passwordResetController');
+const {
+  getEmailStatus, verifyEmail, resendVerification, requestLoginCode, loginWithCode,
+} = require('../controllers/emailCodeController');
 const { protect, isStudent, blockDemo, notInDemoMode } = require('../middleware/authMiddleware');
 const { rateLimiters } = require('../config/security');
 
@@ -15,10 +18,18 @@ const limit = rateLimiters();
 // Public routes (the demo instance has no signup, password login or password reset)
 router.post('/signup', notInDemoMode, limit.signup, signup);
 router.post('/login', notInDemoMode, limit.login, login);
-// Forgot password by emailed code (only when SMTP is configured)
+// Emailed codes (only when email is configured: Brevo API or SMTP; off on the demo instance)
+router.get('/email', getEmailStatus);
+// Forgot password by emailed code
 router.get('/password-reset', getResetStatus);
 router.post('/forgot-password', notInDemoMode, limit.forgotPassword, requestReset);
 router.post('/reset-password', notInDemoMode, limit.resetPassword, resetPassword);
+// Sign-up email verification
+router.post('/verify-email', notInDemoMode, limit.verifyEmail, verifyEmail);
+router.post('/resend-verification', notInDemoMode, limit.resendVerification, resendVerification);
+// Passwordless sign-in: "Email me a code"
+router.post('/login-code', notInDemoMode, limit.loginCodeRequest, requestLoginCode);
+router.post('/login-code/verify', notInDemoMode, limit.loginCodeVerify, loginWithCode);
 // Live demo: one-click sign-in (404 unless DEMO_MODE=true)
 router.get('/demo', getDemoStatus);
 router.post('/demo-login', limit.demoLogin, demoLogin);

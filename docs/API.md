@@ -100,6 +100,10 @@ usual error shape.
 | passwordChange | `PUT /api/auth/change-password` | 15 min | 5 | `RATE_LIMIT_PASSWORD_CHANGE` | Counted before authentication |
 | forgotPassword | `POST /api/auth/forgot-password` | 15 min | 5 | `RATE_LIMIT_FORGOT_PASSWORD` | |
 | resetPassword | `POST /api/auth/reset-password` | 15 min | 10 | `RATE_LIMIT_RESET_PASSWORD` | Each code also allows only 5 guesses |
+| verifyEmail | `POST /api/auth/verify-email` | 15 min | 10 | `RATE_LIMIT_VERIFY_EMAIL` | Each code also allows only 5 guesses |
+| resendVerification | `POST /api/auth/resend-verification` | 15 min | 5 | `RATE_LIMIT_RESEND_VERIFICATION` | |
+| loginCodeRequest | `POST /api/auth/login-code` | 15 min | 5 | `RATE_LIMIT_LOGIN_CODE_REQUEST` | |
+| loginCodeVerify | `POST /api/auth/login-code/verify` | 15 min | 10 | `RATE_LIMIT_LOGIN_CODE_VERIFY` | Only failed attempts count; each code allows 5 guesses |
 | googleSignIn | `POST /api/auth/google` | 15 min | 20 | `RATE_LIMIT_GOOGLE_SIGNIN` | Only failed attempts count |
 | googleLink | `POST` / `DELETE /api/auth/google/link` | 15 min | 10 | `RATE_LIMIT_GOOGLE_LINK` | |
 | demoLogin | `POST /api/auth/demo-login` | 15 min | 30 | `RATE_LIMIT_DEMO_LOGIN` | Every click counts |
@@ -158,12 +162,17 @@ own account, and the last active admin can never be demoted or deactivated.
 ## Auth: /api/auth
 
 Route file: `backend/routes/authRoutes.js`. Controllers: `authController.js`,
-`accountController.js`, `deskController.js` (card), `passwordResetController.js`.
+`accountController.js`, `deskController.js` (card), `passwordResetController.js`, `emailCodeController.js`.
 
 | Method and path | Access | Body / query | Returns |
 |---|---|---|---|
-| `POST /api/auth/signup` | Public (rate limited) | `name`, `email`, `password` (required); `phone`, `address` | `201 { token, user }` |
-| `POST /api/auth/login` | Public (rate limited) | `email`, `password` | `200 { token, user }` |
+| `POST /api/auth/signup` | Public (rate limited) | `name`, `email`, `password` (required); `phone`, `address` | `201 { token, user }`; with email configured `201 { verificationRequired: true, email, message }` and no token (a code is emailed) |
+| `POST /api/auth/login` | Public (rate limited) | `email`, `password` | `200 { token, user }`; `403 { code: "EMAIL_NOT_VERIFIED", message: "Please verify your email", email }` for a right password on an unverified account (a fresh code is emailed, at most one a minute) |
+| `GET /api/auth/email` | Public | | `{ enabled }`: emailed codes are available (Brevo or SMTP configured, not `DEMO_MODE`) |
+| `POST /api/auth/verify-email` | Public (rate limited) | `email`, `code` (6 digits) | `200 { token, user }`: email verified and signed in; `400` wrong/expired code |
+| `POST /api/auth/resend-verification` | Public (rate limited) | `email` | `{ message }`, same answer for every email |
+| `POST /api/auth/login-code` | Public (rate limited) | `email` | `{ message }`, same answer for every email; a code goes only to an active, non-demo account |
+| `POST /api/auth/login-code/verify` | Public (rate limited) | `email`, `code` (6 digits) | `200 { token, user }`; `400` wrong/expired/used code (same message for unknown emails); `403` deactivated account |
 | `GET /api/auth/password-reset` | Public | | `{ enabled }`: whether "forgot password" by email is available |
 | `POST /api/auth/forgot-password` | Public (rate limited) | `email` | `{ message }`, same answer whether or not the account exists |
 | `POST /api/auth/reset-password` | Public (rate limited) | `email`, `code` (6 digits), `newPassword` (6-128 chars) | `{ message }` |
@@ -189,7 +198,7 @@ Notes:
 - `user` in signup, login and profile responses is the public user object: `_id`, `name`, `email`,
   `role`, `libraryId`, `phone`, `address`, `fineAmount`, `profileImage`, `isOnboardingCompleted`,
   `favoriteGenres`, `createdAt`, `isDemo`, `hasPassword`, `googleLinked`, `createdWith` (`email` or
-  `google`). The Google account id (`googleId`) is never sent.
+  `google`), `emailVerified`. The Google account id (`googleId`) is never sent.
 - Signup always creates a `student`; any `role` in the body is ignored. Emails are trimmed and
   lower-cased. New users get the next sequential Library ID (`LIB-1001`, `LIB-1002`, ...) from an
   atomic counter (`backend/utils/libraryId.js`).
@@ -215,9 +224,9 @@ Notes:
 
 - `isDemo` is set only by `backend/scripts/seedDemo.js --live` and `resetDemo.js`, never through the
   API (signup, `POST/PUT /api/admin/users` and `update-profile` ignore it).
-- With `DEMO_MODE=true` (`backend/config/demo.js`): `POST /login`, `/signup`, `/forgot-password` and
-  `/reset-password` answer `403 { code: "DEMO_MODE", message: "Disabled in demo mode" }` for
-  everyone, and `GET /password-reset` reports `enabled: false`.
+- With `DEMO_MODE=true` (`backend/config/demo.js`): `POST /login`, `/signup`, `/forgot-password`,
+  `/reset-password`, `/verify-email`, `/resend-verification`, `/login-code` and `/login-code/verify` answer `403 { code: "DEMO_MODE", message: "Disabled in demo mode" }` for
+  everyone, and `GET /password-reset` and `GET /email` report `enabled: false`.
 - A demo account never signs in with a password (401 like a wrong password) and never gets a reset
   code. Its token lasts `DEMO_JWT_EXPIRE` (default `2h`).
 - `blockDemo` (after `protect`) answers the same 403 to demo accounts on: `PUT /auth/change-password`,
@@ -230,12 +239,30 @@ Notes:
 - A payment submitted by a demo account stores a generated demo receipt (`backend/utils/demoReceipt.js`),
   never the uploaded image.
 
+### Sign-up verification and email sign-in codes
+
+Rules from `backend/controllers/emailCodeController.js` and `backend/services/emailCodes.js`:
+
+- Available only when email is configured (see below) and not on the demo instance; otherwise the
+  four endpoints answer `503 { enabled: false, message }` (`403` in demo mode) and sign-up signs in
+  at once as before.
+- New email/password sign-ups start with `emailVerified: false`; Google sign-ups, accounts made by
+  an admin (`POST /admin/users`, `/admin/create-admin`, `scripts/createAdmin.js`) and older accounts
+  are verified (`scripts/markEmailsVerified.js --apply` marks existing accounts).
+- Codes are 6 random digits, valid for **10 minutes**, stored only as an HMAC-SHA256 (keyed with
+  `JWT_SECRET`) in `EmailCode` (one per account and purpose, TTL index), at most one new code per
+  account and purpose per **60 seconds**, **5 guesses** counted atomically, single use.
+- A sign-in code is void when the account's `tokenVersion` changed since it was sent (password
+  change or reset). A right code on a deactivated account answers `403`. Signing in with a code
+  also marks the email verified.
+
 ### Forgot password by emailed code
 
 Rules from `backend/controllers/passwordResetController.js`:
 
-- Available only when outgoing email is configured: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
-  `SMTP_PASS` and `MAIL_FROM` all set (`backend/services/mailer.js`). Otherwise
+- Available only when outgoing email is configured (`backend/services/mailer.js`): `BREVO_API_KEY`
+  and `MAIL_FROM` (Brevo HTTPS API, tried first), or `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
+  `SMTP_PASS` and `MAIL_FROM` (SMTP, also the fallback when Brevo fails). Otherwise
   `forgot-password` and `reset-password` answer `503 { enabled: false, message }`.
 - The code is 6 random digits, valid for **10 minutes**, stored only as an HMAC-SHA256 (keyed with
   `JWT_SECRET`) in `PasswordResetCode`; a TTL index removes expired codes.

@@ -62,7 +62,7 @@ describe('when email is set up', () => {
 
     const mail = await nextMail();
     expect(mail.to).toBe(u.email);
-    expect(mail.from).toBe(SMTP.MAIL_FROM);
+    expect(mail.from).toEqual({ name: 'LibVerse', address: 'no-reply@example.com' });
     expect(mail.subject).toMatch(/^\d{6} is your LibVerse password reset code$/);
     const code = codeIn(mail);
     await new Promise((r) => setTimeout(r, 100));

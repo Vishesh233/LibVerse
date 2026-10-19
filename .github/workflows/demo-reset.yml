@@ -1,6 +1,7 @@
 name: Demo reset
 
-# Puts the live demo accounts back to fresh sample data every day at 02:00 IST (20:30 UTC).
+# Puts the live demo accounts back to fresh sample data every 6 hours: 00:30, 06:30, 12:30 and
+# 18:30 UTC (06:00, 12:00, 18:00 and 00:00 IST).
 # Only the demo accounts (isDemo) and what they own are replaced: backend/scripts/resetDemo.js.
 #
 # Needs the repository secret DEMO_MONGODB_URI: the connection string of the demo database
@@ -12,7 +13,7 @@ name: Demo reset
 
 on:
   schedule:
-    - cron: '30 20 * * *'
+    - cron: '30 */6 * * *'
   workflow_dispatch:
 
 permissions:

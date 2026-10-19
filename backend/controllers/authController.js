@@ -8,6 +8,8 @@ const { createNotification, notifyStaff } = require('./notificationController');
 const { nextLibraryId } = require('../utils/libraryId');
 const { toPublicUser, signToken } = require('../utils/session');
 const { isDemoMode, demoDisabledBody } = require('../config/demo');
+const { isEmailEnabled } = require('../services/mailer');
+const { sendVerificationCode } = require('./emailCodeController');
 
 const DEMO_ROLES = ['student', 'librarian', 'admin'];
 
@@ -38,6 +40,9 @@ exports.signup = async (req, res, next) => {
       });
     }
 
+    // With email configured, the address is confirmed with an emailed code before the first sign-in
+    const needsVerification = isEmailEnabled();
+
     // Create user
     const user = await User.create({
       name,
@@ -46,8 +51,19 @@ exports.signup = async (req, res, next) => {
       role: 'student',
       phone,
       address,
+      emailVerified: !needsVerification,
       libraryId: await nextLibraryId(), // short and sequential: LIB-1003, LIB-1004 ...
     });
+
+    if (needsVerification) {
+      await sendVerificationCode(user);
+      return res.status(201).json({
+        success: true,
+        verificationRequired: true,
+        email: user.email,
+        message: 'Account created. Enter the 6-digit code we emailed you to finish.',
+      });
+    }
 
     // Create token
     const token = signToken(user);
@@ -97,6 +113,17 @@ exports.login = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: 'Account is deactivated',
+      });
+    }
+
+    // Not verified yet (and email can be sent): a fresh code (at most one a minute) and the code screen
+    if (user.emailVerified === false && isEmailEnabled()) {
+      await sendVerificationCode(user);
+      return res.status(403).json({
+        success: false,
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Please verify your email',
+        email: user.email,
       });
     }
 

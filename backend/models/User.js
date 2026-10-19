@@ -75,6 +75,12 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Email/password sign-ups confirm their address with an emailed code first (only while email is
+    // configured). Google, admin-created and older accounts are verified.
+    emailVerified: {
+      type: Boolean,
+      default: true,
+    },
     // Google sign-in: the Google account's stable id (`sub`), never the email. Not sent to clients.
     googleId: {
       type: String,

@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Navbar } from '../components/Navbar';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../hooks/useAuth';
+import { FullAppLink } from '../components/demo/FullAppLink';
 
-/** Thin strip above the navbar for the shared live-demo accounts */
+/** Thin strip above the navbar for the shared live-demo accounts, with the way to the full app top-right */
 const DemoBanner = () => (
-  <div role="note" className="flex-shrink-0 border-b border-amber-400/20 bg-amber-400/10 px-4 py-1.5 text-center text-xs font-medium text-amber-100 print:hidden">
-    You&apos;re viewing a demo account. Data resets daily.
+  <div role="note" className="flex flex-shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-b border-amber-400/20 bg-amber-400/10 px-4 py-1.5 text-center text-xs font-medium text-amber-100 sm:justify-between sm:text-left print:hidden">
+    <span>You&apos;re viewing a demo account. Data resets every 6 hours.</span>
+    <FullAppLink className="!py-1" />
   </div>
 );
 

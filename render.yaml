@@ -1,6 +1,7 @@
 # Render Blueprint: two API instances of the same code and one shared recommendation service.
 #   libverse-demo-api  the LIVE DEMO (DEMO_MODE=true, database libverse_demo, one-click demo sign-in)
-#   libverse-api       the FULL APP (production, database libverse, email signup + Sign in with Google)
+#   libverse-api       the FULL APP (production, database libverse, email sign-up with a verification
+#                      code, email sign-in codes, Sign in with Google; email through Brevo or SMTP)
 #   libverse-ai        recommendations for both; each API trains and asks with its own AI_CATALOG
 #                      (demo / production), so the two catalogues never mix
 # The two websites are Vercel projects (frontend/vercel.json). Step-by-step guide: DEPLOYMENT.md
@@ -28,7 +29,7 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
-      # true: one-click demo sign-in only (no password login, signup, password reset or Google)
+      # true: one-click demo sign-in only (no password login, signup, email codes, password reset or Google)
       - key: DEMO_MODE
         sync: false
       - key: DEMO_JWT_EXPIRE
@@ -88,6 +89,15 @@ services:
       # Sign in with Google: the OAuth client ID (no secret needed)
       - key: GOOGLE_CLIENT_ID
         sync: false
+      # Email (verification codes, email sign-in codes, forgot password): Brevo HTTPS API first ...
+      - key: BREVO_API_KEY
+        sync: false
+      # The sender address verified in Brevo, and its display name
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_FROM_NAME
+        sync: false
+      # ... SMTP as the fallback (optional: leave these empty to use Brevo only)
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -95,8 +105,6 @@ services:
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS
-        sync: false
-      - key: MAIL_FROM
         sync: false
 
   - type: web

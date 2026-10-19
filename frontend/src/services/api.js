@@ -23,7 +23,8 @@ apiClient.interceptors.request.use(
 );
 
 // Endpoints whose 401 means "wrong credentials", not "session expired"
-const CREDENTIAL_ENDPOINTS = ['/auth/login', '/auth/signup', '/auth/change-password', '/auth/google', '/auth/set-password'];
+// ('/auth/login' also covers the emailed sign-in code endpoints)
+const CREDENTIAL_ENDPOINTS = ['/auth/login', '/auth/signup', '/auth/verify-email', '/auth/change-password', '/auth/google', '/auth/set-password'];
 
 // Log out on an invalid/expired session or a deactivated account.
 // Other 403s are normal permission denials and must not log the user out.
@@ -60,7 +61,13 @@ export const authAPI = {
   completeOnboarding: (data) => apiClient.put('/auth/complete-onboarding', data),
   updateFavoriteGenres: (data) => apiClient.put('/auth/update-favorite-genres', data),
   changePassword: (data) => apiClient.put('/auth/change-password', data),
-  // Forgot password by emailed code (enabled only when the server has SMTP settings)
+  // Emailed codes (enabled only when the server can send email: Brevo API or SMTP)
+  getEmailStatus: () => apiClient.get('/auth/email'),
+  verifyEmail: (email, code) => apiClient.post('/auth/verify-email', { email, code }),
+  resendVerification: (email) => apiClient.post('/auth/resend-verification', { email }),
+  requestLoginCode: (email) => apiClient.post('/auth/login-code', { email }),
+  loginWithCode: (email, code) => apiClient.post('/auth/login-code/verify', { email, code }),
+  // Forgot password by emailed code
   getPasswordResetStatus: () => apiClient.get('/auth/password-reset'),
   forgotPassword: (email) => apiClient.post('/auth/forgot-password', { email }),
   resetPassword: (data) => apiClient.post('/auth/reset-password', data),
@@ -175,6 +182,11 @@ export const notificationAPI = {
   getNotifications: (params) => apiClient.get('/notifications', { params }),
   markAsRead: (id) => apiClient.put(`/notifications/read/${id}`),
   markAllAsRead: () => apiClient.put('/notifications/read-all'),
+};
+
+// Server health (200 only while the database is connected): the demo's cold-start screen polls it
+export const systemAPI = {
+  health: (timeout) => apiClient.get('/health', { timeout }),
 };
 
 export default apiClient;

@@ -23,13 +23,14 @@ const toPublicUser = (user) => ({
   hasPassword: user.hasPassword !== false,
   googleLinked: Boolean(user.googleLinkedAt),
   createdWith: user.createdWith || 'email',
+  emailVerified: user.emailVerified !== false,
 });
 
 /**
  * Generate JWT Token
  */
 // tv = the user's tokenVersion: a token from before a password change/reset no longer works.
-// Demo sessions are short (DEMO_JWT_EXPIRE, default 2h): the accounts are shared and reset daily.
+// Demo sessions are short (DEMO_JWT_EXPIRE, default 2h): the accounts are shared and reset every 6 hours.
 const signToken = (user) => {
   return jwt.sign({ id: user._id, tv: user.tokenVersion || 0 }, process.env.JWT_SECRET, {
     expiresIn: user.isDemo ? process.env.DEMO_JWT_EXPIRE || '2h' : process.env.JWT_EXPIRE || '30d',

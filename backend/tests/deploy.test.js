@@ -97,8 +97,11 @@ test('render.yaml: demo API, production API and one shared AI service; health ch
   });
   expect(keys('libverse-demo-api')).toContain('DEMO_MODE');
   expect(keys('libverse-demo-api')).not.toEqual(expect.arrayContaining(['GOOGLE_CLIENT_ID']));
-  expect(keys('libverse-demo-api').filter((k) => k.startsWith('SMTP_'))).toEqual([]);
-  expect(keys('libverse-api')).toEqual(expect.arrayContaining(['GOOGLE_CLIENT_ID', 'SMTP_HOST', 'MAIL_FROM', 'JWT_EXPIRE']));
+  // The demo sends no email at all
+  expect(keys('libverse-demo-api').filter((k) => k.startsWith('SMTP_') || k.startsWith('MAIL_') || k.startsWith('BREVO_'))).toEqual([]);
+  expect(keys('libverse-api')).toEqual(expect.arrayContaining([
+    'GOOGLE_CLIENT_ID', 'BREVO_API_KEY', 'MAIL_FROM', 'MAIL_FROM_NAME', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'JWT_EXPIRE',
+  ]));
   expect(keys('libverse-api')).not.toContain('DEMO_MODE');
   expect(byName['libverse-ai']).toContain('healthCheckPath: /health');
   // The only fixed value is the AI service's Python version (not a secret), equal to ai-service/.python-version;
@@ -116,9 +119,9 @@ test('CI tests the AI service on the same Python minor as production', () => {
   expect(ci).toContain(`python-version: '${pythonVersion.split('.').slice(0, 2).join('.')}'`);
 });
 
-test('the daily demo reset workflow: 02:00 IST, a secret for the URI, only resetDemo.js --apply', () => {
+test('the demo reset workflow: every 6 hours, a secret for the URI, only resetDemo.js --apply', () => {
   const wf = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'demo-reset.yml'), 'utf8');
-  expect(wf).toMatch(/cron: '30 20 \* \* \*'/);
+  expect(wf).toMatch(/cron: '30 \*\/6 \* \* \*'/);
   expect(wf).toContain('workflow_dispatch');
   expect(wf).toContain('DEMO_MONGODB_URI: ${{ secrets.DEMO_MONGODB_URI }}');
   expect(wf).toContain('node scripts/resetDemo.js --apply');
