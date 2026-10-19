@@ -97,7 +97,7 @@ export const Profile = () => {
 
   return (
     <MainLayout>
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-7xl">
         <PageHeader title="My profile" subtitle="Your account details, security and activity." className="!mb-6" />
 
         <div className="grid items-start gap-5 lg:grid-cols-12 lg:gap-6">

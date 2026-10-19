@@ -10,11 +10,26 @@ const { armRestockAlert } = require('../utils/bookStock');
 const { escapeRegex, toQueryString, toPagination } = require('../utils/escapeRegex');
 const { audit } = require('../utils/audit');
 
-// ?sort= values for GET /api/books (anything else keeps the default order)
+// ?sort= values for GET /api/books (anything else keeps the default order). Table columns sort by
+// <column> ascending or -<column> descending; _id breaks ties so pages never overlap.
 const BOOK_SORTS = {
   newest: { createdAt: -1, _id: -1 },
   rating: { rating: -1, title: 1 },
 };
+const SORT_COLUMNS = {
+  title: 'title', author: 'author', genre: 'genre', available: 'availableCopies', total: 'totalCopies', added: 'createdAt',
+};
+const sortFrom = (value) => {
+  if (!value) return null;
+  if (BOOK_SORTS[value]) return BOOK_SORTS[value];
+  const desc = value.startsWith('-');
+  const field = SORT_COLUMNS[desc ? value.slice(1) : value];
+  if (!field) return null;
+  const dir = desc ? -1 : 1;
+  return field === 'title' ? { title: dir, _id: dir } : { [field]: dir, title: 1, _id: 1 };
+};
+// "Low stock": a fifth or less of the copies on the shelf (always includes "none left")
+const LOW_STOCK = { $expr: { $lte: [{ $multiply: ['$availableCopies', 5] }, '$totalCopies'] } };
 // Loans that count as a borrow for "popular" (requests and rejections do not)
 const BORROWED_STATUSES = ['issued', 'return_requested', 'payment_pending', 'returned'];
 // "Picked for you": how many, which loans count as read, and which books never to suggest
@@ -36,7 +51,7 @@ exports.getBooks = async (req, res, next) => {
     const rating = toQueryString(req.query.rating);
     const availability = toQueryString(req.query.availability);
     const { page, limit, skip } = toPagination(req.query.page, req.query.limit, 10);
-    const sort = BOOK_SORTS[toQueryString(req.query.sort)];
+    const sort = sortFrom(toQueryString(req.query.sort));
 
     let filter = { isActive: true };
 
@@ -72,10 +87,13 @@ exports.getBooks = async (req, res, next) => {
       filter.availableCopies = { $gt: 0 };
     } else if (availability === 'unavailable') {
       filter.availableCopies = { $lte: 0 };
+    } else if (availability === 'low') {
+      Object.assign(filter, LOW_STOCK);
     }
 
     let query = Book.find(filter);
-    if (sort) query = query.sort(sort);
+    // Case-insensitive A-Z for text columns ("ikigai" sorts with "Ikigai")
+    if (sort) query = query.sort(sort).collation({ locale: 'en', strength: 2 });
     const books = await query.limit(limit).skip(skip).exec();
 
     const total = await Book.countDocuments(filter);
@@ -86,6 +104,39 @@ exports.getBooks = async (req, res, next) => {
       total,
       pages: Math.ceil(total / limit),
       books,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @route GET /api/books/summary
+ * @desc Stock totals for the staff books page: titles, copies (on the shelf / on loan / held),
+ *       low stock (a fifth or less on the shelf) and out of stock, over active books
+ * @access Private/Staff
+ */
+exports.getStockSummary = async (req, res) => {
+  try {
+    const [totals = {}] = await Book.aggregate([
+      { $match: { isActive: true } },
+      {
+        $group: {
+          _id: null,
+          titles: { $sum: 1 },
+          copies: { $sum: '$totalCopies' },
+          available: { $sum: '$availableCopies' },
+          issued: { $sum: { $ifNull: ['$issuedCopies', 0] } },
+          held: { $sum: { $ifNull: ['$heldCopies', 0] } },
+          lowStock: { $sum: { $cond: [LOW_STOCK.$expr, 1, 0] } },
+          outOfStock: { $sum: { $cond: [{ $lte: ['$availableCopies', 0] }, 1, 0] } },
+        },
+      },
+    ]);
+    const { _id, ...summary } = totals;
+    res.status(200).json({
+      success: true,
+      summary: { titles: 0, copies: 0, available: 0, issued: 0, held: 0, lowStock: 0, outOfStock: 0, ...summary },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

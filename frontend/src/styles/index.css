@@ -2287,3 +2287,6 @@ body.modal-open {
   .qr-label,
   .qr-label * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Staff tables: row checkboxes */
+.staff-check { width: 1.05rem; height: 1.05rem; accent-color: #22D3EE; cursor: pointer; }

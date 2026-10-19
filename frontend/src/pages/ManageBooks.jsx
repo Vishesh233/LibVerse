@@ -1,109 +1,144 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { booksAPI } from '../services/api';
 import { MainLayout } from '../layouts/MainLayout';
 import { useAuth } from '../hooks/useAuth';
 import { useDebounce } from '../hooks/useDebounce';
 import { DeleteBookModal } from '../components/DeleteBookModal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { CoverImage } from '../components/CoverImage';
+import { PageHeader, Card, EmptyState } from '../components/UI';
+import { DASH_ICONS, KpiLink } from '../components/dashboard/DashboardKit';
+import { ServerTable, FilterChips, PageFooter, StockMeter } from '../components/staff/ServerTable';
 import { GENRES } from '../constants/genres';
-import { Pagination } from '../components/Pagination';
+import { toCsv, downloadCsv } from '../utils/csv';
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 25;
 const MAX_LABELS = 100; // one label print view (GET /books?ids= returns at most 100)
+const VIEW_KEY = 'libverse:books-view';
 const pageFrom = (value) => Math.max(1, parseInt(value, 10) || 1);
+const STOCK_FILTERS = [
+  { value: '', label: 'All' },
+  { value: 'available', label: 'On the shelf' },
+  { value: 'low', label: 'Low stock' },
+  { value: 'unavailable', label: 'Out of stock' },
+];
+const SORT_KEYS = ['title', 'author', 'genre', 'available', 'total', 'added'];
 
-/** Checkbox shown on each book while choosing books for QR labels */
-const SelectBox = ({ book, checked, onToggle }) => (
-  <label className="absolute right-3 top-3 z-10 grid h-9 w-9 cursor-pointer place-items-center rounded-xl border border-white/15 bg-slate-950/80" onClick={(e) => e.stopPropagation()}>
-    <input
-      type="checkbox"
-      className="h-4 w-4 cursor-pointer accent-cyan-400"
-      checked={checked}
-      onChange={() => onToggle(book)}
-      aria-label={`Select “${book.title}” for QR labels`}
-    />
-  </label>
+const readView = () => {
+  try { return localStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'table'; } catch (e) { return 'table'; }
+};
+
+const ViewToggle = ({ view, onChange }) => (
+  <div role="radiogroup" aria-label="View" className="flex items-center gap-1 rounded-xl border border-border bg-input p-1">
+    {[['table', 'Table', 'M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5'], ['grid', 'Covers', 'M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6Zm0 9.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6Zm0 9.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z']].map(([key, label, d]) => (
+      <button
+        key={key}
+        type="button"
+        role="radio"
+        aria-checked={view === key}
+        aria-label={`${label} view`}
+        title={`${label} view`}
+        onClick={() => onChange(key)}
+        className={`grid h-9 w-9 place-items-center rounded-lg transition-colors ${view === key ? 'border border-indigo-500/30 bg-indigo-500/20 text-indigo-200' : 'text-slate-500 hover:text-slate-200'}`}
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={d} /></svg>
+      </button>
+    ))}
+  </div>
 );
+
+const IconButton = ({ label, onClick, tone = 'indigo', children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label={label}
+    title={label}
+    className={`grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition-colors ${tone === 'rose' ? 'hover:bg-rose-500/10 hover:text-rose-300' : 'hover:bg-indigo-500/10 hover:text-indigo-200'}`}
+  >
+    {children}
+  </button>
+);
+const EditIcon = () => <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="m16.86 4.49 1.69-1.69a1.88 1.88 0 1 1 2.65 2.65L10.58 16.07a4.5 4.5 0 0 1-1.9 1.13L6 18l.8-2.68a4.5 4.5 0 0 1 1.13-1.9l8.93-8.93Zm0 0L19.5 7.13" /></svg>;
+const TrashIcon = () => <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.35 9m-4.78 0L9.26 9m9.97-3.21c.34.05.68.1 1.02.16m-1.02-.16L18.16 19.67a2.25 2.25 0 0 1-2.24 2.08H8.08a2.25 2.25 0 0 1-2.24-2.08L4.77 5.79m14.46 0a48.1 48.1 0 0 0-3.48-.4m-12 .56c.34-.06.68-.11 1.02-.16m0 0a48.1 48.1 0 0 1 3.48-.4m7.5 0v-.92c0-1.18-.91-2.16-2.09-2.2a51.96 51.96 0 0 0-3.32 0c-1.18.04-2.09 1.02-2.09 2.2v.92m7.5 0a48.67 48.67 0 0 0-7.5 0" /></svg>;
 
 export const ManageBooks = () => {
   const navigate = useNavigate();
   const { isAdmin, isLibrarian } = useAuth();
   const canAccess = isAdmin || isLibrarian;
-  const addPath = isAdmin ? '/admin/books/add' : '/librarian/books/add';
-  const editPath = (id) => (isAdmin ? `/admin/books/${id}/edit` : `/librarian/books/${id}/edit`);
-  const detailsPath = (id) => (isAdmin ? `/admin/books/${id}` : `/librarian/books/${id}`);
-  const labelsPath = isAdmin ? '/admin/books/labels' : '/librarian/books/labels';
+  const base = isAdmin ? '/admin' : '/librarian';
+  const addPath = `${base}/books/add`;
+  const editPath = (id) => `${base}/books/${id}/edit`;
+  const detailsPath = (id) => `${base}/books/${id}`;
+  const labelsPath = `${base}/books/labels`;
 
-  // QR labels: books picked across pages (id -> title), kept while paging and filtering
-  const [selecting, setSelecting] = useState(false);
-  const [selected, setSelected] = useState(() => new Map());
-  const toggleSelected = (book) => {
-    setSelected((prev) => {
-      const next = new Map(prev);
-      if (next.has(book._id)) next.delete(book._id);
-      else if (next.size >= MAX_LABELS) {
-        toast.info(`You can print up to ${MAX_LABELS} labels at a time.`);
-        return prev;
-      } else next.set(book._id, book.title);
-      return next;
-    });
-  };
-  const openBook = (book) => (selecting ? toggleSelected(book) : navigate(detailsPath(book._id)));
-
-  // Page, search and genre live in the URL (?page=&q=&genre=) so reload and back keep the view
+  // Page, search, genre, stock filter and sort live in the URL so reload and back keep the view
   const [searchParams, setSearchParams] = useSearchParams();
   const page = pageFrom(searchParams.get('page'));
   const q = searchParams.get('q') || '';
   const genre = searchParams.get('genre') || '';
+  const stockParam = searchParams.get('stock') || '';
+  const stock = STOCK_FILTERS.some((f) => f.value === stockParam) ? stockParam : '';
+  const sortParam = searchParams.get('sort') || 'title';
+  const sortKey = SORT_KEYS.includes(sortParam.replace(/^-/, '')) ? sortParam : 'title';
+  const sort = { key: sortKey.replace(/^-/, ''), dir: sortKey.startsWith('-') ? 'desc' : 'asc' };
 
   const [books, setBooks] = useState([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const [summary, setSummary] = useState(null);
   const [search, setSearch] = useState(q);
-  const [viewMode, setViewMode] = useState('grid');
+  const [view, setView] = useState(readView);
+  const debouncedSearch = useDebounce(search, 300);
+
+  // Selected books (kept across pages and filters): id -> book
+  const [selected, setSelected] = useState(() => new Map());
+  const selectedIds = useMemo(() => new Set(selected.keys()), [selected]);
 
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [bulkRemove, setBulkRemove] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
-  const debouncedSearch = useDebounce(search, 300);
-
-  /** Update URL params; page 1 and empty values are left out of the URL */
   const updateParams = useCallback((changes) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       Object.entries(changes).forEach(([key, value]) => {
-        if (value === '' || value === null || value === undefined || (key === 'page' && Number(value) <= 1)) next.delete(key);
+        const isDefault = value === '' || value === null || value === undefined
+          || (key === 'page' && Number(value) <= 1) || (key === 'sort' && value === 'title');
+        if (isDefault) next.delete(key);
         else next.set(key, String(value));
       });
       return next;
     }, { replace: true });
   }, [setSearchParams]);
 
-  // Debounced search box -> ?q= and back to page 1
   useEffect(() => {
     const value = debouncedSearch.trim();
     if (value !== q) updateParams({ q: value, page: 1 });
   }, [debouncedSearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Back/forward or a pasted URL: keep the input in sync with ?q=
   useEffect(() => {
     if (q !== debouncedSearch.trim()) setSearch(q);
   }, [q]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const loadSummary = useCallback(() => {
+    booksAPI.getStockSummary().then((res) => setSummary(res.data.summary)).catch(() => setSummary(null));
+  }, []);
+  useEffect(() => { loadSummary(); }, [loadSummary]);
+
   const fetchBooks = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page, limit: PAGE_SIZE };
+      const params = { page, limit: PAGE_SIZE, sort: sortKey };
       if (q) params.q = q;
       if (genre) params.genre = genre;
+      if (stock) params.availability = stock;
       const res = await booksAPI.getBooks(params);
       const serverPages = Math.max(1, res.data.pages || 1);
-      // Past the last page (e.g. after deleting the only book on it): go to the last page
       if (page > serverPages && (res.data.total || 0) > 0) {
         updateParams({ page: serverPages });
         return;
@@ -113,355 +148,324 @@ export const ManageBooks = () => {
       setPages(serverPages);
       setError(null);
     } catch (err) {
-      setError('Failed to load books');
+      setError(err.response?.data?.message || 'Could not load the books. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
-  }, [page, q, genre, updateParams]);
+  }, [page, q, genre, stock, sortKey, updateParams]);
 
-  useEffect(() => {
-    fetchBooks();
-  }, [fetchBooks]);
+  useEffect(() => { fetchBooks(); }, [fetchBooks]);
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [page]);
+  const changeView = (next) => {
+    setView(next);
+    try { localStorage.setItem(VIEW_KEY, next); } catch (e) { /* storage unavailable */ }
+  };
+  const onSort = (key) => updateParams({ sort: sort.key === key && sort.dir === 'asc' ? `-${key}` : key, page: 1 });
+
+  const toggle = (book) => setSelected((prev) => {
+    const next = new Map(prev);
+    if (next.has(book._id)) next.delete(book._id);
+    else next.set(book._id, book);
+    return next;
+  });
+  const toggleAll = (all) => setSelected((prev) => {
+    const next = new Map(prev);
+    books.forEach((b) => (all ? next.set(b._id, b) : next.delete(b._id)));
+    return next;
+  });
+
+  const afterChange = async () => {
+    await fetchBooks();
+    loadSummary();
+  };
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
     setDeleting(true);
     try {
       await booksAPI.deleteBook(confirmDelete._id);
-      toast.success('Book deleted successfully!');
+      toast.success(`“${confirmDelete.title}” removed from the catalogue`);
+      setSelected((prev) => { const next = new Map(prev); next.delete(confirmDelete._id); return next; });
       setConfirmDelete(null);
-      await fetchBooks(); // the server total and page contents change
+      await afterChange();
     } catch (err) {
-      const message = err.response?.data?.message || 'Failed to delete book';
-      toast.error(message);
+      toast.error(err.response?.data?.message || 'The book could not be removed');
     } finally {
       setDeleting(false);
     }
   };
 
+  const removeSelected = async () => {
+    setBulkBusy(true);
+    const ids = [...selected.keys()];
+    let removed = 0;
+    for (const id of ids) {
+      try {
+        await booksAPI.deleteBook(id); // one at a time: each removal also cancels that book's waiting list
+        removed += 1;
+      } catch (e) { /* counted below */ }
+    }
+    setBulkBusy(false);
+    setBulkRemove(false);
+    setSelected(new Map());
+    if (removed === ids.length) toast.success(`${removed} book${removed === 1 ? '' : 's'} removed from the catalogue`);
+    else toast.warning(`${removed} of ${ids.length} books removed. Try the others again.`);
+    await afterChange();
+  };
+
+  const exportSelected = () => {
+    const rows = [...selected.values()];
+    const csv = toCsv([
+      { label: 'Title', value: (b) => b.title },
+      { label: 'Author', value: (b) => b.author },
+      { label: 'Genre', value: (b) => b.genre },
+      { label: 'ISBN', value: (b) => b.isbn || '' },
+      { label: 'Available', value: (b) => b.availableCopies ?? 0 },
+      { label: 'On loan', value: (b) => b.issuedCopies ?? 0 },
+      { label: 'Held', value: (b) => b.heldCopies ?? 0 },
+      { label: 'Total copies', value: (b) => b.totalCopies ?? 0 },
+      { label: 'Shelf', value: (b) => b.location || '' },
+    ], rows);
+    downloadCsv(`libverse-books-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+  };
+
+  const printLabels = () => {
+    if (selected.size > MAX_LABELS) {
+      toast.info(`Labels print ${MAX_LABELS} books at a time. Unselect ${selected.size - MAX_LABELS} first.`);
+      return;
+    }
+    navigate(`${labelsPath}?ids=${[...selected.keys()].join(',')}`);
+  };
+
   if (!canAccess) {
     return (
       <MainLayout>
-        <div className="p-6 text-center">
-          <p className="text-rose-400 font-semibold">Access Denied: Librarian/Admin only</p>
-        </div>
+        <EmptyState icon="🔒" title="Staff only" message="This page is for librarians and admins." />
       </MainLayout>
     );
   }
 
-  const filteredBooks = books; // already filtered and paginated by the server
-  const filtered = Boolean(q || genre);
-  const copiesLabel = (book) => `${book.availableCopies ?? 0} of ${book.totalCopies ?? 0} available`;
+  const filtered = Boolean(q || genre || stock);
+  const stockLink = (value) => `${base}/books${value ? `?stock=${value}` : ''}`;
+  const columns = [
+    {
+      key: 'title', label: 'Title', sortKey: 'title', className: 'min-w-[16rem]',
+      render: (b) => (
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-9 flex-shrink-0 overflow-hidden rounded-md bg-input">
+            <CoverImage book={b} alt="" size="S" />
+          </div>
+          <div className="min-w-0">
+            <Link to={detailsPath(b._id)} className="block font-medium text-slate-100 line-clamp-2 hover:text-indigo-200 hover:underline">{b.title}</Link>
+            {b.isbn && <p className="font-mono text-[11px] text-slate-500">{b.isbn}</p>}
+          </div>
+        </div>
+      ),
+    },
+    { key: 'author', label: 'Author', sortKey: 'author', render: (b) => <span className="line-clamp-2">{b.author}</span> },
+    { key: 'genre', label: 'Genre', sortKey: 'genre', render: (b) => <span className="genre-badge whitespace-nowrap">{b.genre}</span> },
+    { key: 'available', label: 'Available', sortKey: 'available', render: (b) => <StockMeter available={b.availableCopies ?? 0} total={b.totalCopies ?? 0} /> },
+    {
+      key: 'out', label: 'On loan · held', align: 'right',
+      render: (b) => <span className="tabular-nums text-slate-300">{b.issuedCopies ?? 0} · {b.heldCopies ?? 0}</span>,
+    },
+    { key: 'shelf', label: 'Shelf', render: (b) => <span className="whitespace-nowrap text-slate-400">{b.location || '—'}</span> },
+    {
+      key: 'actions', label: <span className="sr-only">Actions</span>, align: 'right',
+      render: (b) => (
+        <div className="flex justify-end gap-1">
+          <IconButton label={`Edit “${b.title}”`} onClick={() => navigate(editPath(b._id))}><EditIcon /></IconButton>
+          <IconButton label={`Remove “${b.title}”`} tone="rose" onClick={() => setConfirmDelete(b)}><TrashIcon /></IconButton>
+        </div>
+      ),
+    },
+  ];
+
+  const card = (b) => (
+    <div className="flex gap-3">
+      <div className="h-20 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-input"><CoverImage book={b} alt="" size="S" /></div>
+      <div className="min-w-0 flex-1">
+        <p className="font-medium leading-snug text-slate-100 line-clamp-2">{b.title}</p>
+        <p className="text-xs text-slate-400 line-clamp-1">{b.author}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span className="genre-badge">{b.genre}</span>
+          <StockMeter available={b.availableCopies ?? 0} total={b.totalCopies ?? 0} compact />
+          {b.location && <span className="text-[11px] text-slate-500">{b.location}</span>}
+        </div>
+        <div className="mt-2 flex gap-1">
+          <IconButton label={`Edit “${b.title}”`} onClick={() => navigate(editPath(b._id))}><EditIcon /></IconButton>
+          <IconButton label={`Remove “${b.title}”`} tone="rose" onClick={() => setConfirmDelete(b)}><TrashIcon /></IconButton>
+        </div>
+      </div>
+    </div>
+  );
+
+  const emptyState = (
+    <EmptyState
+      icon="🔎"
+      title={filtered ? 'No books match' : 'No books yet'}
+      message={filtered ? 'Try another search, genre or stock filter.' : 'Add the first book to the catalogue.'}
+      action={filtered
+        ? <button type="button" className="btn-secondary" onClick={() => { setSearch(''); updateParams({ q: '', genre: '', stock: '', page: 1 }); }}>Clear filters</button>
+        : <button type="button" className="btn-primary" onClick={() => navigate(addPath)}>Add a book</button>}
+    />
+  );
 
   return (
     <MainLayout>
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">📚 Book Collection</h1>
-            <p className="mt-1 text-sm text-slate-400" aria-live="polite">
-              {loading && total === 0
-                ? 'Loading books...'
-                : `${total.toLocaleString()} ${total === 1 ? 'book' : 'books'}${filtered ? ' match your filters' : ' in the collection'}${pages > 1 ? ` · page ${page} of ${pages}` : ''}`}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setSelecting((s) => !s)}
-              aria-pressed={selecting}
-              className={`${selecting ? 'btn-primary' : 'btn-secondary'} whitespace-nowrap`}
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
-              </svg>
-              {selecting ? 'Done selecting' : 'Select for labels'}
+      <div className="mx-auto max-w-7xl space-y-6 pb-24">
+        <PageHeader
+          className="!mb-0"
+          title="Books"
+          subtitle={summary
+            ? `${summary.titles.toLocaleString('en-IN')} titles · ${summary.copies.toLocaleString('en-IN')} copies in the catalogue`
+            : 'The catalogue: stock, shelves and QR labels'}
+          actions={(
+            <button type="button" onClick={() => navigate(addPath)} className="btn-primary whitespace-nowrap">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+              Add book
             </button>
-            <button
-              onClick={() => navigate(addPath)}
-              className="btn-primary whitespace-nowrap"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              Add New Book
-            </button>
-          </div>
+          )}
+        />
+
+        {/* Stock at a glance: each tile filters the list */}
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <KpiLink to={stockLink('')} label="Titles" value={summary ? summary.titles.toLocaleString('en-IN') : '—'} hint={summary ? `${summary.copies.toLocaleString('en-IN')} copies` : ''} icon={DASH_ICONS.library} tone="indigo" loading={!summary} />
+          <KpiLink to={stockLink('available')} label="On the shelf" value={summary ? summary.available.toLocaleString('en-IN') : '—'} hint="copies to lend now" icon={DASH_ICONS.book} tone="emerald" loading={!summary} />
+          <KpiLink to={`${base}/issue-return`} label="On loan" value={summary ? summary.issued.toLocaleString('en-IN') : '—'} hint={summary ? `${summary.held} held for reservations` : ''} icon={DASH_ICONS.clock} tone="violet" loading={!summary} />
+          <KpiLink to={stockLink('low')} label="Low stock" value={summary ? summary.lowStock.toLocaleString('en-IN') : '—'} hint={summary ? `${summary.outOfStock} out of stock` : ''} icon={DASH_ICONS.alert} tone="amber" alert={Boolean(summary?.outOfStock)} loading={!summary} />
         </div>
 
-        {(selecting || selected.size > 0) && (
-          <div className="sticky top-2 z-20 mb-6 flex flex-col gap-3 rounded-2xl border border-cyan-400/30 bg-slate-950/90 p-3 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between" role="region" aria-label="QR label selection">
-            <p className="text-sm text-slate-200" aria-live="polite">
-              <strong className="text-cyan-300">{selected.size}</strong> book{selected.size === 1 ? '' : 's'} selected for QR labels
-              <span className="text-slate-500"> · up to {MAX_LABELS}</span>
-              {selecting && <span className="block text-xs text-slate-400">Click books to add or remove them. Your choice is kept when you change page or search.</span>}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {selecting && (
-                <button
-                  type="button"
-                  className="btn-secondary min-h-[40px] px-3 text-xs"
-                  onClick={() => setSelected((prev) => {
-                    const next = new Map(prev);
-                    books.forEach((b) => { if (next.size < MAX_LABELS) next.set(b._id, b.title); });
-                    return next;
-                  })}
-                >
-                  Select this page
-                </button>
-              )}
-              <button type="button" className="btn-ghost min-h-[40px] px-3 text-xs" onClick={() => setSelected(new Map())} disabled={selected.size === 0}>
-                Clear
-              </button>
-              <button
-                type="button"
-                className="btn-primary min-h-[40px] px-4 text-xs"
-                disabled={selected.size === 0}
-                onClick={() => navigate(`${labelsPath}?ids=${[...selected.keys()].join(',')}`)}
-              >
-                Print labels{selected.size ? ` (${selected.size})` : ''}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="mb-6 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-            {error}
-          </div>
-        )}
-
-        {/* Search & Filters */}
-        <div className="card p-4 sm:p-5 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <svg
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500 pointer-events-none"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        <Card variant="glass" className="!p-4 sm:!p-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="relative flex-1">
+              <svg className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.2-5.2m0 0A7.5 7.5 0 1 0 5.2 5.2a7.5 7.5 0 0 0 10.6 10.6Z" />
               </svg>
               <input
-                type="text"
+                type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by title or author..."
+                placeholder="Search by title or author"
                 aria-label="Search books by title or author"
-                className="w-full input-amo input-search"
+                className="input-amo input-search w-full"
               />
             </div>
-
-            {/* Category Filter */}
-            <div className="md:w-64">
-              <select
-                value={genre}
-                onChange={(e) => updateParams({ genre: e.target.value, page: 1 })}
-                aria-label="Filter by category"
-                className="w-full input-amo"
-              >
-                <option value="">All Categories</option>
-                {GENRES.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Grid/List Toggle */}
-            <div className="flex items-center gap-1 rounded-xl border border-border bg-input p-1">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`grid h-9 w-9 place-items-center rounded-lg transition-all ${
-                  viewMode === 'grid'
-                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                    : 'text-slate-500 hover:text-slate-300'
-                }`}
-                title="Grid view"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`grid h-9 w-9 place-items-center rounded-lg transition-all ${
-                  viewMode === 'list'
-                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                    : 'text-slate-500 hover:text-slate-300'
-                }`}
-                title="List view"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-              </button>
-            </div>
+            <select
+              value={genre}
+              onChange={(e) => updateParams({ genre: e.target.value, page: 1 })}
+              aria-label="Filter by genre"
+              className="input-amo w-full lg:w-56"
+            >
+              <option value="">All genres</option>
+              {GENRES.map((g) => <option key={g} value={g}>{g}</option>)}
+            </select>
+            <div className="hidden lg:block"><ViewToggle view={view} onChange={changeView} /></div>
           </div>
-        </div>
-
-        {/* Books Display */}
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="card animate-pulse">
-                <div className="flex items-start gap-4">
-                  <div className="h-28 w-20 rounded-2xl bg-slate-800" />
-                  <div className="flex-1 space-y-3">
-                    <div className="h-4 w-3/4 rounded bg-slate-800" />
-                    <div className="h-3 w-1/2 rounded bg-slate-800" />
-                    <div className="h-6 w-20 rounded-full bg-slate-800" />
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <FilterChips
+              label="Stock"
+              value={stock}
+              onChange={(value) => updateParams({ stock: value, page: 1 })}
+              options={STOCK_FILTERS.map((f) => ({
+                ...f,
+                count: f.value === 'low' ? summary?.lowStock : f.value === 'unavailable' ? summary?.outOfStock : undefined,
+              }))}
+            />
+            <p className="hidden text-xs text-slate-400 sm:block" aria-live="polite">
+              {loading ? 'Loading…' : `${total.toLocaleString('en-IN')} ${total === 1 ? 'book' : 'books'}${filtered ? ' match' : ''}`}
+            </p>
           </div>
-        ) : filteredBooks.length === 0 ? (
-          <div className="card text-center py-16">
-            <p className="text-4xl mb-3">📭</p>
-            <p className="text-slate-400 font-medium">No books found</p>
-            <p className="text-sm text-slate-500 mt-1">Try adjusting your search or filters</p>
-          </div>
-        ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredBooks.map((book) => (
-              <div
-                key={book._id}
-                onClick={() => openBook(book)}
-                className={`card relative cursor-pointer transition-all duration-250 hover:-translate-y-1 hover:shadow-glow hover:border-indigo-500/30 ${selected.has(book._id) ? '!border-cyan-400/60 ring-1 ring-cyan-400/40' : ''}`}
-              >
-                {selecting && <SelectBox book={book} checked={selected.has(book._id)} onToggle={toggleSelected} />}
-                <div className={`flex items-start gap-4 ${selecting ? 'pr-10' : ''}`}>
-                  <div className="h-28 w-20 overflow-hidden rounded-2xl bg-input flex-shrink-0">
-                    <CoverImage book={book} alt={book.title} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-semibold text-slate-100 line-clamp-2">{book.title}</h3>
-                    <p className="mt-1.5 text-sm text-slate-400 line-clamp-1">{book.author}</p>
-                    {book.genre && (
-                      <span className="mt-2.5 inline-flex rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300 border border-indigo-500/20">
-                        {book.genre}
-                      </span>
-                    )}
-                  </div>
-                </div>
+        </Card>
 
-                <div className="mt-4 pt-4 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Availability</span>
-                    <span className={`text-sm font-bold ${(book.availableCopies ?? 0) > 0 ? 'text-emerald-400' : 'text-rose-300'}`}>
-                      {copiesLabel(book)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-slate-500">Total Copies</span>
-                    <span className="text-sm font-bold text-slate-100">{book.totalCopies ?? 0}</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-slate-500">Issued Copies</span>
-                    <span className="text-sm font-bold text-amber-400">{book.issuedCopies ?? 0}</span>
-                  </div>
-                  {book.rating > 0 && (
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs text-slate-500">Rating</span>
-                      <span className="text-sm font-bold text-amber-400">⭐ {book.rating.toFixed(1)}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className={`mt-4 flex items-center gap-2 ${selecting ? 'hidden' : ''}`}>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(editPath(book._id));
-                    }}
-                    className="flex-1 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-sm font-medium text-indigo-300 transition-colors hover:bg-indigo-500/20"
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConfirmDelete(book);
-                    }}
-                    className="flex-1 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-300 transition-colors hover:bg-rose-500/20"
-                  >
-                    🗑 Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredBooks.map((book) => (
-              <div
-                key={book._id}
-                onClick={() => openBook(book)}
-                className={`card relative cursor-pointer transition-all duration-250 hover:shadow-glow hover:border-indigo-500/30 flex items-center gap-4 ${selecting ? 'pr-16' : ''} ${selected.has(book._id) ? '!border-cyan-400/60 ring-1 ring-cyan-400/40' : ''}`}
-              >
-                {selecting && <SelectBox book={book} checked={selected.has(book._id)} onToggle={toggleSelected} />}
-                <div className="h-20 w-14 overflow-hidden rounded-xl bg-input flex-shrink-0">
-                  <CoverImage book={book} alt={book.title} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-slate-100 line-clamp-1">{book.title}</h3>
-                  <p className="text-sm text-slate-400 line-clamp-1">by {book.author}</p>
-                  <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                    {book.genre && (
-                      <span className="inline-flex rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-300 border border-indigo-500/20">
-                        {book.genre}
-                      </span>
-                    )}
-                    <span className={`text-[11px] font-semibold ${(book.availableCopies ?? 0) > 0 ? 'text-emerald-400' : 'text-rose-300'}`}>
-                      {copiesLabel(book)}
-                    </span>
-                  </div>
-                </div>
-                <div className={`flex gap-2 flex-shrink-0 ${selecting ? 'hidden' : ''}`}>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(editPath(book._id));
-                    }}
-                    className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-xs font-medium text-indigo-300 transition-colors hover:bg-indigo-500/20"
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConfirmDelete(book);
-                    }}
-                    className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-300 transition-colors hover:bg-rose-500/20"
-                  >
-                    🗑 Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+        {error && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200" role="alert">
+            {error}
+            <button type="button" className="btn-secondary min-h-[36px] px-3 text-xs" onClick={fetchBooks}>Retry</button>
           </div>
         )}
 
-        {!loading && <Pagination currentPage={page} totalPages={pages} onPageChange={(next) => updateParams({ page: next })} />}
+        {view === 'table' ? (
+          <ServerTable
+            caption="Books in the catalogue"
+            columns={columns}
+            rows={books}
+            loading={loading}
+            sort={sort}
+            onSort={onSort}
+            onRowClick={(b) => navigate(detailsPath(b._id))}
+            rowLabel={(b) => `${b.title} by ${b.author}, ${b.availableCopies ?? 0} of ${b.totalCopies ?? 0} available`}
+            selected={selectedIds}
+            onToggle={toggle}
+            onToggleAll={toggleAll}
+            selectLabel={(b) => `Select “${b.title}”`}
+            cardRender={card}
+            empty={emptyState}
+          />
+        ) : loading ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {Array.from({ length: 10 }).map((_, i) => <div key={i} className="skeleton aspect-[2/3] w-full !rounded-2xl" />)}
+          </div>
+        ) : books.length === 0 ? emptyState : (
+          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5" aria-label="Books in the catalogue">
+            {books.map((b) => {
+              const isSel = selectedIds.has(b._id);
+              return (
+                <li key={b._id} className={`card-glass group relative flex flex-col !p-3 transition-colors ${isSel ? '!border-cyan-400/50' : 'hover:!border-indigo-400/30'}`}>
+                  <label className="absolute right-4 top-4 z-10 grid h-8 w-8 cursor-pointer place-items-center rounded-lg border border-white/10 bg-slate-950/70">
+                    <input type="checkbox" className="staff-check" checked={isSel} onChange={() => toggle(b)} aria-label={`Select “${b.title}”`} />
+                  </label>
+                  <Link to={detailsPath(b._id)} className="block">
+                    <div className="aspect-[2/3] w-full overflow-hidden rounded-xl bg-input"><CoverImage book={b} alt="" size="M" /></div>
+                    <p className="mt-2.5 text-sm font-medium leading-snug text-slate-100 line-clamp-2 group-hover:text-indigo-200">{b.title}</p>
+                    <p className="text-xs text-slate-400 line-clamp-1">{b.author}</p>
+                  </Link>
+                  <div className="mt-auto pt-2"><StockMeter available={b.availableCopies ?? 0} total={b.totalCopies ?? 0} /></div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {!loading && (
+          <PageFooter page={page} pages={pages} total={total} pageSize={PAGE_SIZE} noun="books" onPage={(next) => { updateParams({ page: next }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+        )}
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Bulk actions: appears once something is selected */}
+      {selected.size > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-30 px-3 pb-3 sm:px-6 sm:pb-5 lg:pl-[17rem]" role="region" aria-label="Selected books">
+          <div className="mx-auto flex max-w-5xl flex-col gap-3 rounded-2xl border border-cyan-400/30 bg-slate-950/95 p-3 shadow-2xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-200" aria-live="polite">
+              <strong className="tabular-nums text-cyan-200">{selected.size}</strong> book{selected.size === 1 ? '' : 's'} selected
+              <span className="hidden text-slate-400 sm:inline"> · kept while you change page or filters</span>
+              <span className="block text-xs text-slate-400">Select books, then print their QR labels, export them or remove them.</span>
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn-primary min-h-[40px] px-4 text-xs" onClick={printLabels}>Print QR labels</button>
+              <button type="button" className="btn-secondary min-h-[40px] px-3 text-xs" onClick={exportSelected}>Export CSV</button>
+              <button type="button" className="btn-danger min-h-[40px] px-3 text-xs" onClick={() => setBulkRemove(true)}>Remove</button>
+              <button type="button" className="btn-ghost min-h-[40px] px-3 text-xs" onClick={() => setSelected(new Map())}>Clear</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <DeleteBookModal
         isOpen={!!confirmDelete}
         bookTitle={confirmDelete?.title}
         onCancel={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
         loading={deleting}
+      />
+      <ConfirmModal
+        isOpen={bulkRemove}
+        title={`Remove ${selected.size} book${selected.size === 1 ? '' : 's'} from the catalogue?`}
+        description="Students can no longer find or request them, and their waiting lists are cancelled (those students are told). Loans already out stay open until the books come back."
+        confirmText={bulkBusy ? 'Removing…' : `Remove ${selected.size}`}
+        onConfirm={removeSelected}
+        onCancel={() => setBulkRemove(false)}
+        loading={bulkBusy}
       />
     </MainLayout>
   );

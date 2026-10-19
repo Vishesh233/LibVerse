@@ -8,6 +8,7 @@ const {
   createReview,
   getRecommendations,
   getPopularBooks,
+  getStockSummary,
 } = require('../controllers/bookController');
 const { uploadBookCover } = require('../controllers/bookCoverUploadController');
 const { protect, isStaff } = require('../middleware/authMiddleware');
@@ -20,6 +21,7 @@ router.get('/popular', getPopularBooks); // before /:id
 
 // Protected routes
 router.get('/recommendations', protect, getRecommendations);
+router.get('/summary', protect, isStaff, getStockSummary); // before /:id
 router.get('/:id', getBook);
 router.post('/:id/review', protect, createReview);
 

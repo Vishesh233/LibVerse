@@ -8,7 +8,7 @@ const Book = require('../models/Book');
 const User = require('../models/User');
 const Reservation = require('../models/Reservation');
 const { notifyStudent } = require('../controllers/notificationController');
-const { calculateFine, payableFineOf } = require('../utils/fineCalculator');
+const { calculateFine, payableFineOf, startOfDay } = require('../utils/fineCalculator');
 const { takeCopyFor, undoTakeCopy, returnCopy } = require('./reservationService');
 const { audit, personLabel } = require('../utils/audit');
 const { LOAN_DAYS } = require('../utils/loanRules');
@@ -62,6 +62,12 @@ const issueAtDesk = async (req, user, book, { dueDate: customDue } = {}) => {
   if (user.isActive === false) throw new DeskError(400, `${user.name}'s account is deactivated`);
   if (!book || book.isActive === false) throw new DeskError(404, 'Book not found');
   if (customDue && Number.isNaN(customDue.getTime())) throw new DeskError(400, 'Invalid due date');
+  // A custom due date is a calendar day after today and at most a year away (a loan can't start overdue)
+  if (customDue) {
+    const today = startOfDay(new Date());
+    if (startOfDay(customDue) <= today) throw new DeskError(400, 'The due date must be after today');
+    if (startOfDay(customDue) > new Date(today.getTime() + 366 * DAY_MS)) throw new DeskError(400, 'The due date must be within a year');
+  }
 
   const existing = await Transaction.findOne({ userId: user._id, bookId: book._id, status: { $in: ['pending', ...OPEN_LOAN] } })
     .select('status')

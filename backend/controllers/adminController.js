@@ -725,12 +725,19 @@ exports.getAllUsers = async (req, res, next) => {
   try {
     const role = toQueryString(req.query.role);
     const search = toQueryString(req.query.search);
+    const status = toQueryString(req.query.status);
     const { limit, skip } = toPagination(req.query.page, req.query.limit, 50);
 
     const filter = {};
     if (role && role !== 'All Roles') {
       filter.role = role.toLowerCase();
     }
+    // Librarians manage students and see fellow librarians, never admin accounts
+    if (req.user.role === 'librarian') {
+      filter.role = filter.role === 'admin' ? '__none__' : (filter.role || { $ne: 'admin' });
+    }
+    if (status === 'active') filter.isActive = { $ne: false };
+    else if (status === 'inactive') filter.isActive = false;
     if (search) {
       const pattern = escapeRegex(search);
       filter.$or = [
@@ -740,27 +747,56 @@ exports.getAllUsers = async (req, res, next) => {
       ];
     }
 
-    const rawUsers = await User.find(filter)
-      .limit(limit)
-      .skip(skip)
-      .sort('-createdAt');
+    // ?sort=name|-name|libraryId|role|joined|-joined (default newest first); _id keeps pages stable
+    const SORTS = { name: 'name', libraryId: 'libraryId', role: 'role', joined: 'createdAt' };
+    const sortKey = toQueryString(req.query.sort) || '-joined';
+    const desc = sortKey.startsWith('-');
+    const field = SORTS[desc ? sortKey.slice(1) : sortKey] || 'createdAt';
+    const dir = SORTS[desc ? sortKey.slice(1) : sortKey] ? (desc ? -1 : 1) : -1;
 
-    const total = await User.countDocuments(filter);
+    const [rawUsers, total] = await Promise.all([
+      User.find(filter)
+        .select('-tokenVersion -cardVersion')
+        .sort({ [field]: dir, _id: dir })
+        .collation({ locale: 'en', strength: 2 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(filter),
+    ]);
 
-    // Calculate books issued count for each user
-    const usersWithIssuedCount = await Promise.all(
-      rawUsers.map(async (u) => {
-        const issuedCount = await Transaction.countDocuments({
-          userId: u._id,
-          status: 'issued',
-        });
-
-        return {
-          ...u.toObject(),
-          booksIssued: issuedCount,
-        };
-      })
-    );
+    // Open loans and fines still owed, for this page of users in one query
+    const loanRows = await Transaction.aggregate([
+      { $match: { userId: { $in: rawUsers.map((u) => u._id) }, status: { $in: ['issued', 'return_requested', 'payment_pending'] } } },
+      {
+        $group: {
+          _id: '$userId',
+          issued: { $sum: { $cond: [{ $eq: ['$status', 'issued'] }, 1, 0] } },
+          open: { $sum: 1 },
+          overdue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'issued'] }, { $lt: ['$dueDate', startOfDay(new Date())] }] }, 1, 0] } },
+          finesOwed: {
+            $sum: {
+              $cond: [
+                { $and: [{ $ne: ['$finePaid', true] }, { $ne: ['$status', 'issued'] }] },
+                { $max: [0, { $subtract: [{ $ifNull: ['$fineAmount', 0] }, { $ifNull: ['$fineWaived', 0] }] }] },
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+    const loansBy = new Map(loanRows.map((r) => [String(r._id), r]));
+    const usersWithIssuedCount = rawUsers.map((u) => {
+      const l = loansBy.get(String(u._id)) || {};
+      return {
+        ...u,
+        booksIssued: l.issued || 0,
+        openLoans: l.open || 0,
+        overdueLoans: l.overdue || 0,
+        finesOwed: l.finesOwed || 0,
+      };
+    });
 
     res.status(200).json({
       success: true,

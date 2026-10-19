@@ -96,6 +96,19 @@ test('card reissue (admin only) invalidates the old card', async () => {
   expect((await resolve(lib, fresh.code)).status).toBe(200);
 });
 
+test('issue with a custom due date: after today and within a year', async () => {
+  const pad = (n) => String(n).padStart(2, '0');
+  const day = (offset) => { const d = new Date(Date.now() + offset * 864e5); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const issue = (dueDate) => as(lib).post('/api/admin/issue-book').send({ libraryId: student.libraryId, bookId: book._id, dueDate });
+  expect((await issue(day(-1))).status).toBe(400);
+  expect((await issue(day(0))).status).toBe(400);
+  expect((await issue(day(400))).status).toBe(400);
+  expect((await issue('not-a-date')).status).toBe(400);
+  const ok = await issue(day(10));
+  expect(ok.status).toBe(201);
+  expect(new Date(ok.body.transaction.dueDate).toISOString().slice(0, 10)).toBe(new Date(`${day(10)}`).toISOString().slice(0, 10));
+});
+
 test('a deactivated student cannot be issued a book at the desk', async () => {
   await User.updateOne({ _id: student._id }, { isActive: false });
   const r = await as(lib).post('/api/admin/desk/issue').send({ userId: student._id, bookId: book._id });

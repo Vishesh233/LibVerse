@@ -613,8 +613,17 @@ exports.getAllTransactions = async (req, res, next) => {
     const { limit, skip } = toPagination(req.query.page, req.query.limit, 10);
 
     let filter = {};
-    if (status) {
+    // status=open: every loan whose copy is still out (issued, return requested, payment pending)
+    if (status === 'open') {
+      filter.status = { $in: ['issued', 'return_requested', 'payment_pending'] };
+    } else if (status) {
       filter.status = status;
+    }
+    // ?bookId= one book's loans (staff book page: who has it)
+    const bookId = toQueryString(req.query.bookId);
+    if (bookId) {
+      if (!mongoose.isValidObjectId(bookId)) return res.status(400).json({ success: false, message: 'Invalid book id' });
+      filter.bookId = bookId;
     }
 
     // Lists never carry the (large) screenshot itself - only whether one exists

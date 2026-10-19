@@ -77,6 +77,8 @@ export const booksAPI = {
   getRecommendations: () => apiClient.get('/books/recommendations'),
   // Most borrowed books; params: limit (max 20), genre
   getPopular: (params, config = {}) => apiClient.get('/books/popular', { params, ...config }),
+  // Staff: titles, copies on the shelf / on loan / held, low and out of stock
+  getStockSummary: () => apiClient.get('/books/summary'),
   uploadCover: (formData) =>
     apiClient.post('/books/upload-cover', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -89,7 +91,7 @@ export const transactionsAPI = {
   returnBook: (id) => apiClient.put(`/transactions/${id}/return`),
   renewBook: (id) => apiClient.put(`/transactions/${id}/renew`),
   getUserTransactions: () => apiClient.get('/transactions/user/me'),
-  getAllTransactions: (params) => apiClient.get('/transactions', { params }),
+  getAllTransactions: (params, config = {}) => apiClient.get('/transactions', { params, ...config }),
   approveIssueRequest: (id) => apiClient.put(`/transactions/${id}/approve`),
   rejectIssueRequest: (id) => apiClient.put(`/transactions/${id}/reject`),
   approveReturn: (id) => apiClient.put(`/transactions/${id}/approve-return`),

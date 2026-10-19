@@ -11,6 +11,7 @@ import { DeleteBookModal } from '../components/DeleteBookModal';
 import { CoverImage } from '../components/CoverImage';
 import { Badge, Button, Card, EmptyState, Skeleton } from '../components/UI';
 import { formatDate } from '../utils/dateUtils';
+import { BookLoansPanel } from '../components/staff/BookLoansPanel';
 
 const COMMENT_MAX = 500;
 
@@ -174,7 +175,7 @@ export const BookDetails = () => {
   if (loading) {
     return (
       <MainLayout>
-        <div className="mx-auto max-w-6xl"><DetailsSkeleton /></div>
+        <div className="mx-auto max-w-7xl"><DetailsSkeleton /></div>
       </MainLayout>
     );
   }
@@ -218,7 +219,7 @@ export const BookDetails = () => {
 
   return (
     <MainLayout>
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div className="mx-auto max-w-7xl space-y-6">
         <button
           type="button"
           onClick={goBack}
@@ -227,7 +228,7 @@ export const BookDetails = () => {
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          Back to {canManage ? 'book collection' : 'books'}
+          Back to books
         </button>
 
         <Card variant="glass">
@@ -336,8 +337,9 @@ export const BookDetails = () => {
                 <Meta label="Published">{book.publicationYear || 'N/A'}</Meta>
                 <Meta label="Language">{book.language || 'N/A'}</Meta>
                 <Meta label="Pages">{book.pages || 'N/A'}</Meta>
-                <Meta label="ISBN">{book.isbn || 'N/A'}</Meta>
+                <Meta label="ISBN"><span className="font-mono text-base tracking-tight">{book.isbn || 'N/A'}</span></Meta>
                 <Meta label="Total copies">{book.totalCopies ?? 0}</Meta>
+                {book.location && <Meta label="Shelf">{book.location}</Meta>}
                 {canManage && (
                   <Meta label="Waiting list">
                     <button
@@ -360,6 +362,8 @@ export const BookDetails = () => {
             </div>
           </div>
         </Card>
+
+        {canManage && <BookLoansPanel book={book} queue={queue} base={isAdmin ? '/admin' : '/librarian'} />}
 
         {/* Reviews */}
         <Card variant="glass">
