@@ -13,7 +13,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-qr-code": "^2.2.0",
-    "react-router-dom": "^6.11.0",
+    "react-router-dom": "^7.18.4",
     "react-toastify": "^11.1.0"
   },
   "devDependencies": {
@@ -27,5 +27,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
+  },
+  "overrides": {
+    "postcss-selector-parser": "^7.1.6"
   }
 }
