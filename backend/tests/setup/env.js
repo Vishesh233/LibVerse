@@ -13,4 +13,6 @@ process.env.CORS_ORIGINS = 'http://localhost:3000';
 delete process.env.AI_SERVICE_URL;
 delete process.env.AI_SERVICE_TOKEN;
 delete process.env.TRUST_PROXY;
+// Email is off unless a test turns it on (passwordReset.test.js uses a fake transport)
+['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'MAIL_FROM'].forEach((name) => delete process.env[name]);
 process.env.AI_RETRAIN_DEBOUNCE_MS = '100';

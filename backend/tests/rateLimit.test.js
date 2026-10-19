@@ -33,3 +33,17 @@ test('password change: 5 per 15 minutes', async () => {
   }
   expect((await as(u).put('/api/auth/change-password').send({ currentPassword: 'wrong', newPassword: 'whatever1' })).status).toBe(429);
 });
+
+test('forgot password: 5 code emails per 15 minutes; entering a code: 10 per 15 minutes', async () => {
+  // Counted even while email is not set up (the limit runs first)
+  for (let i = 0; i < 5; i++) {
+    expect((await api().post('/api/auth/forgot-password').send({ email: `nobody.${i}@example.com` })).status).toBe(503);
+  }
+  const blocked = await api().post('/api/auth/forgot-password').send({ email: 'nobody@example.com' });
+  expect(blocked.status).toBe(429);
+  expect(blocked.body.message).toMatch(/Too many password reset requests/);
+  for (let i = 0; i < 10; i++) {
+    expect((await api().post('/api/auth/reset-password').send({ email: 'nobody@example.com', code: '123456', newPassword: 'whatever1' })).status).toBe(503);
+  }
+  expect((await api().post('/api/auth/reset-password').send({ email: 'nobody@example.com', code: '123456', newPassword: 'whatever1' })).status).toBe(429);
+});

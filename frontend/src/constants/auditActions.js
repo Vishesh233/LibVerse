@@ -9,6 +9,7 @@ export const AUDIT_ACTION_LABELS = {
   'book.create': 'Book added',
   'book.update': 'Book edited',
   'book.delete': 'Book removed',
+  'book.import': 'Books imported (CSV)',
   'user.create': 'User created',
   'user.update': 'User edited',
   'user.activate': 'User activated',

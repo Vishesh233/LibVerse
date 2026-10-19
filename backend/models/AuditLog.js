@@ -14,6 +14,7 @@ const AUDIT_ACTIONS = [
   'book.create',
   'book.update',
   'book.delete',
+  'book.import',
   'user.create',
   'user.update',
   'user.activate',

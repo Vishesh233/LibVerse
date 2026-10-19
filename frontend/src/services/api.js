@@ -60,6 +60,10 @@ export const authAPI = {
   completeOnboarding: (data) => apiClient.put('/auth/complete-onboarding', data),
   updateFavoriteGenres: (data) => apiClient.put('/auth/update-favorite-genres', data),
   changePassword: (data) => apiClient.put('/auth/change-password', data),
+  // Forgot password by emailed code (enabled only when the server has SMTP settings)
+  getPasswordResetStatus: () => apiClient.get('/auth/password-reset'),
+  forgotPassword: (email) => apiClient.post('/auth/forgot-password', { email }),
+  resetPassword: (data) => apiClient.post('/auth/reset-password', data),
   uploadAvatar: (formData) =>
     apiClient.post('/profile/upload-avatar', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -79,6 +83,9 @@ export const booksAPI = {
   getPopular: (params, config = {}) => apiClient.get('/books/popular', { params, ...config }),
   // Staff: titles, copies on the shelf / on loan / held, low and out of stock
   getStockSummary: () => apiClient.get('/books/summary'),
+  // Staff: bulk CSV import (check first, then add the valid rows)
+  previewImport: (csv) => apiClient.post('/books/import/preview', { csv }),
+  importBooks: (csv, checkCovers = false) => apiClient.post('/books/import', { csv, checkCovers }),
   uploadCover: (formData) =>
     apiClient.post('/books/upload-cover', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

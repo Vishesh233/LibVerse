@@ -49,7 +49,12 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  
+  const [resetByEmail, setResetByEmail] = useState(false);
+
+  useEffect(() => {
+    authAPI.getPasswordResetStatus().then((r) => setResetByEmail(Boolean(r.data?.enabled))).catch(() => {});
+  }, []);
+
   const navigate = useNavigate();
   const { login } = useAuth();
   const cardRef = useRef(null);
@@ -265,9 +270,15 @@ export const Login = () => {
               {fieldErrors.password && <p id="password-error" className="field-error">{fieldErrors.password}</p>}
             </motion.div>
 
-            {/* There is no self-service reset: librarians and admins reset passwords */}
+            {/* Self-service reset only when the server can send email; otherwise staff reset passwords */}
             <motion.p className="text-sm text-slate-400" variants={itemVariants}>
-              Forgot your password? Ask your librarian or admin to reset it.
+              {resetByEmail ? (
+                <Link to="/forgot-password" state={{ email: email.trim() }} className="font-medium text-indigo-300 transition-colors hover:text-white">
+                  Forgot your password?
+                </Link>
+              ) : (
+                'Forgot your password? Ask your librarian or admin to reset it.'
+              )}
             </motion.p>
 
             {/* Login Button */}

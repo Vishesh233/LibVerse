@@ -82,6 +82,12 @@ const rateLimiters = () => ({
     standardHeaders: 'draft-7', legacyHeaders: false,
     handler: tooMany('Too many password reset requests. Try again in 15 minutes.'),
   }),
+  // Entering the emailed code (each code also allows only 5 guesses)
+  resetPassword: rateLimit({
+    windowMs: minutes(15), limit: limit('RESET_PASSWORD', 10),
+    standardHeaders: 'draft-7', legacyHeaders: false,
+    handler: tooMany('Too many attempts. Try again in 15 minutes.'),
+  }),
 });
 
 module.exports = { cspDirectives, cspHeader, helmetOptions, rateLimiters, apiOrigins };

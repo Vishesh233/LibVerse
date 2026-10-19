@@ -39,9 +39,11 @@ const Notifications = page(() => import('./pages/Notifications'), 'Notifications
 const ScanDesk = page(() => import('./pages/ScanDesk'), 'ScanDesk');
 const QrLabels = page(() => import('./pages/QrLabels'), 'QrLabels');
 const StudentOverview = page(() => import('./pages/StudentOverview'), 'StudentOverview');
+const ImportBooks = page(() => import('./pages/ImportBooks'), 'ImportBooks');
+const ForgotPassword = page(() => import('./pages/ForgotPassword'), 'ForgotPassword');
 
 // Pages without the app chrome (sidebar + navbar)
-const BARE_PATHS = ['/login', '/signup', '/student/onboarding'];
+const BARE_PATHS = ['/login', '/signup', '/forgot-password', '/student/onboarding'];
 
 /** Shown while a page's chunk downloads: signed-in pages keep the sidebar and navbar in place */
 const PageFallback = () => {
@@ -114,6 +116,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Student Routes */}
           <Route
@@ -235,6 +238,14 @@ function App() {
             element={
               <ProtectedRoute requiredRole="librarian">
                 <ScanDesk />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/librarian/books/import"
+            element={
+              <ProtectedRoute requiredRole="librarian">
+                <ImportBooks />
               </ProtectedRoute>
             }
           />
@@ -365,6 +376,14 @@ function App() {
             element={
               <ProtectedRoute requiredRole="admin">
                 <ScanDesk />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/books/import"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <ImportBooks />
               </ProtectedRoute>
             }
           />
