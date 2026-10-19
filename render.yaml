@@ -109,8 +109,10 @@ services:
     healthCheckPath: /health
     autoDeploy: false
     envVars:
+      # Pinned (not a secret): numpy 1.24 in requirements.txt has no wheels for Python 3.12+.
+      # Keep in step with ai-service/.python-version and the CI ai-service job.
       - key: PYTHON_VERSION
-        sync: false
+        value: "3.11.9"
       - key: HOST
         sync: false
       # The same token on both APIs

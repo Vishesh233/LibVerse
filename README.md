@@ -133,6 +133,13 @@ python app.py                 # http://127.0.0.1:5000
 
 On Windows PowerShell use `Copy-Item .env.example .env` instead of `cp`.
 
+**Vite version pins (frontend/package.json):** `vite` is pinned to `8.3.4` (no known advisory) and its
+bundler to `rolldown 1.2.12` through `overrides`. On Windows with Smart App Control / an Application
+Control policy, newer rolldown native binaries are refused ("An Application Control policy has blocked
+this file"), and rolldown's WebAssembly fallback cannot read Windows paths. When you update Vite, check
+that `npm run dev` still starts on Windows before changing the `rolldown` override. Linux (CI, Vercel)
+is not affected.
+
 Every setting is explained in `backend/.env.example`, `frontend/.env.example` and `ai-service/.env.example`.
 Email ("Forgot password") turns on only when all of `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` and `MAIL_FROM` are set.
 

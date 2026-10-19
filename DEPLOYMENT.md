@@ -240,7 +240,7 @@ request** with **Create a merge commit**. Then locally: `git checkout main` and 
 
 | Variable | Value |
 |---|---|
-| `PYTHON_VERSION` | `3.11.9` |
+| `PYTHON_VERSION` | already set to `3.11.9` by `render.yaml` (numpy 1.24 needs Python 3.11; also in `ai-service/.python-version`) |
 | `HOST` | `0.0.0.0` |
 | `AI_SERVICE_TOKEN` | the `AI_SERVICE_TOKEN` secret |
 | `CORS_ORIGINS` | `https://libverse-demo-api.onrender.com,https://libverse-api.onrender.com` |

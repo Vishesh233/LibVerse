@@ -101,8 +101,19 @@ test('render.yaml: demo API, production API and one shared AI service; health ch
   expect(keys('libverse-api')).toEqual(expect.arrayContaining(['GOOGLE_CLIENT_ID', 'SMTP_HOST', 'MAIL_FROM', 'JWT_EXPIRE']));
   expect(keys('libverse-api')).not.toContain('DEMO_MODE');
   expect(byName['libverse-ai']).toContain('healthCheckPath: /health');
-  expect(yaml).not.toMatch(/^\s*value:/m);
-  expect(yaml.match(/^\s+- key: /gm).length).toBe(yaml.match(/^\s+sync: false$/gm).length);
+  // The only fixed value is the AI service's Python version (not a secret), equal to ai-service/.python-version;
+  // every other variable is a name only, filled in on Render
+  const pythonVersion = fs.readFileSync(path.join(ROOT, 'ai-service', '.python-version'), 'utf8').trim();
+  expect(pythonVersion).toMatch(/^3\.11\.\d+$/);
+  expect(byName['libverse-ai']).toMatch(new RegExp(`- key: PYTHON_VERSION\\r?\\n\\s+value: "${pythonVersion.replace(/\./g, '\\.')}"`));
+  expect(yaml.match(/^\s*value:/gm)).toHaveLength(1);
+  expect(yaml.match(/^\s+- key: /gm).length).toBe(yaml.match(/^\s+sync: false$/gm).length + 1);
+});
+
+test('CI tests the AI service on the same Python minor as production', () => {
+  const ci = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'ci.yml'), 'utf8');
+  const pythonVersion = fs.readFileSync(path.join(ROOT, 'ai-service', '.python-version'), 'utf8').trim();
+  expect(ci).toContain(`python-version: '${pythonVersion.split('.').slice(0, 2).join('.')}'`);
 });
 
 test('the daily demo reset workflow: 02:00 IST, a secret for the URI, only resetDemo.js --apply', () => {

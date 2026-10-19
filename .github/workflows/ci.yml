@@ -71,6 +71,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
+          # Same minor as production (ai-service/.python-version, 3.11.9 on Render):
+          # numpy 1.24 has no wheels for Python 3.12+
           python-version: '3.11'
           cache: pip
           cache-dependency-path: ai-service/requirements-dev.txt
