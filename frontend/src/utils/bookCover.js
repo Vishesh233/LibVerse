@@ -1,3 +1,5 @@
+import { assetUrl } from './assetUrl';
+
 /**
  * Default book cover placeholder (inline SVG to avoid broken image icons)
  */
@@ -46,10 +48,10 @@ export const getBookCoverCandidates = (book) => {
   const candidates = [];
 
   // 1. imageUrl (reliable persisted cover source)
-  if (book.imageUrl) candidates.push(book.imageUrl);
+  if (book.imageUrl) candidates.push(assetUrl(book.imageUrl));
 
-  // 2. Uploaded cover image (legacy / alternate field)
-  if (book.coverImage) candidates.push(book.coverImage);
+  // 2. Uploaded cover image (stored as /api/files/<id>, served by the API)
+  if (book.coverImage) candidates.push(assetUrl(book.coverImage));
 
   // 3. OpenLibrary ISBN cover
   if (book.isbn) {

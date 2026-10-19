@@ -1,0 +1,68 @@
+# Render Blueprint: the API (Node) and the recommendation service (Python).
+# The frontend is deployed on Vercel (frontend/vercel.json). Step-by-step guide: DEPLOYMENT.md
+#
+# Environment variables are listed by NAME only (sync: false): Render asks for each value when
+# the Blueprint is created. Never commit real values.
+services:
+  - type: web
+    name: libverse-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    # 200 only while MongoDB is connected
+    healthCheckPath: /api/health
+    autoDeploy: false
+    envVars:
+      - key: NODE_VERSION
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRE
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: CSP_API_ORIGINS
+        sync: false
+      - key: TRUST_PROXY
+        sync: false
+      - key: REMINDERS_ENABLED
+        sync: false
+      - key: AI_SERVICE_URL
+        sync: false
+      - key: AI_SERVICE_TOKEN
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+
+  - type: web
+    name: libverse-ai
+    runtime: python
+    rootDir: ai-service
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: PYTHON_VERSION
+        sync: false
+      - key: HOST
+        sync: false
+      - key: AI_SERVICE_TOKEN
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

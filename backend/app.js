@@ -6,6 +6,8 @@ const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const mongoose = require('mongoose');
+const { serveFile } = require('./services/fileStore');
 const errorMiddleware = require('./middleware/errorMiddleware');
 const { helmetOptions } = require('./config/security');
 
@@ -53,11 +55,21 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/wishlist', require('./routes/wishlistRoutes'));
 app.use('/api/reservations', require('./routes/reservationRoutes'));
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Uploaded avatars and covers (MongoDB GridFS, long-lived cache)
+app.get('/api/files/:id', serveFile);
+// Files uploaded by older versions to the local disk (migrated by scripts/migrateUploadsToGridFS.js)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { maxAge: '7d' }));
 
-// Health check
+// Health check for the host (Render): 200 only while the database is connected
+const DB_STATES = ['disconnected', 'connected', 'connecting', 'disconnecting'];
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'Backend server is running' });
+  const db = DB_STATES[mongoose.connection.readyState] || 'unknown';
+  res.set('Cache-Control', 'no-store');
+  res.status(db === 'connected' ? 200 : 503).json({
+    status: db === 'connected' ? 'ok' : 'degraded',
+    db,
+    uptimeSeconds: Math.round(process.uptime()),
+  });
 });
 
 // Error handling middleware

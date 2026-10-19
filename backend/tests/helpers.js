@@ -23,9 +23,10 @@ const connect = async () => {
   await Promise.all(Object.values(mongoose.models).map((m) => m.init()));
 };
 
-/** Empty every collection (indexes stay) */
+/** Empty every collection, GridFS files included (indexes stay) */
 const reset = async () => {
-  await Promise.all(Object.values(mongoose.connection.collections).map((c) => c.deleteMany({})));
+  const collections = await mongoose.connection.db.collections();
+  await Promise.all(collections.map((c) => c.deleteMany({})));
 };
 
 const disconnect = () => mongoose.disconnect();

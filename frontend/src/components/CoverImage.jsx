@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { getBookCoverCandidates, withCoverSize, DEFAULT_BOOK_COVER } from '../utils/bookCover';
+import { assetUrl } from '../utils/assetUrl';
 
 /**
  * Reusable book cover image with fallback chain:
@@ -41,7 +42,7 @@ export const CoverImage = React.memo(function CoverImage({
 
   const candidates = useMemo(() => {
     const list = src
-      ? [src, ...getBookCoverCandidates({ coverImage, imageUrl, isbn }).filter((c) => c !== src), DEFAULT_BOOK_COVER]
+      ? [assetUrl(src), ...getBookCoverCandidates({ coverImage, imageUrl, isbn }).filter((c) => c !== assetUrl(src)), DEFAULT_BOOK_COVER]
       : getBookCoverCandidates({ coverImage, imageUrl, isbn });
     // Same fallback order, with Open Library URLs at the requested size (duplicates removed)
     return [...new Set(list.map((c) => withCoverSize(c, size)))];

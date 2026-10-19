@@ -7,6 +7,7 @@ import { useNotification } from '../hooks/useNotification';
 import { adminAPI } from '../services/api';
 import { NotificationItem, notificationsPath } from './NotificationItem';
 import Avatar from './Avatar';
+import { assetUrl } from '../utils/assetUrl';
 
 export const Navbar = ({ isFullscreen, onToggleFullscreen, onOpenMenu }) => {
   const navigate = useNavigate();
@@ -184,7 +185,7 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen, onOpenMenu }) => {
                         <div className="flex-shrink-0 w-[52px] h-[60px] rounded-md overflow-hidden bg-slate-800 shadow-md">
                           {result.coverImage ? (
                             <img
-                              src={result.coverImage}
+                              src={assetUrl(result.coverImage)}
                               alt={result.title}
                               loading="lazy"
                               className="w-full h-full object-cover"
@@ -224,7 +225,7 @@ export const Navbar = ({ isFullscreen, onToggleFullscreen, onOpenMenu }) => {
                         <div className="flex-shrink-0 w-[52px] h-[52px] rounded-full overflow-hidden bg-slate-800 shadow-md ring-2 ring-slate-700">
                           {result.profileImage ? (
                             <img
-                              src={result.profileImage}
+                              src={assetUrl(result.profileImage)}
                               alt={result.title}
                               loading="lazy"
                               className="w-full h-full object-cover"

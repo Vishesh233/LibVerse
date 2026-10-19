@@ -109,3 +109,6 @@ qr-codes/
 # Uploads
 uploads/
 temp/
+
+# Catalogue export for seeding another database (scripts/exportCatalogue.js)
+backend/scripts/data/catalogue-export.json

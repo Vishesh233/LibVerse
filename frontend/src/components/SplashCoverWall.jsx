@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { booksAPI } from '../services/api';
 import { withCoverSize } from '../utils/bookCover';
+import { assetUrl } from '../utils/assetUrl';
 
 /**
  * Decorative wall of real book covers behind the splash: columns on a tilted plane,
@@ -43,7 +44,7 @@ const writeCache = (urls) => {
 const coverUrlsFrom = (books) => {
   const seen = new Set();
   return (books || [])
-    .map((b) => withCoverSize(b?.imageUrl || b?.coverImage || '', 'M'))
+    .map((b) => withCoverSize(assetUrl(b?.imageUrl || b?.coverImage || ''), 'M'))
     .filter((url) => /^https?:\/\//i.test(url) && !seen.has(url) && seen.add(url));
 };
 

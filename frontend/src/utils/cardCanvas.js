@@ -4,6 +4,7 @@
  */
 import { BACK, CARD_COLORS, FRONT, HOLO_STOPS, PNG_DPI, PNG_SIZE, ROLE_LABEL, SPINES, initialsOf, memberSince, rulesOf } from './cardArt';
 import { LOGO_BOOK_PATHS, drawQr, qrLayout } from './qrLayout';
+import { assetUrl } from './assetUrl';
 
 const DISPLAY = '"Space Grotesk", Inter, "Segoe UI", system-ui, sans-serif';
 const SANS = 'Inter, "Segoe UI", system-ui, sans-serif';
@@ -279,7 +280,7 @@ export const renderCardSide = async (card, side) => {
   ctx.roundRect(0, 0, W, H, (3.18 / 85.6) * 100 * u);
   ctx.clip();
   if (side === 'back') drawBack(ctx, W, H, u, card);
-  else drawFront(ctx, W, H, u, card, await loadImage(card.profileImage));
+  else drawFront(ctx, W, H, u, card, await loadImage(assetUrl(card.profileImage)));
   return canvas;
 };
 

@@ -1,13 +1,7 @@
-const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 const sharp = require('sharp');
 const User = require('../models/User');
-
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+const { saveFile, fileUrl, deleteByUrl } = require('../services/fileStore');
 
 // Allowed image MIME types
 const ALLOWED_MIME = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -99,7 +93,6 @@ exports.uploadAvatar = (req, res, next) => {
       }
 
       let finalBuffer;
-      let ext = '.png';
 
       if (crop) {
         // Use the crop region provided by the frontend
@@ -118,13 +111,14 @@ exports.uploadAvatar = (req, res, next) => {
         });
       }
 
-      // Generate filename
-      const filename = `avatar-${req.user.id}-${Date.now()}${ext}`;
-      const filePath = path.join(uploadDir, filename);
-      fs.writeFileSync(filePath, finalBuffer);
-
-      // Build full avatar URL so frontend can display it correctly
-      const avatarUrl = `${req.protocol}://${req.get('host')}/uploads/${filename}`;
+      // Stored in GridFS; the profile keeps a host-independent path ("/api/files/<id>")
+      const previous = req.user.profileImage;
+      const id = await saveFile(finalBuffer, {
+        filename: `avatar-${req.user.id}-${Date.now()}.png`,
+        contentType: 'image/png',
+        metadata: { kind: 'avatar', userId: req.user._id },
+      });
+      const avatarUrl = fileUrl(id);
 
       // Update user profile
       const user = await User.findByIdAndUpdate(
@@ -134,8 +128,11 @@ exports.uploadAvatar = (req, res, next) => {
       );
 
       if (!user) {
+        await deleteByUrl(avatarUrl);
         return res.status(404).json({ success: false, message: 'User not found' });
       }
+      // The old picture is no longer used anywhere
+      if (previous && previous !== avatarUrl) await deleteByUrl(previous);
 
       return res.status(200).json({
         success: true,

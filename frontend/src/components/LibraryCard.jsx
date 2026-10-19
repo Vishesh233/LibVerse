@@ -7,6 +7,7 @@ import { QrCode } from './QrCode';
 import { Button, EmptyState, Skeleton } from './UI';
 import { BACK, CARD_H, FRONT, ROLE_LABEL, SPINES, initialsOf, memberSince, rulesOf } from '../utils/cardArt';
 import { downloadCardPngs } from '../utils/cardCanvas';
+import { assetUrl } from '../utils/assetUrl';
 
 // Card units -> CSS container units (the card is the container: 1u = 1cqw)
 const cq = (n) => `${n}cqw`;
@@ -43,7 +44,7 @@ const Logo = ({ x, y, tile, radius, icon }) => (
 /** Front: avatar, brand, name, role, Library ID, member since, QR with the logo in the centre */
 export const CardFront = ({ card }) => {
   const [photoFailed, setPhotoFailed] = useState(false);
-  const photo = card.profileImage && !photoFailed ? card.profileImage : null;
+  const photo = card.profileImage && !photoFailed ? assetUrl(card.profileImage) : null;
   const { avatar } = FRONT;
   return (
     <div className="lv-card">

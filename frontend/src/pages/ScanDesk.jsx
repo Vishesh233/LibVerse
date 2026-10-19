@@ -8,6 +8,7 @@ import { DashTabs, formatRupees } from '../components/dashboard/DashboardKit';
 import { ScannerPanel } from '../components/desk/ScannerPanel';
 import { deskFeedback, unlockSound } from '../utils/deskFeedback';
 import { useAuth } from '../hooks/useAuth';
+import { assetUrl } from '../utils/assetUrl';
 
 const MODES = [
   { key: 'issue', label: 'Issue' },
@@ -60,7 +61,7 @@ const StudentPanel = ({ student, highlightBookId }) => (
   <div className="space-y-3">
     <div className="flex items-center gap-3">
       <span className="grid h-12 w-12 flex-shrink-0 place-items-center overflow-hidden rounded-full bg-indigo-500/15 font-bold text-indigo-200" aria-hidden="true">
-        {student.profileImage ? <img src={student.profileImage} alt="" className="h-full w-full object-cover" /> : initials(student.name)}
+        {student.profileImage ? <img src={assetUrl(student.profileImage)} alt="" className="h-full w-full object-cover" /> : initials(student.name)}
       </span>
       <div className="min-w-0">
         <p className="truncate font-semibold text-slate-50">{student.name}</p>
