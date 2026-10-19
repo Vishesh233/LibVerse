@@ -4,6 +4,7 @@ import { authAPI } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../UI';
 import { EyeIcon, EyeOffIcon, ShieldIcon } from './ProfileIcons';
+import { GoogleSignInButton, useGoogleSignIn } from '../GoogleSignInButton';
 
 const MIN_LENGTH = 6; // matches PUT /api/auth/change-password and the User model
 
@@ -67,7 +68,7 @@ const PasswordField = ({ id, label, value, onChange, onBlur, autoComplete, error
 );
 
 /** Inline change-password form. A wrong current password is a 401 the API layer does not treat as a logout. */
-export const SecurityTab = ({ user }) => {
+const ChangePasswordForm = ({ user }) => {
   const { login } = useAuth();
   const [values, setValues] = useState(EMPTY);
   const [visible, setVisible] = useState({});
@@ -189,6 +190,142 @@ export const SecurityTab = ({ user }) => {
         </Button>
       </div>
     </form>
+  );
+};
+
+/** First password for an account created with Google (it can then also sign in with email) */
+const SetPasswordForm = ({ user }) => {
+  const { updateUser } = useAuth();
+  const [values, setValues] = useState({ next: '', confirm: '' });
+  const [visible, setVisible] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const errors = {};
+  if (values.next.length < MIN_LENGTH) errors.next = `Use at least ${MIN_LENGTH} characters`;
+  if (!values.confirm) errors.confirm = 'Confirm your password';
+  else if (values.confirm !== values.next) errors.confirm = "Passwords don't match";
+  const meter = STRENGTH[strengthOf(values.next)];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitted(true);
+    if (Object.keys(errors).length) return;
+    setSaving(true);
+    try {
+      const res = await authAPI.setPassword(values.next);
+      updateUser({ ...user, ...res.data.user });
+      toast.success('Password set. You can now also sign in with your email.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to set the password');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} noValidate className="space-y-5">
+      <div className="flex items-start gap-3 rounded-2xl border border-indigo-400/20 bg-indigo-500/[0.06] p-3 text-sm text-slate-300">
+        <ShieldIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-indigo-300" />
+        <p>You sign in with Google and have no password yet. Set one to also sign in with your email ({user?.email}).</p>
+      </div>
+      <input type="text" name="username" autoComplete="username" value={user?.email || ''} readOnly hidden />
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div className="min-w-0">
+          <PasswordField
+            id="pw-set" label="New password" autoComplete="new-password" value={values.next}
+            onChange={(e) => setValues((v) => ({ ...v, next: e.target.value }))}
+            error={submitted ? errors.next : undefined} visible={!!visible.next}
+            onToggle={() => setVisible((v) => ({ ...v, next: !v.next }))} describedBy="pw-set-strength"
+          />
+          <p id="pw-set-strength" className={`mt-1 text-xs ${values.next ? meter.text : 'text-muted'}`} aria-live="polite">
+            {values.next ? `Strength: ${meter.label}` : `At least ${MIN_LENGTH} characters`}
+          </p>
+        </div>
+        <PasswordField
+          id="pw-set-confirm" label="Confirm password" autoComplete="new-password" value={values.confirm}
+          onChange={(e) => setValues((v) => ({ ...v, confirm: e.target.value }))}
+          error={submitted ? errors.confirm : undefined} visible={!!visible.confirm}
+          onToggle={() => setVisible((v) => ({ ...v, confirm: !v.confirm }))}
+        />
+      </div>
+      <div className="flex justify-end border-t border-border pt-4">
+        <Button type="submit" variant="primary" fullWidth={false} loading={saving} className="sm:min-w-[170px]">
+          {saving ? 'Saving...' : 'Set password'}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+/** Connect or disconnect Google (both ask for the current password) */
+const GoogleConnection = ({ user }) => {
+  const { updateUser } = useAuth();
+  const [password, setPassword] = useState('');
+  const [visible, setVisible] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const linked = Boolean(user?.googleLinked);
+  const canDisconnect = user?.hasPassword !== false;
+
+  const run = async (action, success) => {
+    setBusy(true);
+    try {
+      const res = await action();
+      updateUser({ ...user, ...res.data.user });
+      setPassword('');
+      toast.success(success);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Something went wrong. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const connect = (credential) => {
+    if (!password) {
+      toast.error('Enter your current password first');
+      return;
+    }
+    run(() => authAPI.linkGoogle(credential, password), 'Google account connected');
+  };
+
+  return (
+    <section className="space-y-4 border-t border-border pt-6" aria-labelledby="google-heading">
+      <div>
+        <h3 id="google-heading" className="text-base font-semibold text-slate-100">Sign in with Google</h3>
+        <p className="mt-1 text-sm text-slate-400">
+          {linked
+            ? 'Your account is connected to Google: you can use the "Sign in with Google" button.'
+            : 'Connect your Google account to sign in with one click. You will be asked to pick the Google account.'}
+        </p>
+      </div>
+      {(!linked || canDisconnect) && (
+        <PasswordField
+          id="pw-google" label="Current password" autoComplete="current-password" value={password}
+          onChange={(e) => setPassword(e.target.value)} visible={visible} onToggle={() => setVisible((v) => !v)}
+        />
+      )}
+      {!linked && <div className="max-w-sm"><GoogleSignInButton text="continue_with" onCredential={connect} disabled={busy} /></div>}
+      {linked && canDisconnect && (
+        <Button
+          type="button" variant="secondary" fullWidth={false} loading={busy} disabled={!password}
+          onClick={() => run(() => authAPI.unlinkGoogle(password), 'Google account disconnected')}
+        >
+          Disconnect Google
+        </Button>
+      )}
+      {linked && !canDisconnect && <p className="text-xs text-slate-400">Set a password above before you can disconnect Google.</p>}
+    </section>
+  );
+};
+
+/** Settings > Security: change (or, for Google accounts, set) the password; connect Google */
+export const SecurityTab = ({ user }) => {
+  const googleEnabled = useGoogleSignIn();
+  return (
+    <div className="space-y-8">
+      {user?.hasPassword === false ? <SetPasswordForm user={user} /> : <ChangePasswordForm user={user} />}
+      {googleEnabled && !user?.isDemo && <GoogleConnection user={user} />}
+    </div>
   );
 };
 

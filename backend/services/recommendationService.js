@@ -5,6 +5,9 @@
  * catalogue: it is trained on server start and again (debounced) after a book is created, edited
  * or deleted. Each recommendation request sends the reader's history with it and waits at most
  * AI_TIMEOUT_MS; any failure is thrown so the caller can fall back to the MongoDB genre logic.
+ *
+ * AI_CATALOG (optional) names this backend's catalogue in the service, so several backends can
+ * share one service without mixing their books (e.g. "demo" and "production").
  */
 const axios = require('axios');
 const mongoose = require('mongoose');
@@ -20,7 +23,8 @@ const BORROWED_STATUSES = ['issued', 'return_requested', 'payment_pending', 'ret
 const config = () => {
   const url = (process.env.AI_SERVICE_URL || '').trim().replace(/\/+$/, '');
   const token = (process.env.AI_SERVICE_TOKEN || '').trim();
-  return url && token ? { url, token } : null;
+  const catalog = (process.env.AI_CATALOG || '').trim();
+  return url && token ? { url, token, body: catalog ? { catalog } : {} } : null;
 };
 
 const isEnabled = () => Boolean(config());
@@ -68,7 +72,7 @@ const trainNow = () => {
     try {
       const books = await catalogue();
       if (!books.length) return 0;
-      const res = await axios.post(`${cfg.url}/api/train`, { books }, {
+      const res = await axios.post(`${cfg.url}/api/train`, { books, ...cfg.body }, {
         headers: { 'X-Service-Token': cfg.token },
         timeout: TRAIN_TIMEOUT_MS,
         maxBodyLength: 20 * 1024 * 1024,
@@ -130,6 +134,7 @@ const recommend = async ({ readIds = [], favouriteGenres = [], excludeIds = [], 
       favouriteGenres,
       excludeIds: excludeIds.map(String),
       limit,
+      ...cfg.body,
     }, { headers: { 'X-Service-Token': cfg.token }, timeout: AI_TIMEOUT_MS });
     logState('up');
     return Array.isArray(res.data?.recommendations) ? res.data.recommendations : [];

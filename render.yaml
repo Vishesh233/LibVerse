@@ -1,9 +1,9 @@
-# Render Blueprint: the LIVE DEMO API (Node, DEMO_MODE=true) and the recommendation service (Python).
-# The frontend is deployed on Vercel (frontend/vercel.json). Step-by-step guide: DEPLOYMENT.md
-#
-# The demo instance is the one that is deployed now. The production API (DEMO_MODE off, real
-# members) is ready below as a commented block: uncomment it when you deploy production
-# (DEPLOYMENT.md, part B). It needs its own MongoDB database and its own recommendation service.
+# Render Blueprint: two API instances of the same code and one shared recommendation service.
+#   libverse-demo-api  the LIVE DEMO (DEMO_MODE=true, database libverse_demo, one-click demo sign-in)
+#   libverse-api       the FULL APP (production, database libverse, email signup + Sign in with Google)
+#   libverse-ai        recommendations for both; each API trains and asks with its own AI_CATALOG
+#                      (demo / production), so the two catalogues never mix
+# The two websites are Vercel projects (frontend/vercel.json). Step-by-step guide: DEPLOYMENT.md
 #
 # Environment variables are listed by NAME only (sync: false): Render asks for each value when
 # the Blueprint is created. Never commit real values.
@@ -28,7 +28,7 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
-      # true: one-click demo sign-in only (no password login, signup or password reset)
+      # true: one-click demo sign-in only (no password login, signup, password reset or Google)
       - key: DEMO_MODE
         sync: false
       - key: DEMO_JWT_EXPIRE
@@ -45,6 +45,59 @@ services:
         sync: false
       - key: AI_SERVICE_TOKEN
         sync: false
+      # demo
+      - key: AI_CATALOG
+        sync: false
+
+  - type: web
+    name: libverse-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    autoDeploy: false
+    envVars:
+      - key: NODE_VERSION
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      # The production database (name libverse)
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRE
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: CSP_API_ORIGINS
+        sync: false
+      - key: TRUST_PROXY
+        sync: false
+      - key: REMINDERS_ENABLED
+        sync: false
+      - key: AI_SERVICE_URL
+        sync: false
+      - key: AI_SERVICE_TOKEN
+        sync: false
+      # production
+      - key: AI_CATALOG
+        sync: false
+      # Sign in with Google: the OAuth client ID (no secret needed)
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
 
   - type: web
     name: libverse-ai
@@ -60,54 +113,9 @@ services:
         sync: false
       - key: HOST
         sync: false
+      # The same token on both APIs
       - key: AI_SERVICE_TOKEN
         sync: false
+      # Both API URLs, comma-separated
       - key: CORS_ORIGINS
         sync: false
-
-  # ---- Production API (DEMO_MODE off): uncomment to deploy it (DEPLOYMENT.md, part B).
-  # Give it its own recommendation service too (copy the libverse-ai block as libverse-ai-prod):
-  # one service is trained with one catalogue, and the demo and production catalogues differ.
-  #
-  # - type: web
-  #   name: libverse-api
-  #   runtime: node
-  #   rootDir: backend
-  #   plan: free
-  #   buildCommand: npm ci --omit=dev
-  #   startCommand: node server.js
-  #   healthCheckPath: /api/health
-  #   autoDeploy: false
-  #   envVars:
-  #     - key: NODE_VERSION
-  #       sync: false
-  #     - key: NODE_ENV
-  #       sync: false
-  #     - key: MONGODB_URI
-  #       sync: false
-  #     - key: JWT_SECRET
-  #       sync: false
-  #     - key: JWT_EXPIRE
-  #       sync: false
-  #     - key: CORS_ORIGINS
-  #       sync: false
-  #     - key: CSP_API_ORIGINS
-  #       sync: false
-  #     - key: TRUST_PROXY
-  #       sync: false
-  #     - key: REMINDERS_ENABLED
-  #       sync: false
-  #     - key: AI_SERVICE_URL
-  #       sync: false
-  #     - key: AI_SERVICE_TOKEN
-  #       sync: false
-  #     - key: SMTP_HOST
-  #       sync: false
-  #     - key: SMTP_PORT
-  #       sync: false
-  #     - key: SMTP_USER
-  #       sync: false
-  #     - key: SMTP_PASS
-  #       sync: false
-  #     - key: MAIL_FROM
-  #       sync: false

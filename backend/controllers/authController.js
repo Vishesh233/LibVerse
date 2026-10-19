@@ -6,42 +6,10 @@ const VALID_GENRES = Book.schema.path('genre').enumValues;
 const invalidGenres = (genres) => genres.filter((g) => !VALID_GENRES.includes(g));
 const { createNotification, notifyStaff } = require('./notificationController');
 const { nextLibraryId } = require('../utils/libraryId');
-const jwt = require('jsonwebtoken');
+const { toPublicUser, signToken } = require('../utils/session');
 const { isDemoMode, demoDisabledBody } = require('../config/demo');
 
 const DEMO_ROLES = ['student', 'librarian', 'admin'];
-
-/**
- * The user fields sent to the client after signup, login and profile changes.
- * The frontend stores this object as the session user, so it must carry everything the UI reads
- * (createdAt for "Member since", phone/address for the profile form) - not a partial copy.
- */
-const toPublicUser = (user) => ({
-  _id: user._id,
-  name: user.name,
-  email: user.email,
-  role: user.role,
-  libraryId: user.libraryId,
-  phone: user.phone,
-  address: user.address,
-  fineAmount: user.fineAmount,
-  profileImage: user.profileImage,
-  isOnboardingCompleted: user.isOnboardingCompleted,
-  favoriteGenres: user.favoriteGenres,
-  createdAt: user.createdAt,
-  isDemo: user.isDemo === true,
-});
-
-/**
- * Generate JWT Token
- */
-// tv = the user's tokenVersion: a token from before a password change/reset no longer works.
-// Demo sessions are short (DEMO_JWT_EXPIRE, default 2h): the accounts are shared and reset daily.
-const signToken = (user) => {
-  return jwt.sign({ id: user._id, tv: user.tokenVersion || 0 }, process.env.JWT_SECRET, {
-    expiresIn: user.isDemo ? process.env.DEMO_JWT_EXPIRE || '2h' : process.env.JWT_EXPIRE || '30d',
-  });
-};
 
 /**
  * @route POST /api/auth/signup
@@ -190,7 +158,8 @@ exports.getCurrentUser = async (req, res, next) => {
     const user = await User.findById(req.user.id);
     res.status(200).json({
       success: true,
-      user,
+      // The full document (googleId and password are never selected) plus the derived fields of toPublicUser
+      user: { ...user.toObject(), ...toPublicUser(user) },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -204,7 +173,7 @@ exports.getCurrentUser = async (req, res, next) => {
  */
 exports.completeOnboarding = async (req, res, next) => {
   try {
-    const { favoriteGenres } = req.body;
+    const { favoriteGenres, phone, address } = req.body;
 
     if (!favoriteGenres || !Array.isArray(favoriteGenres) || favoriteGenres.length < 2) {
       return res.status(400).json({
@@ -242,6 +211,16 @@ exports.completeOnboarding = async (req, res, next) => {
       });
     }
 
+    // Google accounts give a phone number here (email signups may already have one: optional for them)
+    const trimmedPhone = typeof phone === 'string' ? phone.trim() : phone;
+    if (user.createdWith === 'google' && !user.phone && !trimmedPhone) {
+      return res.status(400).json({ success: false, message: 'Please enter your phone number' });
+    }
+    const detailsProblem = phoneProblem(trimmedPhone) || addressProblem(address);
+    if (detailsProblem) return res.status(400).json({ success: false, message: detailsProblem });
+    if (trimmedPhone) user.phone = trimmedPhone;
+    if (typeof address === 'string' && address.trim()) user.address = address.trim();
+
     user.favoriteGenres = favoriteGenres;
     user.isOnboardingCompleted = true;
     await user.save();
@@ -265,6 +244,23 @@ const NAME_MAX = 60;
 const ADDRESS_MAX = 200;
 // Digits with optional leading +, spaces, hyphens or brackets; 7-15 digits in total
 const PHONE_PATTERN = /^\+?[\d\s()-]+$/;
+
+/** Problem with an optional phone value (undefined or '' = none), or null */
+const phoneProblem = (phone) => {
+  if (phone === undefined || phone === '') return null;
+  const digits = typeof phone === 'string' ? phone.replace(/\D/g, '').length : 0;
+  if (typeof phone !== 'string' || !PHONE_PATTERN.test(phone) || digits < 7 || digits > 15) {
+    return 'Phone must be 7-15 digits (spaces, hyphens and a leading + are allowed)';
+  }
+  return null;
+};
+
+/** Problem with an optional address value, or null */
+const addressProblem = (address) => {
+  const trimmed = typeof address === 'string' ? address.trim() : address;
+  if (trimmed === undefined || trimmed === '') return null;
+  return typeof trimmed !== 'string' || trimmed.length > ADDRESS_MAX ? `Address must be at most ${ADDRESS_MAX} characters` : null;
+};
 
 exports.updateProfile = async (req, res, next) => {
   try {
@@ -437,6 +433,9 @@ exports.changePassword = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
+    if (!user.password) {
+      return res.status(400).json({ success: false, message: 'Your account has no password yet. Set one first.' });
+    }
 
     // Verify current password
     const isMatch = await user.matchPassword(currentPassword);
@@ -472,6 +471,40 @@ exports.changePassword = async (req, res, next) => {
       token: signToken(user),
       user: toPublicUser(user),
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @route PUT /api/auth/set-password
+ * @desc A first password for an account created with Google: { newPassword }. Only while the
+ * account has none (afterwards it is "change password", which asks for the current one).
+ * @access Private (rate limited)
+ */
+exports.setPassword = async (req, res) => {
+  try {
+    const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+    if (newPassword.length < 6 || newPassword.length > 128) {
+      return res.status(400).json({ success: false, message: 'The password must be 6 to 128 characters' });
+    }
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (user.password || user.hasPassword !== false) {
+      return res.status(400).json({ success: false, message: 'Your account already has a password. Use "Change password".' });
+    }
+
+    user.password = newPassword; // hashed by pre('save')
+    user.hasPassword = true;
+    await user.save();
+
+    try {
+      await createNotification(user._id, user.role, 'PASSWORD_CHANGED', 'Password set',
+        'You can now also sign in with your email and this password. If you did not do this, contact the library.');
+    } catch (notifError) {
+      console.error('Notification creation failed (non-fatal):', notifError.message);
+    }
+    res.status(200).json({ success: true, message: 'Password set', user: toPublicUser(user) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

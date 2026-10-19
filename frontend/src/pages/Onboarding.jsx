@@ -29,6 +29,15 @@ const GENRE_STYLES = {
   'AI & Machine Learning': { icon: '🤖', color: 'from-indigo-500 to-purple-500' },
 };
 
+// Same rule as the API: digits with an optional leading +, spaces, hyphens or brackets; 7-15 digits
+const PHONE_PATTERN = /^\+?[\d\s()-]+$/;
+const phoneError = (value) => {
+  const v = value.trim();
+  if (!v) return 'Enter your phone number';
+  const digits = v.replace(/\D/g, '').length;
+  return PHONE_PATTERN.test(v) && digits >= 7 && digits <= 15 ? null : 'Use 7-15 digits (spaces, hyphens and a leading + are fine)';
+};
+
 const GENRES = CATALOGUE_GENRES.map((name) => ({
   name,
   ...(GENRE_STYLES[name] || { icon: '📘', color: 'from-slate-500 to-slate-700' }),
@@ -40,6 +49,11 @@ export const Onboarding = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const { updateUser, user } = useAuth();
+  // Accounts created with Google give their contact details first (email signups go straight to genres)
+  const needsDetails = user?.createdWith === 'google' && !user?.phone;
+  const [step, setStep] = useState(needsDetails ? 'details' : 'genres');
+  const [details, setDetails] = useState({ phone: '', address: '' });
+  const [detailsTouched, setDetailsTouched] = useState(false);
 
   // Ensure user is authenticated
   if (!user) {
@@ -70,7 +84,10 @@ export const Onboarding = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await authAPI.completeOnboarding({ favoriteGenres: selectedGenres });
+      const res = await authAPI.completeOnboarding({
+        favoriteGenres: selectedGenres,
+        ...(needsDetails ? { phone: details.phone.trim(), address: details.address.trim() } : {}),
+      });
       if (res?.data?.success) {
         toast.success('Welcome to LibVerse! 🎉');
         updateUser(res.data.user);
@@ -148,10 +165,64 @@ export const Onboarding = () => {
             transition={{ delay: 0.5 }}
             className="onb-sub text-slate-400"
           >
-            Choose your favorite genres to receive better book recommendations.
+            {step === 'details'
+              ? 'First your contact details, then your favourite genres.'
+              : 'Choose your favorite genres to receive better book recommendations.'}
           </motion.p>
         </div>
 
+        {/* Google accounts: Library ID and contact details */}
+        {step === 'details' && (
+          <form
+            noValidate
+            className="mx-auto mb-8 w-full max-w-md space-y-5 rounded-2xl border border-border bg-surface/70 p-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setDetailsTouched(true);
+              if (phoneError(details.phone) || details.address.trim().length > 200) return;
+              setStep('genres');
+            }}
+          >
+            <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-center">
+              <p className="text-xs uppercase tracking-wider text-slate-400">Your Library ID</p>
+              <p className="mt-1 font-mono text-2xl font-bold text-cyan-200">{user.libraryId || 'Assigned shortly'}</p>
+              <p className="mt-1 text-xs text-slate-400">Show it (or your library card) at the desk.</p>
+            </div>
+            <div>
+              <label htmlFor="onb-phone" className="mb-1.5 block text-sm font-medium text-slate-200">Phone number</label>
+              <input
+                id="onb-phone"
+                type="tel"
+                autoComplete="tel"
+                className="input-amo w-full"
+                value={details.phone}
+                onChange={(e) => setDetails((d) => ({ ...d, phone: e.target.value }))}
+                onBlur={() => setDetailsTouched(true)}
+                aria-invalid={detailsTouched && phoneError(details.phone) ? true : undefined}
+                aria-describedby="onb-phone-help"
+                placeholder="+91 98765 43210"
+              />
+              <p id="onb-phone-help" className={`mt-1.5 text-xs ${detailsTouched && phoneError(details.phone) ? 'text-rose-400' : 'text-slate-400'}`}>
+                {(detailsTouched && phoneError(details.phone)) || 'The library uses it only about your loans.'}
+              </p>
+            </div>
+            <div>
+              <label htmlFor="onb-address" className="mb-1.5 block text-sm font-medium text-slate-200">Address <span className="text-slate-500">(optional)</span></label>
+              <input
+                id="onb-address"
+                type="text"
+                autoComplete="street-address"
+                maxLength={200}
+                className="input-amo w-full"
+                value={details.address}
+                onChange={(e) => setDetails((d) => ({ ...d, address: e.target.value }))}
+              />
+            </div>
+            <button type="submit" className="btn-primary w-full !min-h-[48px]">Next: choose genres</button>
+          </form>
+        )}
+
+        {step === 'genres' && (<>
         {/* Genre Selection */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -271,7 +342,13 @@ export const Onboarding = () => {
               'Continue'
             )}
           </motion.button>
+          {needsDetails && (
+            <button type="button" onClick={() => setStep('details')} className="text-sm text-slate-400 hover:text-white">
+              Back to your details
+            </button>
+          )}
         </motion.div>
+        </>)}
       </motion.div>
     </div>
   );

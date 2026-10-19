@@ -15,9 +15,10 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email'],
     },
+    // Accounts created with Google have no password until the member sets one (hasPassword)
     password: {
       type: String,
-      required: [true, 'Please provide a password'],
+      required: [function () { return this.hasPassword !== false; }, 'Please provide a password'],
       minlength: 6,
       select: false, // Don't return password by default
     },
@@ -70,6 +71,24 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    hasPassword: {
+      type: Boolean,
+      default: true,
+    },
+    // Google sign-in: the Google account's stable id (`sub`), never the email. Not sent to clients.
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      select: false,
+    },
+    googleLinkedAt: Date,
+    // How the account was created: Google accounts give their phone number during onboarding
+    createdWith: {
+      type: String,
+      enum: ['email', 'google'],
+      default: 'email',
+    },
     // Live demo account (scripts/resetDemo.js): one-click sign-in, destructive actions blocked.
     // Set only by the demo scripts, never through the API.
     isDemo: {
@@ -98,6 +117,8 @@ userSchema.pre('save', async function (next) {
 
 // Method to match password
 userSchema.methods.matchPassword = async function (enteredPassword) {
+  // A Google account without a password never matches
+  if (!this.password || typeof enteredPassword !== 'string') return false;
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

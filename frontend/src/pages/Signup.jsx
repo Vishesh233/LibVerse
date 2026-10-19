@@ -5,6 +5,7 @@ import { authAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { Card, Button } from '../components/UI';
 import { LogoMark } from '../components/LogoMark';
+import { GoogleSignInButton, useGoogleSignIn } from '../components/GoogleSignInButton';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -56,6 +57,30 @@ export const Signup = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+  const googleEnabled = useGoogleSignIn();
+
+  // Sign in with Google: an existing account (or a connected student account) signs in; a new
+  // Google user becomes a student and goes through onboarding (phone and genres)
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const handleGoogle = async (credential) => {
+    setGoogleBusy(true);
+    setError('');
+    try {
+      const response = await authAPI.googleLogin(credential);
+      const { token, user } = response.data;
+      login(user, token);
+      toast.success(response.data.created ? 'Welcome to LibVerse!' : 'Signed in with Google');
+      if (user?.role === 'admin') navigate('/admin');
+      else if (user?.role === 'librarian') navigate('/librarian');
+      else navigate(user?.isOnboardingCompleted ? '/student/dashboard' : '/student/onboarding');
+    } catch (err) {
+      const message = err.response?.data?.message || 'Google sign-in failed. Please try again.';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setGoogleBusy(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -198,6 +223,8 @@ export const Signup = () => {
           </Button>
 
           <div className="auth-divider" role="separator">or</div>
+
+          {googleEnabled && <GoogleSignInButton text="signup_with" onCredential={handleGoogle} disabled={googleBusy || loading} />}
 
           <p className="text-center text-sm text-slate-400">
             Already have an account?{' '}

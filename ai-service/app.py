@@ -21,13 +21,13 @@ def create_app():
     origins = [o.strip() for o in os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',') if o.strip()]
     CORS(app, origins=origins)
 
-    from model.recommender import recommender
-    from routes.recommend import recommend_bp
+    from routes.recommend import catalog_sizes, recommend_bp
     app.register_blueprint(recommend_bp)
 
     @app.route('/health', methods=['GET'])
     def health():
-        return jsonify({'status': 'ok', 'service': 'LibVerse recommendations', 'trainedBooks': recommender.size}), 200
+        catalogs = catalog_sizes()
+        return jsonify({'status': 'ok', 'service': 'LibVerse recommendations', 'trainedBooks': sum(catalogs.values()), 'catalogs': catalogs}), 200
 
     @app.errorhandler(404)
     def not_found(error):

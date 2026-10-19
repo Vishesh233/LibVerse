@@ -23,7 +23,7 @@ apiClient.interceptors.request.use(
 );
 
 // Endpoints whose 401 means "wrong credentials", not "session expired"
-const CREDENTIAL_ENDPOINTS = ['/auth/login', '/auth/signup', '/auth/change-password'];
+const CREDENTIAL_ENDPOINTS = ['/auth/login', '/auth/signup', '/auth/change-password', '/auth/google', '/auth/set-password'];
 
 // Log out on an invalid/expired session or a deactivated account.
 // Other 403s are normal permission denials and must not log the user out.
@@ -67,6 +67,13 @@ export const authAPI = {
   // Live demo instance: { enabled }, and one-click sign-in as the demo account for a role
   getDemoStatus: () => apiClient.get('/auth/demo'),
   demoLogin: (role) => apiClient.post('/auth/demo-login', { role }),
+  // Sign in with Google (production): { enabled }, sign in / sign up with the ID token,
+  // connect or disconnect Google from Settings (current password), first password for Google accounts
+  getGoogleStatus: () => apiClient.get('/auth/google'),
+  googleLogin: (credential) => apiClient.post('/auth/google', { credential }),
+  linkGoogle: (credential, currentPassword) => apiClient.post('/auth/google/link', { credential, currentPassword }),
+  unlinkGoogle: (currentPassword) => apiClient.delete('/auth/google/link', { data: { currentPassword } }),
+  setPassword: (newPassword) => apiClient.put('/auth/set-password', { newPassword }),
   uploadAvatar: (formData) =>
     apiClient.post('/profile/upload-avatar', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

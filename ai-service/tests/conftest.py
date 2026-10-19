@@ -45,6 +45,7 @@ def client(monkeypatch):
     monkeypatch.setattr(module, 'recommender', module.BookRecommender())
     import routes.recommend as routes
     monkeypatch.setattr(routes, 'recommender', module.recommender)
+    monkeypatch.setattr(routes, '_named', {})
     app = create_app()
     app.config['TESTING'] = True
     return app.test_client()

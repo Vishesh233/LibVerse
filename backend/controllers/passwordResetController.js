@@ -40,6 +40,25 @@ const codeEmail = (name, code) => ({
 <p style="color:#666">If you did not ask for this, ignore this email: your password stays the same.</p>`,
 });
 
+// An account created with Google has no password to reset: tell the owner how to get in instead
+const googleOnlyEmail = (name) => ({
+  subject: 'Signing in to LibVerse',
+  text: [
+    `Hi ${name},`,
+    '',
+    'Someone asked to reset the password of your LibVerse account. Your account uses Google sign-in and',
+    'has no password yet, so there is nothing to reset.',
+    '',
+    'Sign in with the "Sign in with Google" button. If you also want a password, set one in Settings > Security.',
+    '',
+    'If you did not ask for this, ignore this email.',
+  ].join('\n'),
+  html: `<p>Hi ${String(name).replace(/[<>&"]/g, '')},</p>
+<p>Someone asked to reset the password of your LibVerse account. Your account uses Google sign-in and has no password yet, so there is nothing to reset.</p>
+<p>Sign in with the <strong>Sign in with Google</strong> button. If you also want a password, set one in <em>Settings &gt; Security</em>.</p>
+<p style="color:#666">If you did not ask for this, ignore this email.</p>`,
+});
+
 /**
  * @route GET /api/auth/password-reset
  * @desc Whether "Forgot password" by email is available
@@ -60,9 +79,14 @@ exports.requestReset = async (req, res) => {
   if (!looksLikeEmail(email)) return res.status(400).json({ success: false, message: 'Enter a valid email address' });
 
   try {
-    const user = await User.findOne({ email }).select('name isActive isDemo');
+    const user = await User.findOne({ email }).select('name isActive isDemo hasPassword');
     // Demo accounts have no password of their own: never send them a code (same answer as usual)
     if (user && user.isActive !== false && !user.isDemo) {
+      if (user.hasPassword === false) {
+        // No code: the same answer as always, and an email saying to use Google
+        sendMail({ to: email, ...googleOnlyEmail(user.name) });
+        return res.status(200).json({ success: true, message: SENT_MESSAGE });
+      }
       const recent = await PasswordResetCode.findOne({ userId: user._id, createdAt: { $gt: new Date(Date.now() - RESEND_AFTER_MS) } }).lean();
       if (!recent) {
         const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
@@ -98,8 +122,8 @@ exports.resetPassword = async (req, res) => {
   }
 
   try {
-    const user = await User.findOne({ email }).select('_id isDemo');
-    if (!user || user.isDemo) return res.status(400).json({ success: false, message: BAD_CODE });
+    const user = await User.findOne({ email }).select('_id isDemo hasPassword');
+    if (!user || user.isDemo || user.hasPassword === false) return res.status(400).json({ success: false, message: BAD_CODE });
 
     // Count the guess first (atomically), so parallel guesses can't exceed the limit
     const record = await PasswordResetCode.findOneAndUpdate(

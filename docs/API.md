@@ -100,6 +100,8 @@ usual error shape.
 | passwordChange | `PUT /api/auth/change-password` | 15 min | 5 | `RATE_LIMIT_PASSWORD_CHANGE` | Counted before authentication |
 | forgotPassword | `POST /api/auth/forgot-password` | 15 min | 5 | `RATE_LIMIT_FORGOT_PASSWORD` | |
 | resetPassword | `POST /api/auth/reset-password` | 15 min | 10 | `RATE_LIMIT_RESET_PASSWORD` | Each code also allows only 5 guesses |
+| googleSignIn | `POST /api/auth/google` | 15 min | 20 | `RATE_LIMIT_GOOGLE_SIGNIN` | Only failed attempts count |
+| googleLink | `POST` / `DELETE /api/auth/google/link` | 15 min | 10 | `RATE_LIMIT_GOOGLE_LINK` | |
 | demoLogin | `POST /api/auth/demo-login` | 15 min | 30 | `RATE_LIMIT_DEMO_LOGIN` | Every click counts |
 | demo writes | every POST/PUT/PATCH/DELETE by a demo account | 15 min | 60 | `RATE_LIMIT_DEMO_WRITES` | Counted **per demo account**, not per IP (in `protect`) |
 
@@ -175,19 +177,39 @@ Route file: `backend/routes/authRoutes.js`. Controllers: `authController.js`,
 | `PUT /api/auth/update-profile` | Signed in | Any of `name` (2-60 chars), `phone` (7-15 digits), `address` (max 200), `profileImage` (http(s) URL, max 2048) | `{ message, user }` |
 | `PUT /api/auth/complete-onboarding` | Signed in | `favoriteGenres` (2-5 values from the Book genre list) | `{ message, user }`; 400 if already completed |
 | `PUT /api/auth/update-favorite-genres` | Signed in | `favoriteGenres` (2-5 valid genres) | `{ message, user }` |
-| `PUT /api/auth/change-password` | Signed in (rate limited) | `currentPassword`, `newPassword` (min 6) | `{ message, token, user }`: new token, older sessions end |
+| `PUT /api/auth/change-password` | Signed in (rate limited) | `currentPassword`, `newPassword` (min 6) | `{ message, token, user }`: new token, older sessions end; `400` for an account without a password |
+| `PUT /api/auth/set-password` | Signed in (rate limited), not demo | `newPassword` (6-128) | `{ message, user }`: first password of a Google account; `400` if it already has one |
+| `GET /api/auth/google` | Public | | `{ enabled }`: Sign in with Google is on (`GOOGLE_CLIENT_ID` set and not `DEMO_MODE`) |
+| `POST /api/auth/google` | Public (rate limited), not demo | `credential` (the Google ID token; nothing else is read) | `200 { token, user, linked? }` or `201 { token, user, created: true }`; `401` invalid/expired token; `403` unverified Google email, demo or deactivated account; `409` staff email or an account connected to another Google account; `404` when off |
+| `POST /api/auth/google/link` | Signed in (rate limited), not demo | `credential`, `currentPassword` | `{ message, user }`: connect Google from Settings (staff too); `409` if either side is already connected |
+| `DELETE /api/auth/google/link` | Signed in (rate limited), not demo | `currentPassword` | `{ message, user }`; `400` while the account has no password |
 
 Notes:
 
 - `user` in signup, login and profile responses is the public user object: `_id`, `name`, `email`,
   `role`, `libraryId`, `phone`, `address`, `fineAmount`, `profileImage`, `isOnboardingCompleted`,
-  `favoriteGenres`, `createdAt`, `isDemo`.
+  `favoriteGenres`, `createdAt`, `isDemo`, `hasPassword`, `googleLinked`, `createdWith` (`email` or
+  `google`). The Google account id (`googleId`) is never sent.
 - Signup always creates a `student`; any `role` in the body is ignored. Emails are trimmed and
   lower-cased. New users get the next sequential Library ID (`LIB-1001`, `LIB-1002`, ...) from an
   atomic counter (`backend/utils/libraryId.js`).
 - Login answers `401 "Invalid email or password"` for both an unknown email and a wrong password.
 - When a student changes their `name`, every active staff member gets a `NAME_CHANGE` notification.
 - Password change and reset create a `PASSWORD_CHANGED` notification for the user.
+
+### Sign in with Google (`backend/controllers/googleAuthController.js`)
+
+- The ID token is verified with `google-auth-library`: RS256 signature against Google's
+  certificates, audience `GOOGLE_CLIENT_ID`, issuer `accounts.google.com`, not expired.
+- The account is identified by the token's `sub` (stored as `googleId`), never by its email.
+- Order: an account already connected to this `sub` signs in; else a **student** with the same email
+  is connected, only when `email_verified` is `true`; else a new **student** is created with
+  `hasPassword: false`, `createdWith: "google"` and the next Library ID. Librarian/admin accounts are
+  never connected here (they use `POST /google/link` while signed in); demo accounts never.
+- `PUT /complete-onboarding` additionally takes `phone` (required for `createdWith: "google"` accounts
+  without one) and `address`; email signups are unchanged.
+- "Forgot password" for an account without a password sends a "sign in with Google" email and no
+  code (the API answer is the same as always).
 
 ### Live demo (`DEMO_MODE`, `isDemo`)
 
@@ -703,12 +725,16 @@ backend calls it (`backend/services/recommendationService.js`). Locally it liste
 
 | Method and path | Auth | Body | Returns |
 |---|---|---|---|
-| `GET /health` | None | | `{ status: "ok", service, trainedBooks }` |
+| `GET /health` | None | | `{ status: "ok", service, trainedBooks, catalogs }`: books per catalogue (`default` plus named ones) |
 | `POST /api/train` | `X-Service-Token` | `{ books: [{ id, title, author, genre, description, popularity? }] }` | `{ success: true, trained }` |
 | `POST /api/recommend` | `X-Service-Token` | `{ readIds, favouriteGenres, excludeIds, limit }` | `{ success: true, recommendations: [{ id, score, reason, basis }] }` |
 
 - `X-Service-Token` must equal the service's `AI_SERVICE_TOKEN` (constant-time comparison):
   `401 Unauthorized` otherwise, `503` while `AI_SERVICE_TOKEN` is not set.
+- Both `train` and `recommend` take an optional `catalog` (`a-z 0-9 _ -`, at most 32 characters, at
+  most 8 named catalogues): backends sharing one service send their own `AI_CATALOG` (e.g. `demo`,
+  `production`) so their books never mix. Without it the default catalogue is used; an untrained
+  catalogue answers `409`.
 - `train` replaces the whole catalogue. At most 20000 books; every `id` must be a unique non-empty
   string; text fields must be strings; `popularity` a number of at least 0.
 - `recommend`: the three lists are optional lists of at most 2000 strings; `limit` an integer from 1 to

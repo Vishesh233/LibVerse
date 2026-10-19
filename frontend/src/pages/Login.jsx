@@ -5,6 +5,7 @@ import { motion, useInView } from 'framer-motion';
 import { authAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useDemoMode } from '../hooks/useDemoMode';
+import { GoogleSignInButton, useGoogleSignIn } from '../components/GoogleSignInButton';
 import { LogoMark } from '../components/LogoMark';
 
 // Generate particles for background
@@ -60,6 +61,7 @@ export const Login = () => {
   const [resetByEmail, setResetByEmail] = useState(false);
   const [demoRole, setDemoRole] = useState(null);
   const demoMode = useDemoMode();
+  const googleEnabled = useGoogleSignIn();
 
   useEffect(() => {
     authAPI.getPasswordResetStatus().then((r) => setResetByEmail(Boolean(r.data?.enabled))).catch(() => {});
@@ -103,6 +105,27 @@ export const Login = () => {
       navigate('/student/onboarding');
     } else {
       navigate('/student/dashboard');
+    }
+  };
+
+  // Sign in with Google: an existing account (or a connected student account) signs in; a new
+  // Google user becomes a student and goes through onboarding (phone and genres)
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const handleGoogle = async (credential) => {
+    setGoogleBusy(true);
+    setError('');
+    try {
+      const response = await authAPI.googleLogin(credential);
+      const { token, user } = response.data;
+      login(user, token);
+      toast.success(response.data.created ? 'Welcome to LibVerse!' : 'Signed in with Google');
+      goHome(user);
+    } catch (err) {
+      const message = err.response?.data?.message || 'Google sign-in failed. Please try again.';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setGoogleBusy(false);
     }
   };
 
@@ -371,6 +394,8 @@ export const Login = () => {
 
             {/* Divider */}
             <div className="auth-divider" role="separator">or</div>
+
+            {googleEnabled && <GoogleSignInButton text="signin_with" onCredential={handleGoogle} disabled={googleBusy || loading} />}
 
             {/* Sign Up Link */}
             <motion.p className="text-center text-sm text-slate-400" variants={itemVariants}>

@@ -5,8 +5,12 @@
  * The app loads: its own JS/CSS, Google Fonts (CSS from fonts.googleapis.com, files from
  * fonts.gstatic.com), book covers from Open Library (redirected to *.archive.org) or any HTTPS URL
  * staff paste, avatars and uploaded covers from the API origin, and calls the API origin.
+ * "Sign in with Google" (production) loads Google Identity Services from accounts.google.com/gsi/.
  */
 const rateLimit = require('express-rate-limit');
+
+// Google Identity Services: the script, its button styles and its iframe/requests
+const GOOGLE_GSI = 'https://accounts.google.com/gsi/';
 
 const csv = (value) => (value || '').split(',').map((v) => v.trim()).filter(Boolean);
 
@@ -21,12 +25,13 @@ const apiOrigins = () => {
 /** Content-Security-Policy directives for the app (helmet format) */
 const cspDirectives = ({ api = apiOrigins(), production = process.env.NODE_ENV === 'production' } = {}) => ({
   defaultSrc: ["'self'"],
-  scriptSrc: ["'self'"],
+  scriptSrc: ["'self'", `${GOOGLE_GSI}client`],
   // React and framer-motion set style attributes; Google Fonts serves the font CSS
-  styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+  styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', `${GOOGLE_GSI}style`],
   fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
   imgSrc: ["'self'", 'data:', 'blob:', 'https:', ...api],
-  connectSrc: ["'self'", ...api],
+  connectSrc: ["'self'", ...api, GOOGLE_GSI],
+  frameSrc: [GOOGLE_GSI],
   mediaSrc: ["'self'", 'blob:'],
   workerSrc: ["'self'", 'blob:'],
   objectSrc: ["'none'"],
@@ -85,6 +90,18 @@ const rateLimiters = () => ({
   // Entering the emailed code (each code also allows only 5 guesses)
   resetPassword: rateLimit({
     windowMs: minutes(15), limit: limit('RESET_PASSWORD', 10),
+    standardHeaders: 'draft-7', legacyHeaders: false,
+    handler: tooMany('Too many attempts. Try again in 15 minutes.'),
+  }),
+  // Sign in with Google: like login, only failed attempts count
+  googleSignIn: rateLimit({
+    windowMs: minutes(15), limit: limit('GOOGLE_SIGNIN', 20), skipSuccessfulRequests: true,
+    standardHeaders: 'draft-7', legacyHeaders: false,
+    handler: tooMany('Too many Google sign-in attempts. Try again in 15 minutes.'),
+  }),
+  // Connecting / disconnecting Google from Settings (each also needs the current password)
+  googleLink: rateLimit({
+    windowMs: minutes(15), limit: limit('GOOGLE_LINK', 10),
     standardHeaders: 'draft-7', legacyHeaders: false,
     handler: tooMany('Too many attempts. Try again in 15 minutes.'),
   }),

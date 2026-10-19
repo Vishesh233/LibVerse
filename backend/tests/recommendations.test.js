@@ -170,3 +170,18 @@ test('no favourite genres and no history: empty list with the onboarding hint', 
   expect(r.body.recommendations).toEqual([]);
   expect(r.body.message).toMatch(/onboarding/);
 });
+
+test('AI_CATALOG: training and requests name this backend\'s catalogue (a shared service keeps them apart)', async () => {
+  process.env.AI_CATALOG = 'production';
+  try {
+    const { trainNow } = require('../services/recommendationService');
+    expect(await trainNow()).toBeGreaterThan(0);
+    expect(fake.trained.catalog).toBe('production');
+    await picks();
+    expect(fake.lastRecommend.catalog).toBe('production');
+  } finally {
+    delete process.env.AI_CATALOG;
+  }
+  await picks();
+  expect(fake.lastRecommend).not.toHaveProperty('catalog');
+});

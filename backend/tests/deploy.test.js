@@ -85,20 +85,24 @@ test('vercel.json: SPA fallback and the same CSP as the API (production)', () =>
   expect(all.find((h) => h.key === 'Permissions-Policy').value).toContain('camera=(self)');
 });
 
-test('render.yaml: the demo API and the AI service with health checks, env var names but no values; production ready as a comment', () => {
+test('render.yaml: demo API, production API and one shared AI service; health checks, env var names but no values', () => {
   const yaml = fs.readFileSync(path.join(ROOT, 'render.yaml'), 'utf8');
-  const active = yaml.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
-  expect(active).toMatch(/name: libverse-demo-api[\s\S]*healthCheckPath: \/api\/health/);
-  expect(active).toMatch(/name: libverse-ai[\s\S]*healthCheckPath: \/health/);
-  expect(active).not.toMatch(/name: libverse-api\b/);
-  ['MONGODB_URI', 'JWT_SECRET', 'DEMO_MODE', 'CORS_ORIGINS', 'AI_SERVICE_URL', 'AI_SERVICE_TOKEN'].forEach((k) => expect(active).toContain(`key: ${k}`));
-  // The production service, commented out, keeps its full list
-  expect(yaml).toMatch(/#\s+name: libverse-api\n/);
-  ['SMTP_HOST', 'MAIL_FROM', 'JWT_EXPIRE'].forEach((k) => expect(yaml).toMatch(new RegExp(`#\\s+- key: ${k}\\n`)));
-  expect(yaml).not.toMatch(/^\s*#?\s*value:/m);
-  expect(active.match(/^\s+- key: /gm).length).toBe(active.match(/^\s+sync: false$/gm).length);
-  const commented = yaml.split('\n').filter((l) => /^\s*#/.test(l)).join('\n');
-  expect(commented.match(/#\s+- key: /g).length).toBe(commented.match(/#\s+sync: false/g).length);
+  const services = yaml.split(/\r?\n {2}- type: web\r?\n/).slice(1);
+  const byName = Object.fromEntries(services.map((s) => [s.match(/name: (\S+)/)[1], s]));
+  expect(Object.keys(byName)).toEqual(['libverse-demo-api', 'libverse-api', 'libverse-ai']);
+  const keys = (name) => [...byName[name].matchAll(/- key: (\w+)/g)].map((m) => m[1]);
+  ['libverse-demo-api', 'libverse-api'].forEach((api) => {
+    expect(byName[api]).toContain('healthCheckPath: /api/health');
+    expect(keys(api)).toEqual(expect.arrayContaining(['MONGODB_URI', 'JWT_SECRET', 'CORS_ORIGINS', 'AI_SERVICE_URL', 'AI_SERVICE_TOKEN', 'AI_CATALOG']));
+  });
+  expect(keys('libverse-demo-api')).toContain('DEMO_MODE');
+  expect(keys('libverse-demo-api')).not.toEqual(expect.arrayContaining(['GOOGLE_CLIENT_ID']));
+  expect(keys('libverse-demo-api').filter((k) => k.startsWith('SMTP_'))).toEqual([]);
+  expect(keys('libverse-api')).toEqual(expect.arrayContaining(['GOOGLE_CLIENT_ID', 'SMTP_HOST', 'MAIL_FROM', 'JWT_EXPIRE']));
+  expect(keys('libverse-api')).not.toContain('DEMO_MODE');
+  expect(byName['libverse-ai']).toContain('healthCheckPath: /health');
+  expect(yaml).not.toMatch(/^\s*value:/m);
+  expect(yaml.match(/^\s+- key: /gm).length).toBe(yaml.match(/^\s+sync: false$/gm).length);
 });
 
 test('the daily demo reset workflow: 02:00 IST, a secret for the URI, only resetDemo.js --apply', () => {
