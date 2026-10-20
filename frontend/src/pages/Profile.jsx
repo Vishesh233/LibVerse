@@ -13,6 +13,7 @@ import { ActivityTab } from '../components/profile/ActivityTab';
 import { ReadingStatsPanel } from '../components/profile/ReadingStats';
 import { ActivityIcon, BookIcon, CardIcon, HeartIcon, LockIcon, UserIcon } from '../components/profile/ProfileIcons';
 import { LibraryCardPanel } from '../components/LibraryCard';
+import { LegalLinks } from '../components/legal/LegalLinks';
 
 const TABS = [
   { key: 'personal', label: 'Personal info', icon: <UserIcon />, description: 'Your name and contact details.' },
@@ -139,6 +140,8 @@ export const Profile = () => {
             </section>
           </Card>
         </div>
+
+        <LegalLinks className="mt-8 print:hidden" />
       </div>
     </MainLayout>
   );

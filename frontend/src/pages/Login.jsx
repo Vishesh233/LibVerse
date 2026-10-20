@@ -14,6 +14,7 @@ import { CodeField } from '../components/auth/CodeField';
 import { VerifyEmailForm } from '../components/auth/VerifyEmailForm';
 import { FullAppLink } from '../components/demo/FullAppLink';
 import { DemoWakeScreen } from '../components/demo/DemoWakeScreen';
+import { LegalLinks } from '../components/legal/LegalLinks';
 
 // Generate particles for background
 const PARTICLES = Array.from({ length: 50 }, (_, i) => ({
@@ -618,7 +619,8 @@ export const Login = () => {
           )}
 
           {/* Footer */}
-          <motion.div className="auth-footer" variants={itemVariants}>
+          <motion.div className="auth-footer space-y-1.5" variants={itemVariants}>
+            <LegalLinks />
             <p className="text-xs text-muted text-center">
               Version 1.0 • © 2026 LibVerse
             </p>

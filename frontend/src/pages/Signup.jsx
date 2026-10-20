@@ -7,6 +7,7 @@ import { Card, Button } from '../components/UI';
 import { LogoMark } from '../components/LogoMark';
 import { GoogleSignInButton, useGoogleSignIn } from '../components/GoogleSignInButton';
 import { VerifyEmailForm } from '../components/auth/VerifyEmailForm';
+import { LegalLinks } from '../components/legal/LegalLinks';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -256,6 +257,7 @@ export const Signup = () => {
         </form>
         </>
         )}
+        <LegalLinks className="mt-5" />
       </Card>
     </div>
   );

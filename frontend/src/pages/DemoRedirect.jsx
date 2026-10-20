@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { DEMO_APP_URL, IS_DEMO_BUILD } from '../utils/siteConfig';
 import { LogoMark } from '../components/LogoMark';
+import { LegalLinks } from '../components/legal/LegalLinks';
 
 /**
  * /demo on the full app: off to the live demo site (VITE_DEMO_APP_URL). Without it, a short
@@ -35,6 +36,7 @@ export const DemoRedirect = () => {
                 <Link to="/login" className="login-button mt-6 flex items-center justify-center">Go to sign in</Link>
               </>
             )}
+            <LegalLinks className="mt-6" />
           </main>
         </div>
       </div>
