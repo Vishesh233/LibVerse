@@ -400,9 +400,65 @@ The route guard is a convenience for the UI only; every permission is enforced a
 
 ## Deployment
 
-- Step-by-step guide: [DEPLOYMENT.md](../DEPLOYMENT.md) (MongoDB Atlas, Render, Vercel, optional SMTP).
+- Step-by-step guide: [DEPLOYMENT.md](../DEPLOYMENT.md) (MongoDB Atlas, Brevo, Google, Render, Vercel) and
+  the numbered PowerShell version [DEPLOY-CHECKLIST.md](../DEPLOY-CHECKLIST.md).
 - `render.yaml`: Render Blueprint for the API (`backend/`, health check `/api/health`) and the
   recommendation service (`ai-service/`, health check `/health`); environment variables are listed
   by name only.
 - `frontend/vercel.json`: Vite build, SPA rewrite to `index.html`, long cache for hashed assets, and
   security headers including the CSP.
+
+### Deployed layout
+
+The same code runs as **two websites**: the real app and a public demo. They share nothing except the
+recommendation service (which keeps one model per catalogue), so a demo visitor can never reach real data.
+
+```mermaid
+flowchart LR
+    Visitor["Visitor"]
+    subgraph Vercel["Vercel (two projects, same frontend/ folder)"]
+        FullSite["Full app<br/>lib-verse.vercel.app<br/>VITE_DEMO_APP_URL"]
+        DemoSite["Demo site<br/>VITE_DEMO_MODE=true<br/>VITE_FULL_APP_URL"]
+    end
+    subgraph Render["Render (free web services)"]
+        API["libverse-api<br/>production API"]
+        DemoAPI["libverse-demo-api<br/>DEMO_MODE=true"]
+        AI["libverse-ai<br/>shared, catalogues<br/>production + demo"]
+    end
+    subgraph Atlas["MongoDB Atlas (one M0 cluster)"]
+        Prod[("libverse<br/>real members")]
+        Demo[("libverse_demo<br/>sample data")]
+    end
+    Brevo["Brevo<br/>transactional email API"]
+    Google["Google Identity Services<br/>Sign in with Google"]
+    Actions["GitHub Actions<br/>demo reset, every 6 hours"]
+
+    Visitor --> FullSite
+    Visitor --> DemoSite
+    FullSite -- "/demo redirects" --> DemoSite
+    DemoSite -- "Sign in / Create your own account" --> FullSite
+    FullSite -- "REST + JWT" --> API
+    DemoSite -- "REST + JWT (one-click demo sign-in)" --> DemoAPI
+    API --> Prod
+    DemoAPI --> Demo
+    API -- "AI_CATALOG=production" --> AI
+    DemoAPI -- "AI_CATALOG=demo" --> AI
+    API -- "verification, sign-in, reset codes" --> Brevo
+    FullSite -- "ID token (button)" --> Google
+    API -- "verifies the ID token" --> Google
+    Actions -- "scripts/resetDemo.js --apply<br/>(DEMO_MONGODB_URI)" --> Demo
+```
+
+| Piece | Where | Notes |
+|---|---|---|
+| Full app site | Vercel project `libverse` | `VITE_API_BASE_URL`, `VITE_GOOGLE_CLIENT_ID`, `VITE_DEMO_APP_URL`; `/demo` redirects to the demo site |
+| Demo site | Vercel project `libverse-demo` | `VITE_DEMO_MODE=true` (the demo never shows a password form, even while its API sleeps), `VITE_FULL_APP_URL`; shows "Waking up the demo library…" during a cold start |
+| API | Render `libverse-api` | database `libverse`; email codes, Google sign-in, rate limits; `BREVO_API_KEY`, `MAIL_FROM`, `GOOGLE_CLIENT_ID` |
+| Demo API | Render `libverse-demo-api` | `DEMO_MODE=true`, database `libverse_demo`; one-click demo sign-in only, no signup, email or Google; demo writes are rate-limited per account |
+| AI service | Render `libverse-ai` | one service for both APIs, a separate model per `AI_CATALOG` (`production`, `demo`); shared `AI_SERVICE_TOKEN` |
+| Database | MongoDB Atlas, one free cluster | two databases and three users, each limited to one database (`libverse-app`, `libverse-demo-app`, `libverse-demo-reset`) |
+| Email | Brevo HTTPS API | SMTP is the fallback; features stay hidden when neither is configured |
+| Google sign-in | Google Identity Services | the browser gets an ID token, the API verifies it (no client secret) |
+| Demo reset | GitHub Actions `.github/workflows/demo-reset.yml` | `30 */6 * * *`: replaces only what the `isDemo` accounts own; secret `DEMO_MONGODB_URI` |
+
+Free Render services sleep after about 15 minutes idle, so the first request can take up to a minute.

@@ -17,14 +17,32 @@
 </p>
 
 <p align="center">
-  <b>Live demo:</b> <i>coming soon</i> &nbsp;·&nbsp;
+  <b>Live app:</b> <a href="https://lib-verse.vercel.app">lib-verse.vercel.app</a> &nbsp;·&nbsp;
+  <b>Live demo:</b> <a href="https://lib-verse.vercel.app/demo">lib-verse.vercel.app/demo</a> <i>(no sign-up)</i>
+</p>
+
+<p align="center">
   <a href="docs/SCREENSHOTS.md">All screenshots</a> &nbsp;·&nbsp;
   <a href="DEPLOYMENT.md">Deploy your own</a> &nbsp;·&nbsp;
   <a href="docs/API.md">API</a> &nbsp;·&nbsp;
   <a href="docs/ARCHITECTURE.md">Architecture</a>
 </p>
 
+<p align="center">
+  <sub>Free hosting: the first load after a quiet period can take up to a minute while the server wakes up.</sub>
+</p>
+
 ---
+
+## Try it
+
+| | Link | What you get |
+|---|---|---|
+| **Live app** | <https://lib-verse.vercel.app> | The real thing: create an account or sign in (email, Google or an emailed code) |
+| **Live demo** | <https://lib-verse.vercel.app/demo> | No sign-up: one click as Student, Librarian or Admin, with sample data |
+
+> **Free hosting:** the first load after a quiet period can take up to a minute while the server wakes up.
+> The demo shows a "Waking up the demo library…" screen meanwhile.
 
 ## What it is
 
@@ -33,6 +51,38 @@ reserve when every copy is out, and pay late fines by UPI. Librarians approve re
 counter with a QR scan desk and keep the catalogue in shape. Admins see the whole library in
 dashboards, reports and an audit log. A small Python service suggests books to each student and
 says why ("Because you read *Clean Code*").
+
+## Sign-in options
+
+The live app (not the demo) offers four ways in:
+
+- **Email + password:** sign up with your email; passwords are stored only as bcrypt hashes.
+- **Sign in with Google:** one click. A new Google user becomes a student; an existing student with the
+  same (Google-verified) email is connected to it. Librarians and admins connect Google themselves in
+  Settings → Security.
+- **Email code (passwordless):** enter your email, receive a 6-digit code, sign in with it.
+- **Sign-up email verification:** a new email/password account confirms its address with a 6-digit
+  code before it can sign in. Google sign-ups and accounts made by an admin are verified already.
+
+Forgot password also works by emailed code. Codes are stored only as hashes, last 10 minutes, allow
+5 guesses and can be re-sent once a minute; the email goes out through the Brevo HTTPS API (SMTP is the
+fallback). When email is not configured those features simply stay hidden. Details: [docs/API.md](docs/API.md).
+
+## Live demo
+
+The [live demo](https://lib-verse.vercel.app/demo) needs no account: pick **View as Student**,
+**View as Librarian** or **View as Admin**.
+
+- **Student:** borrow, reserve, pay a fine, see your library card.
+- **Librarian:** approve requests, run the QR scan desk, verify payments.
+- **Admin:** dashboards, analytics, reports and the audit log.
+
+It runs as a **separate site, API and database** (`libverse_demo`) from the real app, so nothing you
+do there can reach real members' data; sign-up, password login, email codes and Google are switched
+off on it, and destructive actions (changing passwords, deleting books or users) say "Disabled in demo
+mode". Demo accounts are shared, so other visitors can see your changes, and **a scheduled GitHub
+Actions job resets all demo data every 6 hours**. The top-right **Sign in / Create your own account**
+link goes to the real app. See [DEPLOYMENT.md](DEPLOYMENT.md) for how the two sites are set up.
 
 ## Screens
 
@@ -85,7 +135,8 @@ Every screen, grouped by role: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) (or op
 | Recommendations | Python, Flask, scikit-learn (TF-IDF) |
 | Security | helmet with a Content-Security-Policy, CORS allowlist, express-rate-limit, bcrypt, JWT with session versioning |
 | Quality | Jest + Supertest against a real MongoDB, pytest, GitHub Actions |
-| Hosting | Vercel (frontend), Render (API and AI service), MongoDB Atlas — see [DEPLOYMENT.md](DEPLOYMENT.md) |
+| Email | Brevo transactional email HTTPS API (SMTP fallback via nodemailer) |
+| Hosting | Vercel (two sites), Render (API, demo API and AI service), MongoDB Atlas, GitHub Actions — see [DEPLOYMENT.md](DEPLOYMENT.md) |
 
 ## Architecture
 
@@ -100,7 +151,9 @@ flowchart LR
 ```
 
 The API never waits on the AI service for more than 1.5 seconds: when it is down, slow or not configured,
-"Picked for you" uses genre-based suggestions from MongoDB instead. More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+"Picked for you" uses genre-based suggestions from MongoDB instead. The live setup (two Vercel sites, two
+Render APIs, one shared AI service, two Atlas databases, Brevo, Google sign-in and the demo reset job) is
+drawn in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#deployed-layout).
 
 ## Run it locally
 
@@ -221,5 +274,6 @@ render.yaml   Render services (API + AI)       DEPLOYMENT.md   step-by-step depl
 
 ## Deploying
 
-[DEPLOYMENT.md](DEPLOYMENT.md) walks through MongoDB Atlas, Render (API and AI service), Vercel,
-seeding the catalogue, creating the first admin and a post-deploy checklist.
+[DEPLOYMENT.md](DEPLOYMENT.md) walks through MongoDB Atlas, Brevo, Google sign-in, Render (two APIs and the
+AI service), Vercel (two sites), seeding the catalogue, creating the first admin and a post-deploy checklist;
+[DEPLOY-CHECKLIST.md](DEPLOY-CHECKLIST.md) is the same as numbered PowerShell steps.
