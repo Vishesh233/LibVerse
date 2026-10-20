@@ -42,9 +42,10 @@ const QrLabels = page(() => import('./pages/QrLabels'), 'QrLabels');
 const StudentOverview = page(() => import('./pages/StudentOverview'), 'StudentOverview');
 const ImportBooks = page(() => import('./pages/ImportBooks'), 'ImportBooks');
 const ForgotPassword = page(() => import('./pages/ForgotPassword'), 'ForgotPassword');
+const DemoRedirect = page(() => import('./pages/DemoRedirect'), 'DemoRedirect');
 
 // Pages without the app chrome (sidebar + navbar)
-const BARE_PATHS = ['/login', '/signup', '/forgot-password', '/student/onboarding'];
+const BARE_PATHS = ['/login', '/signup', '/forgot-password', '/demo', '/student/onboarding'];
 
 /** Signup and password reset do not exist on the live demo instance: go to the demo buttons */
 const NotOnDemo = ({ children }) => {
@@ -125,6 +126,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<NotOnDemo><Signup /></NotOnDemo>} />
           <Route path="/forgot-password" element={<NotOnDemo><ForgotPassword /></NotOnDemo>} />
+          {/* Full app: off to the live demo site (VITE_DEMO_APP_URL); demo site: the role picker */}
+          <Route path="/demo" element={<DemoRedirect />} />
 
           {/* Student Routes */}
           <Route

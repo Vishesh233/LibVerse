@@ -107,6 +107,7 @@ exports.googleSignIn = async (req, res) => {
       googleLinkedAt: new Date(),
       hasPassword: false,
       createdWith: 'google',
+      emailVerified: true,
       isOnboardingCompleted: false,
       libraryId: await nextLibraryId(),
     });

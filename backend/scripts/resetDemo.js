@@ -1,5 +1,5 @@
 /**
- * Daily reset of the live demo: the demo accounts (isDemo: true) and everything they own go back
+ * Reset of the live demo (every 6 hours): the demo accounts (isDemo: true) and everything they own go back
  * to the fresh seeded state. Nothing else is touched: books are never deleted or created, and an
  * account without isDemo keeps all of its loans, reservations, reviews, notifications and files.
  *
@@ -7,7 +7,7 @@
  *   DEMO_MONGODB_URI=mongodb+srv://.../libverse_demo node scripts/resetDemo.js            dry run
  *   DEMO_MONGODB_URI=mongodb+srv://.../libverse_demo node scripts/resetDemo.js --apply    reset
  *   ... --apply --bootstrap   also when the database has no demo accounts yet (a catalogue is needed)
- * Scheduled daily by .github/workflows/demo-reset.yml.
+ * Scheduled every 6 hours by .github/workflows/demo-reset.yml.
  *
  * What a reset does (with --apply):
  *  1. finds the demo accounts by their isDemo flag

@@ -534,6 +534,7 @@ exports.createUser = async (req, res, next) => {
       address,
       libraryId: generatedLibraryId,
       isActive: true,
+      emailVerified: true,
     });
 
     await audit(req, 'user.create', { type: 'User', id: newUser._id },
@@ -947,6 +948,7 @@ exports.createAdminUser = async (req, res, next) => {
       role: 'admin',
       phone,
       address,
+      emailVerified: true,
       libraryId: await nextLibraryId(),
     });
 

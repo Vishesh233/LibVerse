@@ -13,7 +13,7 @@
  *   DEMO_MONGODB_URI=mongodb://host:27017/libverse_demo node scripts/seedDemo.js
  *   node scripts/seedDemo.js --live           for the live demo instance (DEMO_MODE=true): accounts
  *                                             marked isDemo, with a random password nobody knows
- *                                             (sign-in only through the demo buttons). Daily resets:
+ *                                             (sign-in only through the demo buttons). Resets every 6 hours:
  *                                             scripts/resetDemo.js
  *   node scripts/seedDemo.js --drop           delete libverse_demo
  *

@@ -93,6 +93,28 @@ const rateLimiters = () => ({
     standardHeaders: 'draft-7', legacyHeaders: false,
     handler: tooMany('Too many attempts. Try again in 15 minutes.'),
   }),
+  // Sign-up email verification: entering the code (each code also allows only 5 guesses) and resends
+  verifyEmail: rateLimit({
+    windowMs: minutes(15), limit: limit('VERIFY_EMAIL', 10),
+    standardHeaders: 'draft-7', legacyHeaders: false,
+    handler: tooMany('Too many attempts. Try again in 15 minutes.'),
+  }),
+  resendVerification: rateLimit({
+    windowMs: minutes(15), limit: limit('RESEND_VERIFICATION', 5),
+    standardHeaders: 'draft-7', legacyHeaders: false,
+    handler: tooMany('Too many code requests. Try again in 15 minutes.'),
+  }),
+  // Passwordless sign-in: code emails, and entering a code (each code allows only 5 guesses)
+  loginCodeRequest: rateLimit({
+    windowMs: minutes(15), limit: limit('LOGIN_CODE_REQUEST', 5),
+    standardHeaders: 'draft-7', legacyHeaders: false,
+    handler: tooMany('Too many sign-in code requests. Try again in 15 minutes.'),
+  }),
+  loginCodeVerify: rateLimit({
+    windowMs: minutes(15), limit: limit('LOGIN_CODE_VERIFY', 10), skipSuccessfulRequests: true,
+    standardHeaders: 'draft-7', legacyHeaders: false,
+    handler: tooMany('Too many sign-in attempts. Try again in 15 minutes.'),
+  }),
   // Sign in with Google: like login, only failed attempts count
   googleSignIn: rateLimit({
     windowMs: minutes(15), limit: limit('GOOGLE_SIGNIN', 20), skipSuccessfulRequests: true,

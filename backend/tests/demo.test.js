@@ -1,6 +1,6 @@
 // Live demo: one-click sign-in on the demo instance, demo accounts blocked from destructive actions
 // (403 "Disabled in demo mode") while the normal flows work, a per-account write cap, and the
-// scoped daily reset that never touches a non-demo account
+// scoped 6-hourly reset that never touches a non-demo account
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const { api, as, connect, disconnect, reset, makeUser, makeBook, makeLoan, stockIsConsistent, PASSWORD, PNG } = require('./helpers');

@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Card, Button } from '../components/UI';
 import { LogoMark } from '../components/LogoMark';
 import { GoogleSignInButton, useGoogleSignIn } from '../components/GoogleSignInButton';
+import { VerifyEmailForm } from '../components/auth/VerifyEmailForm';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -55,6 +56,7 @@ export const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verifyEmail, setVerifyEmail] = useState(null); // set after sign-up when the email must be confirmed
   const navigate = useNavigate();
   const { login } = useAuth();
   const googleEnabled = useGoogleSignIn();
@@ -120,6 +122,12 @@ export const Signup = () => {
         name: formData.name.trim(),
         email: formData.email.trim(),
       });
+      // With email set up, the account is confirmed with an emailed code first
+      if (response.data.verificationRequired) {
+        setVerifyEmail(response.data.email || formData.email.trim());
+        toast.success('Account created. Check your email for the code.');
+        return;
+      }
       const { token, user } = response.data;
       login(user, token);
       toast.success('Account created. Welcome to LibVerse!');
@@ -161,6 +169,19 @@ export const Signup = () => {
           <p className="signup-sub text-sm text-slate-400 mt-2">Join the library and start exploring.</p>
         </div>
 
+        {verifyEmail ? (
+          <VerifyEmailForm
+            email={verifyEmail}
+            onVerified={(user, token) => {
+              login(user, token);
+              toast.success('Email verified. Welcome to LibVerse!');
+              navigate('/student/dashboard');
+            }}
+            onBack={() => navigate('/login')}
+            backLabel="Back to sign in"
+          />
+        ) : (
+        <>
         {error && (
           <div role="alert" className="mb-5 p-3 bg-rose-500/10 text-rose-200 rounded-xl border border-rose-500/30 text-sm">
             {error}
@@ -233,6 +254,8 @@ export const Signup = () => {
             </Link>
           </p>
         </form>
+        </>
+        )}
       </Card>
     </div>
   );

@@ -47,3 +47,28 @@ test('forgot password: 5 code emails per 15 minutes; entering a code: 10 per 15 
   }
   expect((await api().post('/api/auth/reset-password').send({ email: 'nobody@example.com', code: '123456', newPassword: 'whatever1' })).status).toBe(429);
 });
+
+test('email sign-in codes: 5 code emails per 15 minutes; entering a code: 10 failed per 15 minutes', async () => {
+  // Counted even while email is not set up (the limit runs first)
+  for (let i = 0; i < 5; i++) {
+    expect((await api().post('/api/auth/login-code').send({ email: `nobody.${i}@example.com` })).status).toBe(503);
+  }
+  const blocked = await api().post('/api/auth/login-code').send({ email: 'nobody@example.com' });
+  expect(blocked.status).toBe(429);
+  expect(blocked.body.message).toMatch(/Too many sign-in code requests/);
+  for (let i = 0; i < 10; i++) {
+    expect((await api().post('/api/auth/login-code/verify').send({ email: 'nobody@example.com', code: '123456' })).status).toBe(503);
+  }
+  expect((await api().post('/api/auth/login-code/verify').send({ email: 'nobody@example.com', code: '123456' })).status).toBe(429);
+});
+
+test('sign-up verification: 10 code entries and 5 resends per 15 minutes', async () => {
+  for (let i = 0; i < 10; i++) {
+    expect((await api().post('/api/auth/verify-email').send({ email: 'nobody@example.com', code: '123456' })).status).toBe(503);
+  }
+  expect((await api().post('/api/auth/verify-email').send({ email: 'nobody@example.com', code: '123456' })).status).toBe(429);
+  for (let i = 0; i < 5; i++) {
+    expect((await api().post('/api/auth/resend-verification').send({ email: 'nobody@example.com' })).status).toBe(503);
+  }
+  expect((await api().post('/api/auth/resend-verification').send({ email: 'nobody@example.com' })).status).toBe(429);
+});

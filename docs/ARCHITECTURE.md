@@ -26,7 +26,7 @@ flowchart LR
     Job["Reminder job<br/>jobs/reminders.js<br/>(hourly, in the API process)"]
     Mongo[("MongoDB<br/>collections + GridFS bucket 'uploads'")]
     AI["AI service (Flask)<br/>TF-IDF recommender"]
-    SMTP["SMTP server<br/>(optional)"]
+    SMTP["Email: Brevo HTTPS API<br/>(SMTP fallback)"]
 
     Browser -- "HTML, JS, CSS" --> Vercel
     Browser -- "JSON over HTTPS<br/>Authorization: Bearer JWT" --> API
@@ -34,7 +34,7 @@ flowchart LR
     API -- "Mongoose" --> Mongo
     Job -- "Mongoose (JobLock)" --> Mongo
     API -- "POST /api/train, /api/recommend<br/>X-Service-Token, 1.5 s timeout" --> AI
-    API -- "password reset codes" --> SMTP
+    API -- "verification, sign-in and reset codes" --> SMTP
 ```
 
 The browser never talks to the AI service or the database directly. The frontend is a single-page app
@@ -109,7 +109,9 @@ Services (`backend/services/`):
 | `bookImportService.js` | CSV validation, duplicate detection, import, optional Open Library cover check |
 | `recommendationService.js` | Client for the AI service: training, debounced retraining, recommend with timeout |
 | `fileStore.js` | GridFS save, delete and `serveFile` for `GET /api/files/:id` |
-| `mailer.js` | Nodemailer over SMTP; enabled only when all SMTP variables are set |
+| `mailer.js` | Outgoing email: Brevo HTTPS API first, Nodemailer over SMTP as the fallback; on when either is fully configured |
+| `emailTemplates.js` | Branded dark HTML + plain text for the verification, sign-in and reset code emails |
+| `emailCodes.js` | Issue and check emailed 6-digit codes (HMAC, 10 minutes, 5 guesses, one a minute) |
 
 Utils (`backend/utils/`):
 

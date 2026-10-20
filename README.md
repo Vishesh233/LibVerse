@@ -62,7 +62,7 @@ Every screen, grouped by role: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) (or op
 - Wishlist with back-in-stock alerts; notifications for every step
 - Fines at ₹5 per day late; pay by UPI QR and upload the receipt
 - Digital library card with a signed QR code (download as PNG or print); reading stats; favourite genres
-- Forgot password by a 6-digit email code (when email is configured)
+- Email sign-up verification, "Email me a code" sign-in and forgot password by 6-digit email codes (when email is configured)
 
 **Librarians**
 - Control-room dashboard: requests waiting, overdue now, due today, 14-day trend, recent activity
@@ -141,7 +141,7 @@ that `npm run dev` still starts on Windows before changing the `rolldown` overri
 is not affected.
 
 Every setting is explained in `backend/.env.example`, `frontend/.env.example` and `ai-service/.env.example`.
-Email ("Forgot password") turns on only when all of `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` and `MAIL_FROM` are set.
+Email (sign-up verification, sign-in codes, "Forgot password") turns on when `BREVO_API_KEY` + `MAIL_FROM` (Brevo HTTPS API) or all of `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` + `MAIL_FROM` are set; Brevo is tried first, SMTP is the fallback.
 
 **Data to try it with:** `node backend/scripts/seedDemo.js` fills a separate database, `libverse_demo`,
 with the catalogue and four months of fictional activity. Point the API at it with
