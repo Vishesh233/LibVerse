@@ -47,17 +47,11 @@ The live demo: View as Student, Librarian or Admin with no sign-up, and a top-ri
 
 ![Live demo](screenshots/01-public/06-demo-picker.webp)
 
-### Live demo: student view
-
-Inside the demo: a banner says the data resets every 6 hours.
-
-![Live demo: student view](screenshots/01-public/07-demo-dashboard.webp)
-
 ### Privacy policy
 
 Plain-language privacy policy (the terms of use are next to it).
 
-![Privacy policy](screenshots/01-public/08-privacy.webp)
+![Privacy policy](screenshots/01-public/07-privacy.webp)
 
 ## Student
 
@@ -156,6 +150,12 @@ Digital library card with a signed QR code for the desk.
 Back of the card: lending rules and member details.
 
 ![Library card (back)](screenshots/02-student/16-library-card-back.webp)
+
+### AI picks (Picked for you)
+
+Picked for you: books chosen by the recommendation service, marked AI, with the reason ("Because you read ...").
+
+![AI picks (Picked for you)](screenshots/02-student/17-picked-for-you.webp)
 
 ## Librarian
 

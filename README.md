@@ -220,6 +220,7 @@ Run from `backend/` unless noted. Scripts that change data do a dry run first an
 | `node scripts/migrateUploadsToGridFS.js [--apply]` | Move old `backend/uploads` images into GridFS |
 | `node scripts/applyDescriptionRewrite.js [--apply]` | Apply the catalogue description/ISBN/year clean-up |
 | `node scripts/screenshots/run.mjs` (repo root) | Regenerate every screenshot, showcase image, `docs/gallery.html` and `docs/SCREENSHOTS.md` |
+| `node scripts/screenshots/live.mjs` (repo root) | Re-capture the AI "Picked for you" dashboard shots from the live demo site (when the AI service can't run locally) |
 
 `node scripts/screenshots/run.mjs` seeds `libverse_demo`, builds the frontend, starts the API (and the
 AI service if `ai-service/venv` exists) on spare ports, captures every screen with headless Edge or

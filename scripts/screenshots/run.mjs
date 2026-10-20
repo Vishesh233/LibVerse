@@ -11,6 +11,8 @@
  * 6. stops everything and drops libverse_demo
  *
  * Options: --showcase-only (steps 4-5 from the existing screenshots), --keep-demo (do not drop the demo DB)
+ * The student dashboard shots (with the AI "Picked for you" badges) can instead be re-captured from the live demo
+ * with `node scripts/screenshots/live.mjs` (when the AI service cannot run locally), then `run.mjs --showcase-only`.
  * Needs: MongoDB on 127.0.0.1:27017 (or DEMO_MONGODB_URI), Node 22+, Edge or Chrome (EDGE_PATH to override),
  * npm install done in backend/ and frontend/.
  */

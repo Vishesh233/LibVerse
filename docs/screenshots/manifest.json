@@ -44,14 +44,7 @@
       "caption": "The live demo: View as Student, Librarian or Admin with no sign-up, and a top-right link to create a real account."
     },
     {
-      "file": "01-public/07-demo-dashboard.webp",
-      "role": "demo",
-      "page": "Live demo: student view",
-      "viewport": "1440x900@2x",
-      "caption": "Inside the demo: a banner says the data resets every 6 hours."
-    },
-    {
-      "file": "01-public/08-privacy.webp",
+      "file": "01-public/07-privacy.webp",
       "role": "public",
       "page": "Privacy policy",
       "viewport": "1440x900@2x",
@@ -168,6 +161,13 @@
       "page": "Library card (back)",
       "viewport": "1440x900@2x",
       "caption": "Back of the card: lending rules and member details."
+    },
+    {
+      "file": "02-student/17-picked-for-you.webp",
+      "role": "student",
+      "page": "AI picks (Picked for you)",
+      "viewport": "1440x900@2x",
+      "caption": "Picked for you: books chosen by the recommendation service, marked AI, with the reason (\"Because you read ...\")."
     },
     {
       "file": "03-librarian/01-dashboard.webp",

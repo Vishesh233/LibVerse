@@ -5,7 +5,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { sleep } from './browser.mjs';
-import { APP, API, DEMO_APP, ROOT, session, demoSession, markDemoAccounts } from './stack.mjs';
+import { APP, API, DEMO_APP, ROOT, session } from './stack.mjs';
 
 export const SHOTS_DIR = path.join(ROOT, 'docs', 'screenshots');
 export const PNG_DIR = path.join(ROOT, 'docs', '.screenshots-png');
@@ -25,8 +25,7 @@ const screens = ({ ids, labelIds }) => [
   { group: '01-public', file: '04-onboarding', role: 'student', page: 'Onboarding', who: 'newStudent', path: '/student/onboarding', caption: 'First sign-in: pick favourite genres for personalised picks.' },
   { group: '01-public', file: '05-login-email-code', role: 'public', page: 'Sign in with an email code', who: null, path: '/login', act: "[...document.querySelectorAll('[role=tab]')].find((t) => t.innerText.trim() === 'Email code')?.click()", caption: 'Passwordless sign-in: enter your email and get a 6-digit code (Password / Email code tabs).' },
   { group: '01-public', file: '06-demo-picker', role: 'demo', page: 'Live demo', who: null, base: 'demo', path: '/login', caption: 'The live demo: View as Student, Librarian or Admin with no sign-up, and a top-right link to create a real account.' },
-  { group: '01-public', file: '07-demo-dashboard', role: 'demo', page: 'Live demo: student view', who: 'demoStudent', base: 'demo', path: '/student/dashboard', caption: 'Inside the demo: a banner says the data resets every 6 hours.' },
-  { group: '01-public', file: '08-privacy', role: 'public', page: 'Privacy policy', who: null, path: '/privacy', caption: 'Plain-language privacy policy (the terms of use are next to it).' },
+  { group: '01-public', file: '07-privacy', role: 'public', page: 'Privacy policy', who: null, path: '/privacy', caption: 'Plain-language privacy policy (the terms of use are next to it).' },
   // 02 Student
   { group: '02-student', file: '01-dashboard', role: 'student', page: 'Dashboard', who: 'student', path: '/student/dashboard', caption: 'Student dashboard: loans, due dates, fines and AI "Picked for you" suggestions with reasons.' },
   { group: '02-student', file: '02-books', role: 'student', page: 'Browse books', who: 'student', path: '/student/books', caption: 'Catalogue of 500+ books with search, genre and availability filters.' },
@@ -152,8 +151,6 @@ export async function capture(browser, { demo, log = console.log }) {
   // The full app's screens first; then the demo site's (its accounts are marked isDemo only now, so the
   // demo banner never shows on the screens above); the splash last, after warming the cover images
   for (const screen of list.filter((s) => !s.splash && !s.base)) await take(screen, DESKTOP, screen.group, screen.file);
-  await markDemoAccounts([accounts.student, accounts.librarian, accounts.admin]);
-  sessions.demoStudent = await demoSession('student');
   for (const screen of list.filter((s) => !s.splash && s.base)) await take(screen, DESKTOP, screen.group, screen.file);
   await browser.goto(`${APP}/login`);
   await browser.evaluate(`Promise.all(${JSON.stringify(SPLASH_COVERS)}.map((u) => new Promise((r) => { const i = new Image(); i.onload = i.onerror = r; i.src = u; })))`);

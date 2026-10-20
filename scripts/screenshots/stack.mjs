@@ -111,26 +111,6 @@ export async function startStack({ log = console.log } = {}) {
   return { demo, ai };
 }
 
-/** One-click demo sign-in on the demo API (needs isDemo accounts): { token, user } */
-export async function demoSession(role) {
-  const r = await fetch(`${DEMO_API}/auth/demo-login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }) });
-  const body = await r.json();
-  if (!body.token) throw new Error(`Demo sign-in failed (${r.status})`);
-  return { token: body.token, user: body.user };
-}
-
-/** Mark the given demo accounts isDemo (libverse_demo only) so the demo buttons can sign in as them */
-export async function markDemoAccounts(emails) {
-  const mongoose = require('mongoose');
-  const conn = await mongoose.createConnection(DEMO_URI).asPromise();
-  try {
-    if (conn.name !== 'libverse_demo') throw new Error(`Refusing to write to "${conn.name}"`);
-    await conn.collection('users').updateMany({ email: { $in: emails } }, { $set: { isDemo: true } });
-  } finally {
-    await conn.close();
-  }
-}
-
 /** Sign in through the API: { token, user } for the browser's localStorage */
 export async function session(email, password) {
   const r = await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });

@@ -96,7 +96,7 @@ const thumb = () => page(800, 500, `
 const SLIDES = [
   { kind: 'cover' },
   { title: 'Students find, borrow and track books', shot: '02-student/01-dashboard.png', bullets: ['Dashboard with due dates, fines and what is ready to collect', '500+ books with search and filters', 'Request, renew and return in a tap'] },
-  { title: 'AI picks that explain themselves', shot: '02-student/03-book-details.png', bullets: ['TF-IDF over titles, authors, genres and descriptions', '"Because you read…" reasons on every pick', 'Falls back to genre picks if the AI service is down'] },
+  { title: 'AI picks that explain themselves', shot: '02-student/17-picked-for-you.png', bullets: ['TF-IDF over titles, authors, genres and descriptions', '"Because you read…" reasons on every pick', 'Falls back to genre picks if the AI service is down'] },
   { title: 'Fines without the paperwork', shot: '02-student/10-pay-fine.png', bullets: ['₹5 a day, worked out automatically', 'Pay by UPI QR and upload the receipt', 'Librarians verify or waive with a reason'] },
   { title: 'A control room for librarians', shot: '03-librarian/01-dashboard.png', bullets: ['Requests, overdue and due-today at a glance', 'Approve issues and returns in one place', '14-day activity trend'] },
   { title: 'QR library cards and a scan desk', shot: '02-student/15-library-card-front.png', bullets: ['Signed QR card per member, reissuable', 'Scan card + book to issue or return', 'Printable QR shelf labels'] },
