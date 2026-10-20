@@ -1,381 +1,369 @@
 {
-  "generatedAt": "2026-10-19",
+  "generatedAt": "2026-10-20",
   "screens": [
     {
-      "file": "01-public/01-splash.png",
-      "webp": "01-public/01-splash.webp",
+      "file": "01-public/01-splash.webp",
       "role": "public",
       "page": "Splash",
       "viewport": "1440x900@2x",
       "caption": "Opening splash with a live wall of covers from the catalogue."
     },
     {
-      "file": "01-public/02-login.png",
-      "webp": "01-public/02-login.webp",
+      "file": "01-public/02-login.webp",
       "role": "public",
       "page": "Sign in",
       "viewport": "1440x900@2x",
       "caption": "Sign-in page for students, librarians and admins."
     },
     {
-      "file": "01-public/03-signup.png",
-      "webp": "01-public/03-signup.webp",
+      "file": "01-public/03-signup.webp",
       "role": "public",
       "page": "Sign up",
       "viewport": "1440x900@2x",
       "caption": "Students create their own account and get a Library ID straight away."
     },
     {
-      "file": "01-public/04-onboarding.png",
-      "webp": "01-public/04-onboarding.webp",
+      "file": "01-public/04-onboarding.webp",
       "role": "student",
       "page": "Onboarding",
       "viewport": "1440x900@2x",
       "caption": "First sign-in: pick favourite genres for personalised picks."
     },
     {
-      "file": "02-student/01-dashboard.png",
-      "webp": "02-student/01-dashboard.webp",
+      "file": "01-public/05-login-email-code.webp",
+      "role": "public",
+      "page": "Sign in with an email code",
+      "viewport": "1440x900@2x",
+      "caption": "Passwordless sign-in: enter your email and get a 6-digit code (Password / Email code tabs)."
+    },
+    {
+      "file": "01-public/06-demo-picker.webp",
+      "role": "demo",
+      "page": "Live demo",
+      "viewport": "1440x900@2x",
+      "caption": "The live demo: View as Student, Librarian or Admin with no sign-up, and a top-right link to create a real account."
+    },
+    {
+      "file": "01-public/07-privacy.webp",
+      "role": "public",
+      "page": "Privacy policy",
+      "viewport": "1440x900@2x",
+      "caption": "Plain-language privacy policy (the terms of use are next to it)."
+    },
+    {
+      "file": "02-student/01-dashboard.webp",
       "role": "student",
       "page": "Dashboard",
       "viewport": "1440x900@2x",
       "caption": "Student dashboard: loans, due dates, fines and AI \"Picked for you\" suggestions with reasons."
     },
     {
-      "file": "02-student/02-books.png",
-      "webp": "02-student/02-books.webp",
+      "file": "02-student/02-books.webp",
       "role": "student",
       "page": "Browse books",
       "viewport": "1440x900@2x",
       "caption": "Catalogue of 500+ books with search, genre and availability filters."
     },
     {
-      "file": "02-student/03-book-details.png",
-      "webp": "02-student/03-book-details.webp",
+      "file": "02-student/03-book-details.webp",
       "role": "student",
       "page": "Book details",
       "viewport": "1440x900@2x",
       "caption": "Book page: availability, request or reserve, wishlist and reader reviews."
     },
     {
-      "file": "02-student/04-my-books-issued.png",
-      "webp": "02-student/04-my-books-issued.webp",
+      "file": "02-student/04-my-books-issued.webp",
       "role": "student",
       "page": "My books: issued",
       "viewport": "1440x900@2x",
       "caption": "Books on loan with due dates, overdue fines building up, renew and return."
     },
     {
-      "file": "02-student/05-my-books-pending.png",
-      "webp": "02-student/05-my-books-pending.webp",
+      "file": "02-student/05-my-books-pending.webp",
       "role": "student",
       "page": "My books: requests",
       "viewport": "1440x900@2x",
       "caption": "Requests waiting for a librarian to approve."
     },
     {
-      "file": "02-student/06-my-books-history.png",
-      "webp": "02-student/06-my-books-history.webp",
+      "file": "02-student/06-my-books-history.webp",
       "role": "student",
       "page": "My books: returned",
       "viewport": "1440x900@2x",
       "caption": "Reading history with fines paid or waived."
     },
     {
-      "file": "02-student/07-reservations.png",
-      "webp": "02-student/07-reservations.webp",
+      "file": "02-student/07-reservations.webp",
       "role": "student",
       "page": "Reservations",
       "viewport": "1440x900@2x",
       "caption": "Waiting-list places, and a copy held for 48 hours when it is your turn."
     },
     {
-      "file": "02-student/08-wishlist.png",
-      "webp": "02-student/08-wishlist.webp",
+      "file": "02-student/08-wishlist.webp",
       "role": "student",
       "page": "Wishlist",
       "viewport": "1440x900@2x",
       "caption": "Wishlist with back-in-stock alerts."
     },
     {
-      "file": "02-student/09-fines.png",
-      "webp": "02-student/09-fines.webp",
+      "file": "02-student/09-fines.webp",
       "role": "student",
       "page": "Fines",
       "viewport": "1440x900@2x",
       "caption": "Fines owed, building up and settled, with a clear total."
     },
     {
-      "file": "02-student/10-pay-fine.png",
-      "webp": "02-student/10-pay-fine.webp",
+      "file": "02-student/10-pay-fine.webp",
       "role": "student",
       "page": "Pay fine",
       "viewport": "1440x900@2x",
       "caption": "Pay a fine by UPI QR and upload the receipt for the library to verify."
     },
     {
-      "file": "02-student/11-notifications.png",
-      "webp": "02-student/11-notifications.webp",
+      "file": "02-student/11-notifications.webp",
       "role": "student",
       "page": "Notifications",
       "viewport": "1440x900@2x",
       "caption": "Notifications for approvals, due dates, fines and reservations."
     },
     {
-      "file": "02-student/12-profile.png",
-      "webp": "02-student/12-profile.webp",
+      "file": "02-student/12-profile.webp",
       "role": "student",
       "page": "Profile",
       "viewport": "1440x900@2x",
       "caption": "Profile with avatar, contact details and account summary."
     },
     {
-      "file": "02-student/13-reading-stats.png",
-      "webp": "02-student/13-reading-stats.webp",
+      "file": "02-student/13-reading-stats.webp",
       "role": "student",
       "page": "Reading stats",
       "viewport": "1440x900@2x",
       "caption": "Reading stats: books read, favourite genres and on-time returns."
     },
     {
-      "file": "02-student/14-preferences.png",
-      "webp": "02-student/14-preferences.webp",
+      "file": "02-student/14-preferences.webp",
       "role": "student",
       "page": "Reading preferences",
       "viewport": "1440x900@2x",
       "caption": "Favourite genres that drive the recommendations."
     },
     {
-      "file": "02-student/15-library-card-front.png",
-      "webp": "02-student/15-library-card-front.webp",
+      "file": "02-student/15-library-card-front.webp",
       "role": "student",
       "page": "Library card (front)",
       "viewport": "1440x900@2x",
       "caption": "Digital library card with a signed QR code for the desk."
     },
     {
-      "file": "02-student/16-library-card-back.png",
-      "webp": "02-student/16-library-card-back.webp",
+      "file": "02-student/16-library-card-back.webp",
       "role": "student",
       "page": "Library card (back)",
       "viewport": "1440x900@2x",
       "caption": "Back of the card: lending rules and member details."
     },
     {
-      "file": "03-librarian/01-dashboard.png",
-      "webp": "03-librarian/01-dashboard.webp",
+      "file": "02-student/17-picked-for-you.webp",
+      "role": "student",
+      "page": "AI picks (Picked for you)",
+      "viewport": "1440x900@2x",
+      "caption": "Picked for you: books chosen by the recommendation service, marked AI, with the reason (\"Because you read ...\")."
+    },
+    {
+      "file": "03-librarian/01-dashboard.webp",
       "role": "librarian",
       "page": "Dashboard",
       "viewport": "1440x900@2x",
       "caption": "Librarian control room: live queues, today at a glance and a 14-day activity trend."
     },
     {
-      "file": "03-librarian/02-requests-issue.png",
-      "webp": "03-librarian/02-requests-issue.webp",
+      "file": "03-librarian/02-requests-issue.webp",
       "role": "librarian",
       "page": "Requests: issue",
       "viewport": "1440x900@2x",
       "caption": "Issue requests to approve or reject."
     },
     {
-      "file": "03-librarian/03-requests-return.png",
-      "webp": "03-librarian/03-requests-return.webp",
+      "file": "03-librarian/03-requests-return.webp",
       "role": "librarian",
       "page": "Requests: returns",
       "viewport": "1440x900@2x",
       "caption": "Return requests with any fine worked out."
     },
     {
-      "file": "03-librarian/04-requests-payment.png",
-      "webp": "03-librarian/04-requests-payment.webp",
+      "file": "03-librarian/04-requests-payment.webp",
       "role": "librarian",
       "page": "Requests: payments",
       "viewport": "1440x900@2x",
       "caption": "Fine payments with receipts waiting for verification."
     },
     {
-      "file": "03-librarian/05-requests-reservations.png",
-      "webp": "03-librarian/05-requests-reservations.webp",
+      "file": "03-librarian/05-requests-reservations.webp",
       "role": "librarian",
       "page": "Requests: reservations",
       "viewport": "1440x900@2x",
       "caption": "Waiting lists per book."
     },
     {
-      "file": "03-librarian/06-issue-return.png",
-      "webp": "03-librarian/06-issue-return.webp",
+      "file": "03-librarian/06-issue-return.webp",
       "role": "librarian",
       "page": "Issue & return",
       "viewport": "1440x900@2x",
       "caption": "Counter workflow: find the student and the book, pick a due date, issue."
     },
     {
-      "file": "03-librarian/07-return-desk.png",
-      "webp": "03-librarian/07-return-desk.webp",
+      "file": "03-librarian/07-return-desk.webp",
       "role": "librarian",
       "page": "Return at the desk",
       "viewport": "1440x900@2x",
       "caption": "Books out now, soonest due first, with late fines shown before the return."
     },
     {
-      "file": "03-librarian/08-scan-desk.png",
-      "webp": "03-librarian/08-scan-desk.webp",
+      "file": "03-librarian/08-scan-desk.webp",
       "role": "librarian",
       "page": "Scan desk",
       "viewport": "1440x900@2x",
       "caption": "Scan desk: scan a library card and a book QR to issue or return in seconds."
     },
     {
-      "file": "03-librarian/09-manage-books.png",
-      "webp": "03-librarian/09-manage-books.webp",
+      "file": "03-librarian/09-manage-books.webp",
       "role": "librarian",
       "page": "Manage books",
       "viewport": "1440x900@2x",
       "caption": "Books table: sortable columns, stock at a glance, low-stock filter and bulk actions."
     },
     {
-      "file": "03-librarian/10-qr-labels.png",
-      "webp": "03-librarian/10-qr-labels.webp",
+      "file": "03-librarian/10-qr-labels.webp",
       "role": "librarian",
       "page": "QR labels",
       "viewport": "1440x900@2x",
       "caption": "Printable QR shelf labels for selected books."
     },
     {
-      "file": "03-librarian/11-users.png",
-      "webp": "03-librarian/11-users.webp",
+      "file": "03-librarian/11-users.webp",
       "role": "librarian",
       "page": "Users",
       "viewport": "1440x900@2x",
       "caption": "Members with loans, overdue books and fines owed; rows open Student 360."
     },
     {
-      "file": "03-librarian/12-student-360.png",
-      "webp": "03-librarian/12-student-360.webp",
+      "file": "03-librarian/12-student-360.webp",
       "role": "librarian",
       "page": "Student 360",
       "viewport": "1440x900@2x",
       "caption": "Student 360: everything about one member, with actions."
     },
     {
-      "file": "04-admin/01-dashboard.png",
-      "webp": "04-admin/01-dashboard.webp",
+      "file": "04-admin/01-dashboard.webp",
       "role": "admin",
       "page": "Dashboard",
       "viewport": "1440x900@2x",
       "caption": "Admin dashboard: library health, circulation and staff activity."
     },
     {
-      "file": "04-admin/02-analytics.png",
-      "webp": "04-admin/02-analytics.webp",
+      "file": "04-admin/02-analytics.webp",
       "role": "admin",
       "page": "Analytics",
       "viewport": "1440x900@2x",
       "caption": "Analytics: borrowing trends, genres and member activity."
     },
     {
-      "file": "04-admin/03-reports-loans.png",
-      "webp": "04-admin/03-reports-loans.webp",
+      "file": "04-admin/03-reports-loans.webp",
       "role": "admin",
       "page": "Reports: loans",
       "viewport": "1440x900@2x",
       "caption": "Reports with summary cards and CSV export: loans."
     },
     {
-      "file": "04-admin/04-reports-fines.png",
-      "webp": "04-admin/04-reports-fines.webp",
+      "file": "04-admin/04-reports-fines.webp",
       "role": "admin",
       "page": "Reports: fines",
       "viewport": "1440x900@2x",
       "caption": "Fines fixed, paid and waived in a period."
     },
     {
-      "file": "04-admin/05-reports-overdue.png",
-      "webp": "04-admin/05-reports-overdue.webp",
+      "file": "04-admin/05-reports-overdue.webp",
       "role": "admin",
       "page": "Reports: overdue",
       "viewport": "1440x900@2x",
       "caption": "Overdue loans by age."
     },
     {
-      "file": "04-admin/06-reports-top.png",
-      "webp": "04-admin/06-reports-top.webp",
+      "file": "04-admin/06-reports-top.webp",
       "role": "admin",
       "page": "Reports: top books",
       "viewport": "1440x900@2x",
       "caption": "Most borrowed books."
     },
     {
-      "file": "04-admin/07-reports-staff.png",
-      "webp": "04-admin/07-reports-staff.webp",
+      "file": "04-admin/07-reports-staff.webp",
       "role": "admin",
       "page": "Reports: staff activity",
       "viewport": "1440x900@2x",
       "caption": "Loan actions per staff member from the audit log."
     },
     {
-      "file": "04-admin/08-audit-log.png",
-      "webp": "04-admin/08-audit-log.webp",
+      "file": "04-admin/08-audit-log.webp",
       "role": "admin",
       "page": "Audit log",
       "viewport": "1440x900@2x",
       "caption": "Audit log of every staff action, filterable and exportable."
     },
     {
-      "file": "04-admin/09-settings.png",
-      "webp": "04-admin/09-settings.webp",
+      "file": "04-admin/09-settings.webp",
       "role": "admin",
       "page": "Settings",
       "viewport": "1440x900@2x",
       "caption": "Settings: password change signs out every other session."
     },
     {
-      "file": "05-mobile/01-login.png",
-      "webp": "05-mobile/01-login.webp",
+      "file": "05-mobile/01-login.webp",
       "role": "public",
       "page": "Sign in",
       "viewport": "390x844@2x",
       "caption": "Sign in on a phone."
     },
     {
-      "file": "05-mobile/02-student-dashboard.png",
-      "webp": "05-mobile/02-student-dashboard.webp",
+      "file": "05-mobile/02-student-dashboard.webp",
       "role": "student",
       "page": "Dashboard",
       "viewport": "390x844@2x",
       "caption": "Student dashboard on a phone."
     },
     {
-      "file": "05-mobile/03-book-details.png",
-      "webp": "05-mobile/03-book-details.webp",
+      "file": "05-mobile/03-book-details.webp",
       "role": "student",
       "page": "Book details",
       "viewport": "390x844@2x",
       "caption": "Book page on a phone."
     },
     {
-      "file": "05-mobile/04-my-books.png",
-      "webp": "05-mobile/04-my-books.webp",
+      "file": "05-mobile/04-my-books.webp",
       "role": "student",
       "page": "My books: issued",
       "viewport": "390x844@2x",
       "caption": "My books on a phone."
     },
     {
-      "file": "05-mobile/05-library-card.png",
-      "webp": "05-mobile/05-library-card.webp",
+      "file": "05-mobile/05-library-card.webp",
       "role": "student",
       "page": "Library card (front)",
       "viewport": "390x844@2x",
       "caption": "Library card on a phone, ready to scan at the desk."
     },
     {
-      "file": "05-mobile/06-librarian-dashboard.png",
-      "webp": "05-mobile/06-librarian-dashboard.webp",
+      "file": "05-mobile/06-librarian-dashboard.webp",
       "role": "librarian",
       "page": "Dashboard",
       "viewport": "390x844@2x",
       "caption": "Librarian dashboard on a phone."
+    },
+    {
+      "file": "05-mobile/07-demo-picker.webp",
+      "role": "demo",
+      "page": "Live demo",
+      "viewport": "390x844@2x",
+      "caption": "The live demo role picker on a phone."
     }
   ]
 }

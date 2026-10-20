@@ -112,3 +112,6 @@ temp/
 
 # Catalogue export for seeding another database (scripts/exportCatalogue.js)
 backend/scripts/data/catalogue-export.json
+
+# Full-size PNG frames behind docs/screenshots/*.webp (scripts/screenshots/run.mjs)
+docs/.screenshots-png/

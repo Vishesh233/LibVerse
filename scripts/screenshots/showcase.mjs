@@ -9,7 +9,8 @@ import { sleep } from './browser.mjs';
 import { ROOT } from './stack.mjs';
 
 const OUT = path.join(ROOT, 'docs', 'showcase');
-const SHOT = (file) => pathToFileURL(path.join(ROOT, 'docs', 'screenshots', file)).href;
+// The source frames are the full-size PNGs from the capture step (docs/.screenshots-png/, not committed)
+const SHOT = (file) => pathToFileURL(path.join(ROOT, 'docs', '.screenshots-png', file)).href;
 
 const BOOK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4.5h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg>';
 const logo = (size) => `<div class="logo" style="--s:${size}px"><div class="tile">${BOOK_ICON}</div><span class="word">Lib<b>Verse</b></span></div>`;
@@ -95,12 +96,13 @@ const thumb = () => page(800, 500, `
 const SLIDES = [
   { kind: 'cover' },
   { title: 'Students find, borrow and track books', shot: '02-student/01-dashboard.png', bullets: ['Dashboard with due dates, fines and what is ready to collect', '500+ books with search and filters', 'Request, renew and return in a tap'] },
-  { title: 'AI picks that explain themselves', shot: '02-student/03-book-details.png', bullets: ['TF-IDF over titles, authors, genres and descriptions', '"Because you read…" reasons on every pick', 'Falls back to genre picks if the AI service is down'] },
+  { title: 'AI picks that explain themselves', shot: '02-student/17-picked-for-you.png', bullets: ['TF-IDF over titles, authors, genres and descriptions', '"Because you read…" reasons on every pick', 'Falls back to genre picks if the AI service is down'] },
   { title: 'Fines without the paperwork', shot: '02-student/10-pay-fine.png', bullets: ['₹5 a day, worked out automatically', 'Pay by UPI QR and upload the receipt', 'Librarians verify or waive with a reason'] },
   { title: 'A control room for librarians', shot: '03-librarian/01-dashboard.png', bullets: ['Requests, overdue and due-today at a glance', 'Approve issues and returns in one place', '14-day activity trend'] },
   { title: 'QR library cards and a scan desk', shot: '02-student/15-library-card-front.png', bullets: ['Signed QR card per member, reissuable', 'Scan card + book to issue or return', 'Printable QR shelf labels'] },
   { title: 'Catalogue tools that scale', shot: '03-librarian/09-manage-books.png', bullets: ['Sortable table with stock at a glance', 'Low-stock filter and bulk actions', 'CSV import with a row-by-row preview'] },
   { title: 'Reports, analytics and an audit log', shot: '04-admin/03-reports-loans.png', bullets: ['Loans, fines, overdue and top books', 'Staff activity from the audit log', 'CSV export and print'] },
+  { title: 'Sign in your way', shot: '01-public/05-login-email-code.png', bullets: ['Email and password, or one click with Google', 'Passwordless: a 6-digit code by email', 'Sign-up confirms your email with a code'] },
   { kind: 'stack' },
   { kind: 'close' },
 ];
@@ -127,7 +129,7 @@ const slide = (s, i) => {
       ['AI service', 'Python, Flask, scikit-learn TF-IDF with explanations'],
       ['Security', 'helmet CSP, rate limits, JWT sessions ended on password change'],
       ['Quality', 'Jest + Supertest, pytest, GitHub Actions CI'],
-      ['Deploy', 'Vercel, Render, MongoDB Atlas'],
+      ['Deploy', 'Vercel, Render, MongoDB Atlas, Brevo email, GitHub Actions'],
     ];
     return page(1080, 1080, `
       <div style="position:absolute;left:80px;top:90px;width:920px">
@@ -145,6 +147,7 @@ const slide = (s, i) => {
           ${logo(80)}
           <h2 style="font-size:64px;margin-top:56px">Thanks for reading</h2>
           <p class="muted" style="font-size:28px;line-height:1.5;margin-top:24px">LibVerse is open source. The code, tests, screenshots and a step-by-step deployment guide are on GitHub (link in the post).</p>
+          <p style="font-size:26px;font-weight:600;margin-top:30px;color:#E0E7FF">Live demo, no sign-up: lib-verse.vercel.app/demo</p>
           <div style="display:flex;gap:14px;margin-top:44px;font-size:21px"><span class="chip">React</span><span class="chip">Node.js</span><span class="chip">MongoDB</span><span class="chip">Python</span></div>
         </div>
       </div>${n}`);

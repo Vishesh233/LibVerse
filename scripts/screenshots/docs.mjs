@@ -21,7 +21,7 @@ export function writeDocs({ log = console.log } = {}) {
   const md = [
     '# LibVerse screenshots',
     '',
-    `All screens with demo data (fictional members, \`@example.com\` addresses). Generated ${generatedAt} by \`node scripts/screenshots/run.mjs\`.`,
+    `All screens with demo data (fictional members, \`@example.com\` addresses). Generated ${generatedAt} by \`node scripts/screenshots/run.mjs\` (WebP; the full-size PNGs are not committed).`,
     'Desktop shots are 1440×900 at 2×, phone shots 390×844 at 2×. For a browsable version with a lightbox, open [`docs/gallery.html`](gallery.html) locally.',
     '',
     ...grouped.map(([key, title]) => `- [${title}](#${title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/ /g, '-')})`),
@@ -45,7 +45,7 @@ export function writeDocs({ log = console.log } = {}) {
       <h2 id="g-${key}">${esc(title)} <span>${list.length}</span></h2>
       <ul class="grid${key === '05-mobile' ? ' phones' : ''}">
         ${list.map((s) => `<li><button type="button" data-full="screenshots/${esc(s.file)}" data-caption="${esc(s.page)}: ${esc(s.caption)}">
-          <img loading="lazy" src="screenshots/${esc(s.webp)}" alt="${esc(s.page)}"><span class="cap"><b>${esc(s.page)}</b>${esc(s.caption)}</span></button></li>`).join('')}
+          <img loading="lazy" src="screenshots/${esc(s.file)}" alt="${esc(s.page)}"><span class="cap"><b>${esc(s.page)}</b>${esc(s.caption)}</span></button></li>`).join('')}
       </ul>
     </section>`).join('');
   const html = `<!doctype html>

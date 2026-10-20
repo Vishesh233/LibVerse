@@ -12,9 +12,12 @@ import { sleep } from './browser.mjs';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const require = createRequire(path.join(ROOT, 'backend', 'package.json'));
-const PORTS = { api: 5091, app: 4191, ai: 5092 };
+// api/app: the full app; demoApi/demoApp: the live-demo build (VITE_DEMO_MODE) and its DEMO_MODE API, same database
+const PORTS = { api: 5091, app: 4191, ai: 5092, demoApi: 5093, demoApp: 4193 };
 export const APP = `http://localhost:${PORTS.app}`;
 export const API = `http://localhost:${PORTS.api}/api`;
+export const DEMO_APP = `http://localhost:${PORTS.demoApp}`;
+export const DEMO_API = `http://localhost:${PORTS.demoApi}/api`;
 const DEMO_URI = process.env.DEMO_MONGODB_URI || 'mongodb://127.0.0.1:27017/libverse_demo';
 
 const procs = [];
@@ -49,10 +52,17 @@ export async function startStack({ log = console.log } = {}) {
   const dist = path.join(os.tmpdir(), 'libverse-shots-dist');
   log('Building the frontend for the demo API ...');
   const vite = path.join(ROOT, 'frontend', 'node_modules', 'vite', 'bin', 'vite.js');
-  const build = spawnSync(process.execPath, [vite, 'build', '--outDir', dist, '--emptyOutDir', '--logLevel', 'error'], {
-    cwd: path.join(ROOT, 'frontend'), env: { ...process.env, VITE_API_BASE_URL: API }, encoding: 'utf8',
-  });
-  if (build.status !== 0) throw new Error(`Frontend build failed:\n${build.stdout}\n${build.stderr}`);
+  const buildFor = (outDir, env) => {
+    const build = spawnSync(process.execPath, [vite, 'build', '--outDir', outDir, '--emptyOutDir', '--logLevel', 'error'], {
+      cwd: path.join(ROOT, 'frontend'), env: { ...process.env, VITE_GOOGLE_CLIENT_ID: '', VITE_DEMO_MODE: '', VITE_FULL_APP_URL: '', VITE_DEMO_APP_URL: '', ...env }, encoding: 'utf8',
+    });
+    if (build.status !== 0) throw new Error(`Frontend build failed:\n${build.stdout}\n${build.stderr}`);
+  };
+  buildFor(dist, { VITE_API_BASE_URL: API });
+  // The live-demo site: built as the demo (role picker only) with the link to the full app
+  const demoDist = path.join(os.tmpdir(), 'libverse-shots-dist-demo');
+  log('Building the frontend as the live-demo site ...');
+  buildFor(demoDist, { VITE_API_BASE_URL: DEMO_API, VITE_DEMO_MODE: 'true', VITE_FULL_APP_URL: APP });
 
   // A throwaway signing secret and service token for this run only
   const token = crypto.randomBytes(24).toString('hex');
@@ -69,12 +79,27 @@ export async function startStack({ log = console.log } = {}) {
       ...process.env, NODE_ENV: 'development', PORT: String(PORTS.api), MONGODB_URI: DEMO_URI, MONGO_URI: DEMO_URI,
       JWT_SECRET: crypto.randomBytes(32).toString('hex'), JWT_EXPIRE: '2h', CORS_ORIGINS: APP, REMINDERS_ENABLED: 'false',
       AI_SERVICE_URL: ai ? `http://127.0.0.1:${PORTS.ai}` : '', AI_SERVICE_TOKEN: ai ? token : '',
-      SMTP_HOST: '', SMTP_PORT: '', SMTP_USER: '', SMTP_PASS: '', MAIL_FROM: '', CSP_API_ORIGINS: `http://localhost:${PORTS.api}`,
+      // Email "on" so the sign-in page shows its Email code tab. The key is a placeholder: no screen sends an email.
+      BREVO_API_KEY: 'screenshots-placeholder-not-a-real-key', MAIL_FROM: 'no-reply@example.com', MAIL_FROM_NAME: 'LibVerse',
+      SMTP_HOST: '', SMTP_PORT: '', SMTP_USER: '', SMTP_PASS: '', GOOGLE_CLIENT_ID: '', CSP_API_ORIGINS: `http://localhost:${PORTS.api}`,
+    },
+  });
+  // The demo API: the same database in DEMO_MODE (one-click sign-in, no password login or email codes)
+  start('demoApi', process.execPath, ['server.js'], {
+    cwd: path.join(ROOT, 'backend'),
+    env: {
+      ...process.env, NODE_ENV: 'development', PORT: String(PORTS.demoApi), MONGODB_URI: DEMO_URI, MONGO_URI: DEMO_URI, DEMO_MODE: 'true',
+      JWT_SECRET: crypto.randomBytes(32).toString('hex'), JWT_EXPIRE: '2h', CORS_ORIGINS: DEMO_APP, REMINDERS_ENABLED: 'false',
+      AI_SERVICE_URL: '', AI_SERVICE_TOKEN: '', BREVO_API_KEY: '', MAIL_FROM: '', SMTP_HOST: '', SMTP_PORT: '', SMTP_USER: '', SMTP_PASS: '',
+      GOOGLE_CLIENT_ID: '', CSP_API_ORIGINS: `http://localhost:${PORTS.demoApi}`,
     },
   });
   start('app', process.execPath, [vite, 'preview', '--outDir', dist, '--port', String(PORTS.app), '--strictPort', '--host', 'localhost'], { cwd: path.join(ROOT, 'frontend') });
+  start('demoApp', process.execPath, [vite, 'preview', '--outDir', demoDist, '--port', String(PORTS.demoApp), '--strictPort', '--host', 'localhost'], { cwd: path.join(ROOT, 'frontend') });
   await waitUp(`${API}/health`, 'api');
+  await waitUp(`${DEMO_API}/health`, 'demoApi');
   await waitUp(APP, 'app');
+  await waitUp(DEMO_APP, 'demoApp');
   if (ai) {
     // Training happens in the background on API start: wait for it
     for (let i = 0; i < 60; i++) {

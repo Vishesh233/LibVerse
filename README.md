@@ -88,16 +88,16 @@ link goes to the real app. See [DEPLOYMENT.md](DEPLOYMENT.md) for how the two si
 
 | Student dashboard | Librarian dashboard |
 |---|---|
-| ![Student dashboard](docs/screenshots/02-student/01-dashboard.png) | ![Librarian dashboard](docs/screenshots/03-librarian/01-dashboard.png) |
+| ![Student dashboard](docs/screenshots/02-student/01-dashboard.webp) | ![Librarian dashboard](docs/screenshots/03-librarian/01-dashboard.webp) |
 | **Book details** | **Books table** |
-| ![Book details](docs/screenshots/02-student/03-book-details.png) | ![Manage books](docs/screenshots/03-librarian/09-manage-books.png) |
+| ![Book details](docs/screenshots/02-student/03-book-details.webp) | ![Manage books](docs/screenshots/03-librarian/09-manage-books.webp) |
 | **Fines and UPI payment** | **Reports** |
-| ![Pay a fine](docs/screenshots/02-student/10-pay-fine.png) | ![Reports](docs/screenshots/04-admin/03-reports-loans.png) |
+| ![Pay a fine](docs/screenshots/02-student/10-pay-fine.webp) | ![Reports](docs/screenshots/04-admin/03-reports-loans.webp) |
 
 <p align="center">
-  <img src="docs/screenshots/05-mobile/02-student-dashboard.png" alt="Student dashboard on a phone" width="200">
-  <img src="docs/screenshots/05-mobile/05-library-card.png" alt="Library card on a phone" width="200">
-  <img src="docs/screenshots/05-mobile/06-librarian-dashboard.png" alt="Librarian dashboard on a phone" width="200">
+  <img src="docs/screenshots/05-mobile/02-student-dashboard.webp" alt="Student dashboard on a phone" width="200">
+  <img src="docs/screenshots/05-mobile/05-library-card.webp" alt="Library card on a phone" width="200">
+  <img src="docs/screenshots/05-mobile/06-librarian-dashboard.webp" alt="Librarian dashboard on a phone" width="200">
 </p>
 
 Every screen, grouped by role: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) (or open `docs/gallery.html` locally).
@@ -220,6 +220,7 @@ Run from `backend/` unless noted. Scripts that change data do a dry run first an
 | `node scripts/migrateUploadsToGridFS.js [--apply]` | Move old `backend/uploads` images into GridFS |
 | `node scripts/applyDescriptionRewrite.js [--apply]` | Apply the catalogue description/ISBN/year clean-up |
 | `node scripts/screenshots/run.mjs` (repo root) | Regenerate every screenshot, showcase image, `docs/gallery.html` and `docs/SCREENSHOTS.md` |
+| `node scripts/screenshots/live.mjs` (repo root) | Re-capture the AI "Picked for you" dashboard shots from the live demo site (when the AI service can't run locally) |
 
 `node scripts/screenshots/run.mjs` seeds `libverse_demo`, builds the frontend, starts the API (and the
 AI service if `ai-service/venv` exists) on spare ports, captures every screen with headless Edge or

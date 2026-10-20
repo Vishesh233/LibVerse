@@ -1,12 +1,16 @@
-// Captures every screen per role (desktop 1440x900 @2x) and the top six on a phone (390x844 @2x)
-// into docs/screenshots/<group>/NN-name.png + .webp, and writes docs/screenshots/manifest.json.
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+// Captures every screen per role (desktop 1440x900 @2x) and the key ones on a phone (390x844 @2x).
+// The committed images are docs/screenshots/<group>/NN-name.webp (+ manifest.json); the full-size PNGs
+// they are made from go to docs/.screenshots-png/ (gitignored) for the showcase renderer.
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { sleep } from './browser.mjs';
-import { APP, API, ROOT, session } from './stack.mjs';
+import { APP, API, DEMO_APP, ROOT, session } from './stack.mjs';
 
 export const SHOTS_DIR = path.join(ROOT, 'docs', 'screenshots');
+export const PNG_DIR = path.join(ROOT, 'docs', '.screenshots-png');
+// The covers the splash falls back to when there is no cache (the API may be asleep)
+const SPLASH_COVERS = JSON.parse(readFileSync(path.join(ROOT, 'frontend', 'src', 'data', 'splashCovers.json'), 'utf8'));
 // The WebP copy is made from the same PNG frame (sharp is already a backend dependency)
 const sharp = createRequire(path.join(ROOT, 'backend', 'package.json'))('sharp');
 const DESKTOP = { width: 1440, height: 900, scale: 2, mobile: false, label: '1440x900@2x' };
@@ -19,6 +23,9 @@ const screens = ({ ids, labelIds }) => [
   { group: '01-public', file: '02-login', role: 'public', page: 'Sign in', who: null, path: '/login', caption: 'Sign-in page for students, librarians and admins.' },
   { group: '01-public', file: '03-signup', role: 'public', page: 'Sign up', who: null, path: '/signup', caption: 'Students create their own account and get a Library ID straight away.' },
   { group: '01-public', file: '04-onboarding', role: 'student', page: 'Onboarding', who: 'newStudent', path: '/student/onboarding', caption: 'First sign-in: pick favourite genres for personalised picks.' },
+  { group: '01-public', file: '05-login-email-code', role: 'public', page: 'Sign in with an email code', who: null, path: '/login', act: "[...document.querySelectorAll('[role=tab]')].find((t) => t.innerText.trim() === 'Email code')?.click()", caption: 'Passwordless sign-in: enter your email and get a 6-digit code (Password / Email code tabs).' },
+  { group: '01-public', file: '06-demo-picker', role: 'demo', page: 'Live demo', who: null, base: 'demo', path: '/login', caption: 'The live demo: View as Student, Librarian or Admin with no sign-up, and a top-right link to create a real account.' },
+  { group: '01-public', file: '07-privacy', role: 'public', page: 'Privacy policy', who: null, path: '/privacy', caption: 'Plain-language privacy policy (the terms of use are next to it).' },
   // 02 Student
   { group: '02-student', file: '01-dashboard', role: 'student', page: 'Dashboard', who: 'student', path: '/student/dashboard', caption: 'Student dashboard: loans, due dates, fines and AI "Picked for you" suggestions with reasons.' },
   { group: '02-student', file: '02-books', role: 'student', page: 'Browse books', who: 'student', path: '/student/books', caption: 'Catalogue of 500+ books with search, genre and availability filters.' },
@@ -68,6 +75,7 @@ const PHONE_SCREENS = [
   ['04-my-books', '04-my-books-issued', 'My books on a phone.', '02-student'],
   ['05-library-card', '15-library-card-front', 'Library card on a phone, ready to scan at the desk.', '02-student'],
   ['06-librarian-dashboard', '01-dashboard', 'Librarian dashboard on a phone.', '03-librarian'],
+  ['07-demo-picker', '06-demo-picker', 'The live demo role picker on a phone.'],
 ];
 
 export async function capture(browser, { demo, log = console.log }) {
@@ -82,11 +90,13 @@ export async function capture(browser, { demo, log = console.log }) {
   const list = screens({ ids, labelIds });
 
   rmSync(SHOTS_DIR, { recursive: true, force: true });
+  rmSync(PNG_DIR, { recursive: true, force: true });
   const manifest = [];
   const problems = [];
+  const baseOf = (screen) => (screen.base === 'demo' ? DEMO_APP : APP);
 
-  const signIn = async (who, { splash = false } = {}) => {
-    await browser.goto(`${APP}/login`);
+  const signIn = async (who, { splash = false, base = APP } = {}) => {
+    await browser.goto(`${base}/login`);
     // This first load may play the splash, which marks itself as shown when it ends: let it end first
     if (splash) await sleep(2500);
     const s = who ? sessions[who] : null;
@@ -97,19 +107,25 @@ export async function capture(browser, { demo, log = console.log }) {
 
   const take = async (screen, vp, group, file) => {
     await browser.viewport(vp.width, vp.height, { scale: vp.scale, mobile: vp.mobile });
-    await signIn(screen.who, { splash: screen.splash });
+    const base = baseOf(screen);
+    await signIn(screen.who, { splash: screen.splash, base });
     browser.errors.length = 0;
     if (screen.splash) {
       // The splash runs for 1.8 s from its first frame: shoot it mid-way
       await browser.navigate(APP + screen.path);
       for (let i = 0; i < 100 && !(await browser.evaluate("!!document.querySelector('.splash-book')").catch(() => false)); i++) await sleep(50);
       // ...once its title has faded in and the progress bar is about half way (before the exit starts)
+      // ...and several covers have loaded (the wall starts from the bundled list, so this needs no API)
       const ready = "(() => { const el = document.querySelector('.splash-inner'); const bar = document.querySelector('.splash-progress-slim');"
-        + " return !!el && Number(getComputedStyle(el).opacity) > 0.97 && Number(bar?.getAttribute('aria-valuenow') || 0) >= 45; })()";
-      for (let i = 0; i < 60 && !(await browser.evaluate(ready).catch(() => false)); i++) await sleep(25);
+        + " const covers = document.querySelectorAll('.splash-cover.is-loaded').length;"
+        + " return !!el && Number(getComputedStyle(el).opacity) > 0.97 && Number(bar?.getAttribute('aria-valuenow') || 0) >= 45 && covers >= 8; })()";
+      for (let i = 0; i < 80 && !(await browser.evaluate(ready).catch(() => false)); i++) await sleep(25);
+      const covers = await browser.evaluate("document.querySelectorAll('.splash-cover.is-loaded').length").catch(() => 0);
+      if (covers < 8) problems.push(`${group}/${file}: only ${covers} covers visible in the splash`);
     } else {
-      await browser.goto(APP + screen.path);
+      await browser.goto(base + screen.path);
       await sleep(1800);
+      if (screen.act) { await browser.evaluate(screen.act); await sleep(700); }
       await browser.imagesSettled(12000);
       if (screen.flip) {
         await browser.evaluate("document.querySelector('[aria-label^=\"Library card, showing\"]')?.click()");
@@ -123,15 +139,21 @@ export async function capture(browser, { demo, log = console.log }) {
     if (state.path !== expected) problems.push(`${group}/${file}: ended on ${state.path}, expected ${expected}`);
     if (state.overflow) problems.push(`${group}/${file}: horizontal overflow`);
     if (browser.errors.length) problems.push(`${group}/${file}: console errors: ${browser.errors.slice(0, 2).join(' | ')}`);
-    const base = path.join(SHOTS_DIR, group, file);
-    await browser.shot(`${base}.png`);
-    await sharp(`${base}.png`).webp({ quality: 88 }).toFile(`${base}.webp`);
-    manifest.push({ file: `${group}/${file}.png`, webp: `${group}/${file}.webp`, role: screen.role, page: screen.page, viewport: vp.label, caption: screen.caption });
+    const pngFile = path.join(PNG_DIR, group, `${file}.png`);
+    const webpFile = path.join(SHOTS_DIR, group, `${file}.webp`);
+    await browser.shot(pngFile);
+    mkdirSync(path.dirname(webpFile), { recursive: true });
+    await sharp(pngFile).webp({ quality: 88 }).toFile(webpFile);
+    manifest.push({ file: `${group}/${file}.webp`, role: screen.role, page: screen.page, viewport: vp.label, caption: screen.caption });
     log(`  ${group}/${file}`);
   };
 
-  // The splash last: by then the browser has the cover images cached, so its cover wall is full
-  for (const screen of list.filter((s) => !s.splash)) await take(screen, DESKTOP, screen.group, screen.file);
+  // The full app's screens first; then the demo site's (its accounts are marked isDemo only now, so the
+  // demo banner never shows on the screens above); the splash last, after warming the cover images
+  for (const screen of list.filter((s) => !s.splash && !s.base)) await take(screen, DESKTOP, screen.group, screen.file);
+  for (const screen of list.filter((s) => !s.splash && s.base)) await take(screen, DESKTOP, screen.group, screen.file);
+  await browser.goto(`${APP}/login`);
+  await browser.evaluate(`Promise.all(${JSON.stringify(SPLASH_COVERS)}.map((u) => new Promise((r) => { const i = new Image(); i.onload = i.onerror = r; i.src = u; })))`);
   for (const screen of list.filter((s) => s.splash)) await take(screen, DESKTOP, screen.group, screen.file);
   manifest.sort((a, b) => a.file.localeCompare(b.file));
   for (const [file, source, caption, sourceGroup = '01-public'] of PHONE_SCREENS) {
