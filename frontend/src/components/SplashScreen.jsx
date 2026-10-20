@@ -1,18 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { booksAPI } from '../services/api';
-import { GENRES } from '../constants/genres';
 import { LogoMark } from './LogoMark';
-import { SplashCoverWall } from './SplashCoverWall';
+import { PHONE_QUERY, SPLASH_TILES, readySplashTiles, tileSrcSet } from '../utils/splashTiles';
 
-const LOADING_MESSAGES = [
-  'Initializing...',
-  'Loading Library...',
-  'Preparing Dashboard...',
-  'Almost Ready...',
-];
+// One clock drives the whole timeline: the keyframes in index.css are percentages of this duration
+// (desktop: hero in at 0.2 s, out at 2.2 s, logo at 2.4 s, reveal at 3.5 s; phones play it a bit faster)
+const TOTAL_MS = 4000;
+const TOTAL_MS_PHONE = 3400;
+// A tile that is not decoded when the hero appears is left out, never shown half loaded
+const TILE_DEADLINE_MS = 200;
+const REDUCED_MS = 400;
+const SKIP_MS = 220;
 
-// Stats are real or not shown at all: if the request is slow or fails, they stay hidden
-const STATS_TIMEOUT_MS = 1200;
+const CHIPS = ['React + Vite', 'Node + MongoDB', 'Python TF-IDF'];
 
 const PARTICLES = Array.from({ length: 14 }, (_, i) => ({
   left: `${(i * 7.3 + 3) % 100}%`,
@@ -21,75 +20,61 @@ const PARTICLES = Array.from({ length: 14 }, (_, i) => ({
   opacity: 0.25 + ((i % 4) * 0.12),
 }));
 
-export const SplashScreen = ({ duration = 1800, exiting = false }) => {
-  const [progress, setProgress] = useState(0);
-  const [messageIndex, setMessageIndex] = useState(0);
-  const [bookCount, setBookCount] = useState(null);
-  const rafRef = useRef(null);
+const matches = (query) => typeof window !== 'undefined' && window.matchMedia?.(query).matches;
+
+/**
+ * Opening splash: the hero (text + tilted screens) appears together with gentle motion, fades back,
+ * the logo spins in the centre, then the page underneath is revealed. It is an overlay: the app is
+ * already mounted and loading below, and onDone fires when the overlay is gone.
+ */
+export const SplashScreen = ({ onDone }) => {
+  const [reduced] = useState(() => matches('(prefers-reduced-motion: reduce)'));
+  const [total] = useState(() => (matches('(max-width: 640px)') ? TOTAL_MS_PHONE : TOTAL_MS));
+  const [skipping, setSkipping] = useState(false);
+  const [dropped, setDropped] = useState(() => new Set());
+  const skipRef = useRef(null);
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
 
   useEffect(() => {
-    const startTime = performance.now();
-
-    const tick = (now) => {
-      const elapsed = now - startTime;
-      const t = Math.min(elapsed / duration, 1);
-
-      // Ease-out cubic for a natural feel
-      const eased = 1 - Math.pow(1 - t, 3);
-      setProgress(Math.round(eased * 100));
-
-      // Update message based on progress
-      if (eased < 0.25) setMessageIndex(0);
-      else if (eased < 0.5) setMessageIndex(1);
-      else if (eased < 0.75) setMessageIndex(2);
-      else setMessageIndex(3);
-
-      if (t < 1) {
-        rafRef.current = requestAnimationFrame(tick);
-      }
-    };
-
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [duration]);
-
-  // Real catalogue size from the public books endpoint (pagination total)
-  useEffect(() => {
-    let cancelled = false;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), STATS_TIMEOUT_MS);
-
-    booksAPI
-      .getBooks({ limit: 1 }, { signal: controller.signal })
-      .then((res) => {
-        const total = res.data?.total;
-        if (!cancelled && Number.isFinite(total) && total > 0) setBookCount(total);
-      })
-      .catch(() => {
-        /* slow or failed: keep stats hidden rather than show made-up numbers */
-      })
-      .finally(() => clearTimeout(timer));
-
+    skipRef.current?.focus({ preventScroll: true });
+    const finish = setTimeout(() => doneRef.current(), reduced ? REDUCED_MS : total);
+    const deadline = setTimeout(() => {
+      const ready = readySplashTiles();
+      setDropped(new Set(SPLASH_TILES.filter((t) => !ready.has(t.key)).map((t) => t.key)));
+    }, TILE_DEADLINE_MS);
     return () => {
-      cancelled = true;
-      clearTimeout(timer);
-      controller.abort();
+      clearTimeout(finish);
+      clearTimeout(deadline);
     };
+  }, [reduced, total]);
+
+  useEffect(() => {
+    if (!skipping) return undefined;
+    const timer = setTimeout(() => doneRef.current(), SKIP_MS);
+    return () => clearTimeout(timer);
+  }, [skipping]);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setSkipping(true); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   return (
-    <div className={`libverse-splash ${exiting ? 'is-exiting' : ''}`}>
-      {/* Living wall of real covers, under the floating books, particles and foreground */}
-      <SplashCoverWall exiting={exiting} />
-
-      {/* Floating 3D books */}
+    <div
+      className={`libverse-splash hero-splash ${reduced ? 'is-reduced' : ''} ${skipping ? 'is-skipping' : ''}`}
+      style={{ '--hs-total': `${total}ms` }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="LibVerse"
+    >
+      {/* Background: floating books and particles, unchanged */}
       <span className="splash-book" style={{ top: '12%', left: '10%', '--book-color': '#7b5cff', '--rotate': '12deg', '--delay': '0s' }} />
       <span className="splash-book" style={{ top: '22%', right: '8%', '--book-color': '#2dd4bf', '--rotate': '-12deg', '--delay': '1.2s' }} />
       <span className="splash-book" style={{ bottom: '14%', left: '12%', '--book-color': '#f472b6', '--rotate': '8deg', '--delay': '2.4s' }} />
       <span className="splash-book" style={{ bottom: '18%', right: '14%', '--book-color': '#34d399', '--rotate': '-8deg', '--delay': '0.6s' }} />
       <span className="splash-book" style={{ top: '52%', right: '22%', '--book-color': '#60a5fa', '--rotate': '18deg', '--delay': '1.8s' }} />
-
-      {/* Tiny particles */}
       {PARTICLES.map((p, i) => (
         <span
           key={i}
@@ -103,43 +88,56 @@ export const SplashScreen = ({ duration = 1800, exiting = false }) => {
         />
       ))}
 
-      <div className="splash-inner splash-enter">
-        <div className="splash-logo-card">
-          <div className="splash-logo-glow-wrap">
-            <span className="splash-logo-glow" aria-hidden="true" />
-            <LogoMark size="lg" />
+      {!reduced && (
+        <div className="hs-hero" aria-hidden="true">
+          <div className="hs-grid" />
+          <div className="hs-text">
+            <div className="hs-brand">
+              <LogoMark size="sm" />
+              <span className="hs-wordmark font-display">Lib<span>Verse</span></span>
+            </div>
+            <h2 className="hs-title font-display">Smart Library Management System</h2>
+            <p className="hs-desc">
+              Borrowing, returns, fines, reservations, QR library cards and AI picks for students, librarians and admins.
+            </p>
+            <ul className="hs-chips">
+              {CHIPS.map((c) => <li key={c}>{c}</li>)}
+            </ul>
           </div>
-          <div className="splash-logo-text">
-            <h1 className="font-display">
-              Lib<span className="brand-verse">Verse</span>
-            </h1>
-            <p>Your library, beautifully organised</p>
+          <div className="hs-collage">
+            <div className="hs-scene">
+              {SPLASH_TILES.filter((t) => !dropped.has(t.key)).map((t) => (
+                <div className={`hs-tile hs-tile--${t.key}`} key={t.key}>
+                  <div className="hs-float">
+                    <picture>
+                      <source media={PHONE_QUERY} srcSet={t.x1} />
+                      <img
+                        src={t.x1}
+                        srcSet={tileSrcSet(t)}
+                        alt=""
+                        draggable="false"
+                        decoding="async"
+                        onError={() => setDropped((prev) => new Set(prev).add(t.key))}
+                      />
+                    </picture>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="splash-progress-slim" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} aria-label="Loading LibVerse">
-          <div className="splash-progress-slim-labels">
-            <span>{LOADING_MESSAGES[messageIndex]}</span>
-            <span>{progress}%</span>
-          </div>
-          <div className="splash-progress-slim-track">
-            <div className="splash-progress-slim-fill" style={{ width: `${progress}%` }} />
-          </div>
-        </div>
-
-        {bookCount !== null && (
-          <div className="splash-stats-row">
-            <div className="splash-stat">
-              <strong className="font-display">{bookCount.toLocaleString()}</strong>
-              <span>Books</span>
-            </div>
-            <div className="splash-stat">
-              <strong className="font-display">{GENRES.length}</strong>
-              <span>Genres</span>
-            </div>
-          </div>
-        )}
+      <div className="hs-logo" aria-hidden="true">
+        <span className="splash-logo-glow-wrap">
+          <span className="splash-logo-glow" />
+          <LogoMark size="lg" />
+        </span>
       </div>
+
+      <button ref={skipRef} type="button" className="hs-skip" onClick={() => setSkipping(true)}>
+        Skip<span className="sr-only"> intro</span>
+      </button>
     </div>
   );
 };
