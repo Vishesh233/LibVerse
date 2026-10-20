@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { LogoMark } from './LogoMark';
-import { SPLASH_TILES, readySplashTiles } from '../utils/splashTiles';
+import { PHONE_QUERY, SPLASH_TILES, readySplashTiles, tileSrcSet } from '../utils/splashTiles';
 
 // One clock drives the whole timeline: the keyframes in index.css are percentages of this duration
 // (desktop: hero in at 0.2 s, out at 2.2 s, logo at 2.4 s, reveal at 3.5 s; phones play it a bit faster)
@@ -109,13 +109,17 @@ export const SplashScreen = ({ onDone }) => {
               {SPLASH_TILES.filter((t) => !dropped.has(t.key)).map((t) => (
                 <div className={`hs-tile hs-tile--${t.key}`} key={t.key}>
                   <div className="hs-float">
-                    <img
-                      src={t.src}
-                      alt=""
-                      draggable="false"
-                      decoding="async"
-                      onError={() => setDropped((prev) => new Set(prev).add(t.key))}
-                    />
+                    <picture>
+                      <source media={PHONE_QUERY} srcSet={t.x1} />
+                      <img
+                        src={t.x1}
+                        srcSet={tileSrcSet(t)}
+                        alt=""
+                        draggable="false"
+                        decoding="async"
+                        onError={() => setDropped((prev) => new Set(prev).add(t.key))}
+                      />
+                    </picture>
                   </div>
                 </div>
               ))}

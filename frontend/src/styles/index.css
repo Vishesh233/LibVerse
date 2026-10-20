@@ -1306,12 +1306,12 @@ body.modal-open {
   pointer-events: none;
   opacity: 0;
   animation: hsHero var(--hs-total, 4s) both;
-  will-change: transform, opacity;
 }
+/* Opacity only: the text is never scaled or moved, so it stays pixel-sharp (the screens carry the motion) */
 @keyframes hsHero {
-  0%, 5% { opacity: 0; transform: scale(0.97); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  22%, 55% { opacity: 1; transform: scale(1); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.4); }
-  62%, 100% { opacity: 0; transform: scale(1.03); }
+  0%, 5% { opacity: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  22%, 55% { opacity: 1; animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.4); }
+  62%, 100% { opacity: 0; }
 }
 
 .hs-grid {
@@ -1328,13 +1328,15 @@ body.modal-open {
 
 /* Left column: stays put */
 .hs-text {
+  /* Centred with flex, not translateY(-50%): a half-pixel offset would blur the text */
   position: absolute;
   left: 6vw;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
+  bottom: 0;
   width: min(37vw, 38rem);
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: flex-start;
 }
 .hs-brand { display: flex; align-items: center; gap: 0.7rem; margin-bottom: clamp(1rem, 4vh, 2.2rem); }
@@ -1397,10 +1399,10 @@ body.modal-open {
   aspect-ratio: 10 / 9;
   perspective: 1800px;
   animation: hsCollage var(--hs-total, 4s) both;
-  will-change: transform;
 }
+/* Drift in and slowly zoom (scale never below 1, so the screens are never drawn smaller than their pixels) */
 @keyframes hsCollage {
-  0%, 5% { transform: translate3d(0, 0, 0) scale(1); animation-timing-function: cubic-bezier(0.25, 0.6, 0.3, 1); }
+  0%, 5% { transform: translate3d(3%, 2%, 0) scale(1); animation-timing-function: cubic-bezier(0.22, 0.7, 0.2, 1); }
   55%, 100% { transform: translate3d(-1.2%, -0.8%, 0) scale(1.07); }
 }
 .hs-scene {
@@ -1418,12 +1420,12 @@ body.modal-open {
   transform-style: preserve-3d;
   animation: hsFloat var(--float-dur, 6s) ease-in-out infinite alternate;
   animation-delay: var(--float-delay, 0s);
-  will-change: transform;
 }
 @keyframes hsFloat {
   from { transform: translate3d(0, 0, 0); }
   to { transform: translate3d(var(--fx, 0), var(--fy, -1.6%), 0); }
 }
+.hs-tile picture { display: block; }
 .hs-tile img {
   display: block;
   width: 100%;
@@ -1432,6 +1434,8 @@ body.modal-open {
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(34, 211, 238, 0.05), 0 0 40px rgba(34, 211, 238, 0.06);
   background: #0b1220;
+  image-rendering: auto;
+  filter: none;
 }
 .hs-tile--librarian { left: 27%; top: 0; width: 78%; --z: -40px; --fx: 0.6%; --fy: -1.2%; --float-dur: 7s; }
 .hs-tile--student { left: 6%; top: 25%; width: 75%; --z: 20px; --fx: -0.8%; --fy: -2%; --float-dur: 6.2s; --float-delay: -1.5s; }
@@ -1454,7 +1458,6 @@ body.modal-open {
   pointer-events: none;
   opacity: 0;
   animation: hsLogo var(--hs-total, 4s) both;
-  will-change: transform, opacity;
 }
 @keyframes hsLogo {
   0%, 60% { opacity: 0; transform: rotate(0deg) scale(0.6); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
@@ -1484,7 +1487,15 @@ body.modal-open {
 
 /* Phones: text on top, a smaller collage below, a shorter clock */
 @media (max-width: 640px) {
-  .hs-text { left: 6vw; top: 7vh; transform: none; width: 88vw; }
+  .hs-text { left: 6vw; top: 7vh; bottom: auto; justify-content: flex-start; width: 88vw; }
+  /* Floating books and particles pass behind the text: a dark backing keeps it above 4.5:1 */
+  .hs-text::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: -1rem -6vw -0.8rem;
+    background: linear-gradient(rgba(5, 8, 22, 0.94) 82%, rgba(5, 8, 22, 0));
+  }
   .hs-brand { margin-bottom: 1rem; }
   .hs-title { font-size: clamp(1.7rem, 8.4vw, 2.2rem); }
   .hs-desc { font-size: 0.9rem; margin-top: 0.7rem; }
