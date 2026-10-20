@@ -9,8 +9,6 @@ import { APP, API, DEMO_APP, ROOT, session } from './stack.mjs';
 
 export const SHOTS_DIR = path.join(ROOT, 'docs', 'screenshots');
 export const PNG_DIR = path.join(ROOT, 'docs', '.screenshots-png');
-// The covers the splash falls back to when there is no cache (the API may be asleep)
-const SPLASH_COVERS = JSON.parse(readFileSync(path.join(ROOT, 'frontend', 'src', 'data', 'splashCovers.json'), 'utf8'));
 // The WebP copy is made from the same PNG frame (sharp is already a backend dependency)
 const sharp = createRequire(path.join(ROOT, 'backend', 'package.json'))('sharp');
 const DESKTOP = { width: 1440, height: 900, scale: 2, mobile: false, label: '1440x900@2x' };
@@ -19,7 +17,7 @@ const PHONE = { width: 390, height: 844, scale: 2, mobile: true, label: '390x844
 /** The screens. who: null (signed out) | key of the sessions below; act: runs after the page loads */
 const screens = ({ ids, labelIds }) => [
   // 01 Public
-  { group: '01-public', file: '01-splash', role: 'public', page: 'Splash', who: null, path: '/login', splash: true, caption: 'Opening splash with a live wall of covers from the catalogue.' },
+  { group: '01-public', file: '01-splash', role: 'public', page: 'Splash', who: null, path: '/login', splash: true, caption: 'Opening splash: the app screens drift in over the LibVerse intro, then the logo spins and the sign-in page opens.' },
   { group: '01-public', file: '02-login', role: 'public', page: 'Sign in', who: null, path: '/login', caption: 'Sign-in page for students, librarians and admins.' },
   { group: '01-public', file: '03-signup', role: 'public', page: 'Sign up', who: null, path: '/signup', caption: 'Students create their own account and get a Library ID straight away.' },
   { group: '01-public', file: '04-onboarding', role: 'student', page: 'Onboarding', who: 'newStudent', path: '/student/onboarding', caption: 'First sign-in: pick favourite genres for personalised picks.' },
@@ -111,17 +109,12 @@ export async function capture(browser, { demo, log = console.log }) {
     await signIn(screen.who, { splash: screen.splash, base });
     browser.errors.length = 0;
     if (screen.splash) {
-      // The splash runs for 1.8 s from its first frame: shoot it mid-way
+      // The hero (text + screens) is fully in from about 1 s and holds until 2.2 s: shoot it at 1.5 s
       await browser.navigate(APP + screen.path);
-      for (let i = 0; i < 100 && !(await browser.evaluate("!!document.querySelector('.splash-book')").catch(() => false)); i++) await sleep(50);
-      // ...once its title has faded in and the progress bar is about half way (before the exit starts)
-      // ...and several covers have loaded (the wall starts from the bundled list, so this needs no API)
-      const ready = "(() => { const el = document.querySelector('.splash-inner'); const bar = document.querySelector('.splash-progress-slim');"
-        + " const covers = document.querySelectorAll('.splash-cover.is-loaded').length;"
-        + " return !!el && Number(getComputedStyle(el).opacity) > 0.97 && Number(bar?.getAttribute('aria-valuenow') || 0) >= 45 && covers >= 8; })()";
-      for (let i = 0; i < 80 && !(await browser.evaluate(ready).catch(() => false)); i++) await sleep(25);
-      const covers = await browser.evaluate("document.querySelectorAll('.splash-cover.is-loaded').length").catch(() => 0);
-      if (covers < 8) problems.push(`${group}/${file}: only ${covers} covers visible in the splash`);
+      for (let i = 0; i < 100 && !(await browser.evaluate("!!document.querySelector('.hs-hero')").catch(() => false)); i++) await sleep(50);
+      await sleep(1500);
+      const tiles = await browser.evaluate("document.querySelectorAll('.hs-tile img').length").catch(() => 0);
+      if (tiles < 5) problems.push(`${group}/${file}: only ${tiles} screens in the splash`);
     } else {
       await browser.goto(base + screen.path);
       await sleep(1800);
@@ -149,11 +142,9 @@ export async function capture(browser, { demo, log = console.log }) {
   };
 
   // The full app's screens first; then the demo site's (its accounts are marked isDemo only now, so the
-  // demo banner never shows on the screens above); the splash last, after warming the cover images
+  // demo banner never shows on the screens above); the splash last
   for (const screen of list.filter((s) => !s.splash && !s.base)) await take(screen, DESKTOP, screen.group, screen.file);
   for (const screen of list.filter((s) => !s.splash && s.base)) await take(screen, DESKTOP, screen.group, screen.file);
-  await browser.goto(`${APP}/login`);
-  await browser.evaluate(`Promise.all(${JSON.stringify(SPLASH_COVERS)}.map((u) => new Promise((r) => { const i = new Image(); i.onload = i.onerror = r; i.src = u; })))`);
   for (const screen of list.filter((s) => s.splash)) await take(screen, DESKTOP, screen.group, screen.file);
   manifest.sort((a, b) => a.file.localeCompare(b.file));
   for (const [file, source, caption, sourceGroup = '01-public'] of PHONE_SCREENS) {

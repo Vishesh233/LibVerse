@@ -13,7 +13,7 @@ Desktop shots are 1440×900 at 2×, phone shots 390×844 at 2×. For a browsable
 
 ### Splash
 
-Opening splash with a live wall of covers from the catalogue.
+Opening splash: the app screens drift in over the LibVerse intro, then the logo spins and the sign-in page opens.
 
 ![Splash](screenshots/01-public/01-splash.webp)
 
